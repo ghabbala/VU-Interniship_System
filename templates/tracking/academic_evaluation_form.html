@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Academic Evaluation — University Supervisor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="fw-bold">Internship Academic Supervisor’s Evaluation</div>
+
+          <div class="text-muted small">
+            Student: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
+            — {{ placement.request.student.user.display_name }}
+          </div>
+
+          <div class="text-muted small">
+            Company: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
+          </div>
+        </div>
+
+        <span class="badge text-bg-light border">
+          {% if evaluation.status == "draft" %}Draft{% else %}Submitted{% endif %}
+        </span>
+      </div>
+
+      <div class="card-body">
+
+        <div class="alert alert-light border small mb-3">
+          <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> Introduction</div>
+          <div class="text-muted" style="white-space: pre-line;">
+This evaluation will assist in determining the student’s grade. Your assessment of the student’s learning
+experience, the attainment of goals, and the professional development achieved over the service period is valued.
+
+Please grade the Intern from 1 to 5 (5 = highest, 1 = lowest).
+          </div>
+        </div>
+
+        <div class="card border-0 bg-light mb-3">
+          <div class="card-body small text-muted">
+            <b>Key:</b>
+            1 = Unsatisfactory • 2 = Below average • 3 = Average/Good • 4 = Very good • 5 = Excellent
+          </div>
+        </div>
+
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            Please fix the highlighted errors.
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- 1 -->
+          <div class="border rounded-4 p-3 mb-3 bg-white">
+            <div class="fw-semibold mb-2">1. Understanding of Internship</div>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+              {% for r in form.understanding_of_internship %}
+                <label class="form-check form-check-inline mb-0">{{ r.tag }} <span class="ms-1">{{ r.choice_label }}</span></label>
+              {% endfor %}
+            </div>
+            {% if form.understanding_of_internship.errors %}<div class="text-danger small mt-1">{{ form.understanding_of_internship.errors }}</div>{% endif %}
+
+            <div class="mt-2">
+              <div class="small text-muted mb-1">Comment</div>
+              {{ form.understanding_of_internship_comment }}
+            </div>
+          </div>
+
+          <!-- 2 -->
+          <div class="border rounded-4 p-3 mb-3 bg-white">
+            <div class="fw-semibold mb-2">2. Support framework</div>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+              {% for r in form.support_framework %}
+                <label class="form-check form-check-inline mb-0">{{ r.tag }} <span class="ms-1">{{ r.choice_label }}</span></label>
+              {% endfor %}
+            </div>
+            {% if form.support_framework.errors %}<div class="text-danger small mt-1">{{ form.support_framework.errors }}</div>{% endif %}
+
+            <div class="mt-2">
+              <div class="small text-muted mb-1">Comment</div>
+              {{ form.support_framework_comment }}
+            </div>
+          </div>
+
+          <!-- 3 -->
+          <div class="border rounded-4 p-3 mb-3 bg-white">
+            <div class="fw-semibold mb-2">3. Culture fit</div>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+              {% for r in form.culture_fit %}
+                <label class="form-check form-check-inline mb-0">{{ r.tag }} <span class="ms-1">{{ r.choice_label }}</span></label>
+              {% endfor %}
+            </div>
+            {% if form.culture_fit.errors %}<div class="text-danger small mt-1">{{ form.culture_fit.errors }}</div>{% endif %}
+
+            <div class="mt-2">
+              <div class="small text-muted mb-1">Comment</div>
+              {{ form.culture_fit_comment }}
+            </div>
+          </div>
+
+          <!-- 4 -->
+          <div class="border rounded-4 p-3 mb-3 bg-white">
+            <div class="fw-semibold mb-2">4. Work output</div>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+              {% for r in form.work_output %}
+                <label class="form-check form-check-inline mb-0">{{ r.tag }} <span class="ms-1">{{ r.choice_label }}</span></label>
+              {% endfor %}
+            </div>
+            {% if form.work_output.errors %}<div class="text-danger small mt-1">{{ form.work_output.errors }}</div>{% endif %}
+
+            <div class="mt-2">
+              <div class="small text-muted mb-1">Comment</div>
+              {{ form.work_output_comment }}
+            </div>
+          </div>
+
+          <!-- 5 -->
+          <div class="border rounded-4 p-3 mb-3 bg-white">
+            <div class="fw-semibold mb-2">5. General presentation</div>
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+              {% for r in form.general_presentation %}
+                <label class="form-check form-check-inline mb-0">{{ r.tag }} <span class="ms-1">{{ r.choice_label }}</span></label>
+              {% endfor %}
+            </div>
+            {% if form.general_presentation.errors %}<div class="text-danger small mt-1">{{ form.general_presentation.errors }}</div>{% endif %}
+
+            <div class="mt-2">
+              <div class="small text-muted mb-1">Comment</div>
+              {{ form.general_presentation_comment }}
+            </div>
+          </div>
+
+          <!-- Recommendation -->
+          <div class="border rounded-4 p-3 bg-white mb-3">
+            <div class="fw-semibold mb-2">Recommendation</div>
+            {{ form.recommendation }}
+            {% if form.recommendation.errors %}<div class="text-danger small mt-1">{{ form.recommendation.errors }}</div>{% endif %}
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Supervisor’s Name</label>
+              {{ form.supervisor_name }}
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Supervisor’s Signature (type name)</label>
+              {{ form.supervisor_signature }}
+            </div>
+          </div>
+
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            <button class="btn btn-outline-secondary" name="action" value="save" type="submit">
+              Save Draft
+            </button>
+            <button class="btn btn-success" name="action" value="submit" type="submit">
+              Submit Academic Evaluation
+            </button>
+
+            <a class="btn btn-light border ms-md-auto" href="{% url 'supervisor_students' %}">
+              Back
+            </a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-3">
+    <div class="card">
+      <div class="card-header fw-bold"><i class="bi bi-info-circle me-1"></i> Key</div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>1 = Unsatisfactory</li>
+          <li>2 = Below average</li>
+          <li>3 = Average / Good</li>
+          <li>4 = Very good</li>
+          <li>5 = Excellent</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Student Evaluation Form — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header">
+        <div class="fw-bold">Student Evaluation Form</div>
+        <div class="text-muted small">
+          Placement: <span class="fw-semibold">{{ placement.company.name }}</span> —
+          {{ placement.request.student.reg_no }} ({{ placement.request.student.user.display_name }})
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="alert alert-info small mb-4">
+          Complete this form as soon as your internship ends. When you submit, it will be visible to your University Supervisor and the Internship Coordinator.
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Program</label>
+              {{ form.program }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Internship Site</label>
+              {{ form.internship_site }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Date</label>
+              {{ form.eval_date }}
+            </div>
+          </div>
+
+          <hr class="my-3"/>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">1) How did you find this internship?</label>
+            {{ form.q1 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">2) Were you given sufficient supervision?</label>
+            {{ form.q2 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">3) Were you given helpful feedback on your work?</label>
+            {{ form.q3 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">4) Major strength of this internship?</label>
+            {{ form.q4 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">5) How have you benefited from participating?</label>
+            {{ form.q5 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">6) How did the internship site benefit from you?</label>
+            {{ form.q6 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">7) Was the internship relevant to your degree program?</label>
+            {{ form.q7 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">8) Any major challenges + how can they be solved?</label>
+            {{ form.q8 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">9) What factors would have enabled better performance?</label>
+            {{ form.q9 }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">10) What would you change about this internship?</label>
+            {{ form.q10 }}
+          </div>
+
+          <div class="d-flex gap-2">
+            <button name="action" value="save" class="btn btn-outline-secondary">
+              <i class="bi bi-save me-1"></i> Save Draft
+            </button>
+
+            <button name="action" value="submit" class="btn btn-danger">
+              <i class="bi bi-send-check me-1"></i> Submit
+            </button>
+          </div>
+
+          <div class="small text-muted mt-2">
+            Once submitted, you can view it but cannot edit.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Victoria University | Student Registration</title>
+
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'accounts/css/vu_login.css' %}">
+</head>
+
+<body>
+  <main class="shell">
+    <!-- LEFT BRAND PANEL -->
+    <section class="brand">
+      <div class="brand-top">
+        <div class="badge">
+          <div class="logo">VU</div>
+          <div>Victoria University</div>
+        </div>
+
+        <h1>Create Student Account</h1>
+        <p>
+          Register to submit internship requests, upload acceptance letters, and track weekly logs.
+        </p>
+      </div>
+
+      <div class="brand-bottom">
+        <span>Student Portal • Internship Management</span>
+        <span>© {% now "Y" %} Victoria University</span>
+      </div>
+    </section>
+
+    <!-- RIGHT FORM -->
+    <section class="form-area">
+      <div class="card">
+        <h2>Student Registration</h2>
+        <p class="sub">Fill in the details below to create your account.</p>
+
+        {% if form.errors %}
+          <div class="alert">
+            Please fix the highlighted errors and try again.
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {# Non-field errors (e.g. "passwords don't match") #}
+          {% if form.non_field_errors %}
+            <div class="alert">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          {# Render each field nicely (better than form.as_p) #}
+          {% for field in form %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+
+              {% if field.help_text %}
+                <div class="help">{{ field.help_text|safe }}</div>
+              {% endif %}
+
+              {% if field.errors %}
+                <div class="error">{{ field.errors }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <button class="btn" type="submit">Create account</button>
+        </form>
+
+        <div class="links">
+          Already have an account?
+          <a href="{% url 'login' %}">Back to login</a>
+        </div>
+
+        <div class="footer">
+          By creating an account, you agree to follow Victoria University internship guidelines.
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

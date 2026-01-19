@@ -1,0 +1,20 @@
+<h2>Coordinator Dashboard — Missing Weekly Logs</h2>
+
+<p>Week: <b>{{ wk_start }}</b> to <b>{{ wk_end }}</b></p>
+<p>Active placements: <b>{{ count_active }}</b> | Missing logs: <b>{{ count_missing }}</b></p>
+
+<ul>
+  {% for p in missing %}
+    <li>
+      <b>{{ p.request.student.reg_no }}</b> ({{ p.request.student.user.email }})
+      — {{ p.company.name }} — Placement status: <b>{{ p.status }}</b>
+    </li>
+  {% empty %}
+    <li>All active placements have submitted logs for this week ✅</li>
+  {% endfor %}
+</ul>
+
+<form method="post" action="{% url 'logout' %}">
+  {% csrf_token %}
+  <button type="submit">Logout</button>
+</form>

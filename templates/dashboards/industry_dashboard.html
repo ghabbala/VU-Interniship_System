@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Industry Supervisor Dashboard — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN -->
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">Industry Supervisor Dashboard</div>
+          <div class="text-muted small">
+            Welcome, <span class="fw-semibold text-dark">{{ request.user.display_name }}</span>
+          </div>
+        </div>
+        <span class="badge text-bg-light border">
+          <i class="bi bi-shield-check me-1"></i> Supervisor
+        </span>
+      </div>
+
+      <div class="card-body">
+        <div class="p-3 p-md-4 border rounded-4 bg-white">
+          <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-clipboard-check text-danger fs-3"></i>
+            <div>
+              <div class="fw-bold mb-1">What you do here</div>
+              <div class="text-muted">
+                Review student weekly logs and either <b>Approve</b> or <b>Return</b> them with a clear reason.
+              </div>
+
+              <div class="d-flex flex-column flex-sm-row flex-wrap gap-2 mt-3">
+                <a href="{% url 'company_pending_logs' %}" class="btn btn-danger px-3">
+                  <i class="bi bi-hourglass-split me-1"></i> Pending Logs
+                </a>
+
+                <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success px-3">
+                  <i class="bi bi-journal-check me-1"></i> Approved Logs
+                </a>
+
+                <!-- ✅ NEW: Submitted Evaluations -->
+                <a href="{% url 'company_approved_evaluations' %}" class="btn btn-outline-primary px-3">
+                  <i class="bi bi-clipboard-data me-1"></i> Submitted Evaluations
+                </a>
+
+                <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary px-3">
+                  <i class="bi bi-people me-1"></i> Assigned Students
+                </a>
+              </div>
+
+              <div class="small text-muted mt-3">
+                Tip: If you return a log, explain what the student should correct (dates, missing tasks, evidence, etc.).
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-4"/>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="p-3 border rounded-4 h-100">
+              <div class="fw-bold mb-1">
+                <i class="bi bi-check2-circle text-success me-1"></i> Approve
+              </div>
+              <div class="text-muted small">
+                Approve when the log clearly explains work done, learning outcomes, and professionalism.
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <div class="p-3 border rounded-4 h-100">
+              <div class="fw-bold mb-1">
+                <i class="bi bi-arrow-return-left text-warning me-1"></i> Return
+              </div>
+              <div class="text-muted small">
+                Return when the log is incomplete/incorrect. Provide a reason so they can fix and resubmit.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-lightning-charge me-1"></i> Quick Actions
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
+          <i class="bi bi-hourglass-split me-1"></i> Review Pending Logs
+        </a>
+
+        <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
+          <i class="bi bi-journal-check me-1"></i> View Approved Logs
+        </a>
+
+        <!-- ✅ NEW: Submitted Evaluations -->
+        <a class="btn btn-outline-primary" href="{% url 'company_approved_evaluations' %}">
+          <i class="bi bi-clipboard-data me-1"></i> View Submitted Evaluations
+        </a>
+
+        <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+          <i class="bi bi-people me-1"></i> View Assigned Students
+        </a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-journal-check me-1"></i> Approval Standards (Recommended)
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Dates are correct (From → To) and match the week number.</li>
+          <li>Activities are specific (not vague).</li>
+          <li>Skills / learning outcomes are mentioned.</li>
+          <li>Professional language is used.</li>
+          <li>Evidence attachment is added where possible (optional).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

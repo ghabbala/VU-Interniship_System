@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Submitted Results Reports — Coordinator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+      <div>
+        <div class="fw-bold fs-5">Submitted Results Reports</div>
+        <div class="text-muted small">
+          Reports submitted by University Supervisors (snapshot of averages).
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge text-bg-warning border">
+          <i class="bi bi-inbox me-1"></i> Pending: {{ pending_count }}
+        </span>
+        <span class="badge text-bg-success border">
+          <i class="bi bi-check2-circle me-1"></i> Received: {{ received_count }}
+        </span>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-clipboard-data me-1"></i> Reports Inbox</span>
+        <span class="badge text-bg-light border">{{ reports|length }} total</span>
+      </div>
+
+      <div class="card-body">
+        {% if reports %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Supervisor</th>
+                  <th class="text-muted">Submitted</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in reports %}
+                  <tr>
+                    <td class="fw-semibold">
+                      {{ r.supervisor_user.display_name|default:r.supervisor_user.username }}
+                    </td>
+
+                    <td class="text-muted small">
+                      {% if r.submitted_at %}
+                        {{ r.submitted_at|date:"Y-m-d H:i" }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+
+                    <td>
+                      {% if r.status == "submitted" %}
+                        <span class="badge text-bg-warning">
+                          <i class="bi bi-hourglass-split me-1"></i> Submitted
+                        </span>
+                      {% elif r.status == "received" %}
+                        <span class="badge text-bg-success">
+                          <i class="bi bi-check2-circle me-1"></i> Received
+                        </span>
+                      {% else %}
+                        <span class="badge text-bg-secondary">{{ r.status }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td class="text-end">
+                      <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
+                        <a class="btn btn-outline-primary btn-sm"
+                           href="{% url 'coordinator_results_report_detail' r.id %}">
+                          <i class="bi bi-eye me-1"></i> View
+                        </a>
+
+                        <a class="btn btn-outline-secondary btn-sm"
+                           href="{% url 'coordinator_results_report_pdf' r.id %}">
+                          <i class="bi bi-filetype-pdf me-1"></i> PDF
+                        </a>
+
+                        {% if r.status == "submitted" %}
+                          <form method="post"
+                                action="{% url 'coordinator_mark_report_received' r.id %}"
+                                class="m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-sm">
+                              <i class="bi bi-check2-square me-1"></i> Mark Received
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+            <div class="fw-bold mt-2">No submitted reports</div>
+            <div class="text-muted small">When supervisors submit results reports, they will appear here.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

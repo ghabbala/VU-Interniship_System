@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}New Site Visit — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN FORM -->
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">New Site Visit</div>
+          <div class="text-muted small">Record an official internship site visit for this placement.</div>
+        </div>
+
+        <a href="{% url 'supervisor_students' %}" class="btn btn-light border btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Back to Students
+        </a>
+      </div>
+
+      <div class="card-body">
+        <!-- Placement summary -->
+        <div class="p-3 border rounded-4 bg-white mb-3">
+          <div class="row g-2">
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Student</div>
+              <div class="fw-bold">
+                <i class="bi bi-person-badge text-danger me-1"></i>
+                {{ placement.request.student.reg_no }}
+              </div>
+              <div class="small text-muted">{{ placement.request.student.user.email }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Company</div>
+              <div class="fw-bold">
+                <i class="bi bi-building text-danger me-1"></i>
+                {{ placement.company.name }}
+              </div>
+              <div class="small text-muted">Internship placement site</div>
+            </div>
+          </div>
+        </div>
+
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            <div class="fw-semibold">
+              <i class="bi bi-x-circle me-1"></i> Please fix the errors below
+            </div>
+            <div class="small">Some fields are missing or invalid.</div>
+          </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="row g-3">
+            {% for field in form %}
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                  <div class="form-text">{{ field.help_text|safe }}</div>
+                {% endif %}
+
+                {% if field.errors %}
+                  <div class="text-danger small mt-1">{{ field.errors }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-save me-1"></i> Save Visit
+            </button>
+
+            <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+
+            <a href="{% url 'supervisor_approved_logs' %}" class="btn btn-light border ms-md-auto">
+              <i class="bi bi-journal-check me-1"></i> Approved Logs
+            </a>
+          </div>
+
+          <div class="small text-muted mt-2">
+            Keep visit notes professional and evidence-based. Attach photos or documents if required.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> Site Visit Checklist
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Confirm student attendance and supervisor availability.</li>
+          <li>Review weekly logs (company-approved).</li>
+          <li>Inspect work environment and tasks given.</li>
+          <li>Record observations and recommendations.</li>
+          <li>Attach evidence (optional): photos / signed forms.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-info-circle me-1"></i> VU Standard Note
+      </div>
+      <div class="card-body small text-muted">
+        Use clear language and include the date, location, and key findings.
+        This record supports academic monitoring and internship assessment.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

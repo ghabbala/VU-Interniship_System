@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}My Internship Students — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN -->
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">My Internship Students</div>
+          <div class="text-muted small">
+            Students allocated to you for monitoring and site visits.
+          </div>
+        </div>
+
+        <span class="badge text-bg-light border">
+          <i class="bi bi-people me-1"></i>
+          {{ placements|length }} Assigned
+        </span>
+      </div>
+
+      <div class="card-body">
+        {% if placements %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Student</th>
+                  <th>Company</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for p in placements %}
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">
+                        <i class="bi bi-person-badge text-danger me-1"></i>
+                        {{ p.request.student.reg_no }}
+                      </div>
+                      <div class="small text-muted">
+                        {{ p.request.student.user.display_name }}
+                      </div>
+                    </td>
+
+                    <td>
+                      <div class="fw-semibold">{{ p.company.name }}</div>
+                      <div class="small text-muted">Internship placement</div>
+                    </td>
+
+                    <td>
+                      {% if p.status == "active" %}
+                        <span class="badge text-bg-success">Active</span>
+                      {% elif p.status == "pending" %}
+                        <span class="badge text-bg-warning">Pending</span>
+                      {% elif p.status == "completed" %}
+                        <span class="badge text-bg-primary">Completed</span>
+                      {% else %}
+                        <span class="badge text-bg-secondary">{{ p.status }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td class="text-end">
+                      <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
+
+                        {% if view_mode == "university" %}
+                          {# ✅ Site Visit (University) #}
+                          <a class="btn btn-outline-secondary btn-sm"
+                             href="{% url 'supervisor_add_site_visit' p.id %}">
+                            <i class="bi bi-geo-alt-fill me-1"></i> Add Site Visit
+                          </a>
+
+                          {# ✅ Academic Evaluation (University) #}
+                          {% if p.ac_eval_status == "submitted" %}
+                            <span class="badge text-bg-light border" title="Academic Total">
+                              A: {{ p.ac_eval_total }}/{{ p.ac_eval_max }}
+                            </span>
+                            <span class="badge text-bg-primary" title="Academic score out of 100">
+                              A: {{ p.ac_eval_score100|floatformat:0 }}/100
+                            </span>
+
+                            <a class="btn btn-outline-success btn-sm"
+                               href="{% url 'supervisor_evaluate_student' p.id %}">
+                              <i class="bi bi-eye me-1"></i> View Academic Eval
+                            </a>
+                          {% else %}
+                            <a class="btn btn-danger btn-sm"
+                               href="{% url 'supervisor_evaluate_student' p.id %}">
+                              <i class="bi bi-clipboard2-check me-1"></i> Academic Evaluate
+                            </a>
+                          {% endif %}
+
+                          {# ✅ Industry Evaluation Score (read-only badges for university supervisor) #}
+                          {% if p.eval_status == "submitted" %}
+                            <span class="badge text-bg-success" title="Industry score out of 100">
+                              I: {{ p.eval_score100|floatformat:0 }}/100
+                            </span>
+                          {% else %}
+                            <span class="badge text-bg-light border" title="Industry evaluation not submitted yet">
+                              I: —
+                            </span>
+                          {% endif %}
+
+                          {# ✅ Average score (only when both submitted) #}
+                          {% if p.avg_score100 %}
+                            <span class="badge text-bg-dark" title="Average of Industry + Academic">
+                              Avg: {{ p.avg_score100|floatformat:0 }}/100
+                            </span>
+                            <span class="badge text-bg-secondary" title="Average out of 10">
+                              {{ p.avg_score10|floatformat:1 }}/10
+                            </span>
+                          {% else %}
+                            <span class="badge text-bg-light border" title="Average available after both evaluations are submitted">
+                              Avg: —
+                            </span>
+                          {% endif %}
+
+                        {% elif view_mode == "industry" %}
+                          {# ✅ Industry Supervisor: Evaluation actions #}
+                          {% if p.eval_status == "submitted" %}
+                            <span class="badge text-bg-light border">
+                              {{ p.eval_total }}/{{ p.eval_max }}
+                            </span>
+                            <span class="badge text-bg-success">
+                              {{ p.eval_score10|floatformat:1 }}/10
+                            </span>
+                            <span class="badge text-bg-primary">
+                              {{ p.eval_score100|floatformat:0 }}/100
+                            </span>
+
+                            <a class="btn btn-outline-success btn-sm"
+                               href="{% url 'company_evaluate_student' p.id %}">
+                              <i class="bi bi-eye me-1"></i> View Evaluation
+                            </a>
+                          {% else %}
+                            <a class="btn btn-danger btn-sm"
+                               href="{% url 'company_evaluate_student' p.id %}">
+                              <i class="bi bi-clipboard2-check me-1"></i> Evaluate Student
+                            </a>
+                          {% endif %}
+
+                          <a class="btn btn-outline-danger btn-sm"
+                             href="{% url 'company_pending_logs' %}">
+                            <i class="bi bi-hourglass-split me-1"></i> Pending Logs
+                          </a>
+
+                          <a class="btn btn-outline-secondary btn-sm"
+                             href="{% url 'company_approved_logs' %}">
+                            <i class="bi bi-journal-check me-1"></i> Approved Logs
+                          </a>
+                        {% endif %}
+
+                      </div>
+                    </td>
+
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <div class="mb-2">
+              <i class="bi bi-person-x text-danger" style="font-size: 2rem;"></i>
+            </div>
+            <div class="fw-bold">No assigned students</div>
+            <div class="text-muted small">
+              When the coordinator allocates students to you, they will appear here.
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-3">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-info-circle me-1"></i> Supervisor Guidance
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Review company-approved logs where needed.</li>
+          <li>Schedule site visits early.</li>
+          <li>Record observations and recommendations.</li>
+          <li>Follow up on students with delays.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-link-45deg me-1"></i> Quick Links
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a class="btn btn-outline-secondary" href="/dashboard/">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+
+        {% if view_mode == "industry" %}
+          <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
+            <i class="bi bi-hourglass-split me-1"></i> Company Pending Logs
+          </a>
+
+          <a class="btn btn-outline-primary" href="{% url 'company_approved_evaluations' %}">
+            <i class="bi bi-clipboard-data me-1"></i> Submitted Evaluations
+          </a>
+        {% endif %}
+
+        {% if view_mode == "university" %}
+          <a class="btn btn-outline-primary" href="{% url 'supervisor_submitted_academic_evaluations' %}">
+            <i class="bi bi-clipboard-data me-1"></i> Academic Evaluations
+          </a>
+
+          {# ✅ Results report button (wire to a URL later) #}
+          {# Replace 'supervisor_results_report' with your real url name #}
+          <a class="btn btn-danger" href="{% url 'supervisor_results_report' %}">
+            <i class="bi bi-file-earmark-text me-1"></i> Generate Results Report
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

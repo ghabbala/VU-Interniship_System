@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Acceptance & Assign Supervisor — Coordinator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN -->
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">Verify Acceptance & Assign University Supervisor</div>
+          <div class="text-muted small">Confirm acceptance letter, then activate placement.</div>
+        </div>
+
+        <a class="btn btn-light border btn-sm" href="{% url 'coordinator_acceptance_queue' %}">
+          <i class="bi bi-arrow-left me-1"></i> Back to Acceptance Queue
+        </a>
+      </div>
+
+      <div class="card-body">
+        <!-- Student + Company Summary -->
+        <div class="p-3 border rounded-4 bg-white mb-3">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Student</div>
+              <div class="fw-bold">
+                <i class="bi bi-person-badge text-danger me-1"></i>
+                {{ req.student.reg_no }}
+              </div>
+              <div class="small text-muted">{{ req.student.user.display_name }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Company</div>
+              <div class="fw-bold">
+                <i class="bi bi-building text-danger me-1"></i>
+                {% if req.preferred_company %}
+                  {{ req.preferred_company.name }}
+                {% else %}
+                  {{ req.proposed_company_name }}
+                {% endif %}
+              </div>
+              <div class="small text-muted">Acceptance verification pending</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acceptance Letter -->
+        {% if req.acceptance_letter %}
+          <div class="alert alert-info d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Acceptance Letter Uploaded
+              </div>
+              <div class="small mb-0">Open and confirm authenticity before activating placement.</div>
+            </div>
+            <a href="{{ req.acceptance_letter.url }}" class="btn btn-primary btn-sm">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open
+            </a>
+          </div>
+        {% else %}
+          <div class="alert alert-warning">
+            <div class="fw-semibold">
+              <i class="bi bi-exclamation-triangle me-1"></i> No acceptance letter found
+            </div>
+            <div class="small mb-0">
+              The student has not uploaded an acceptance letter yet. Verification cannot proceed.
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Form -->
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix the errors below</div>
+            <div class="small">Some fields are missing or invalid.</div>
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="row g-3">
+            {% for field in form %}
+              <div class="col-12">
+                <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                  <div class="form-text">{{ field.help_text|safe }}</div>
+                {% endif %}
+
+                {% if field.errors %}
+                  <div class="text-danger small mt-1">{{ field.errors }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            <button class="btn btn-success" type="submit" {% if not req.acceptance_letter %}disabled{% endif %}>
+              <i class="bi bi-check2-circle me-1"></i> Verify & Activate Placement
+            </button>
+
+            <a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">
+              Cancel
+            </a>
+
+            <a class="btn btn-light border ms-md-auto" href="{% url 'coordinator_queue' %}">
+              <i class="bi bi-inbox me-1"></i> Requests Queue
+            </a>
+          </div>
+
+          {% if not req.acceptance_letter %}
+            <div class="small text-muted mt-2">
+              Verification is disabled until the student uploads an acceptance letter.
+            </div>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> Verification Checklist
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Acceptance letter is signed/stamped.</li>
+          <li>Company details match the request.</li>
+          <li>Placement period is correct.</li>
+          <li>University supervisor is selected.</li>
+          <li>Activate placement to enable weekly logs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-lightbulb me-1"></i> Note
+      </div>
+      <div class="card-body small text-muted">
+        After activation, the student can begin weekly logs and the university supervisor can plan site visits.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

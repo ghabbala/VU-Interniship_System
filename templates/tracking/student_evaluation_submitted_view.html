@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Student Evaluation — Submitted{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="fw-bold">
+      <i class="bi bi-ui-checks me-1"></i> Student Evaluation Form
+    </div>
+    <span class="badge text-bg-success">
+      <i class="bi bi-check2-circle me-1"></i> Submitted
+    </span>
+  </div>
+
+  <div class="card-body">
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Name</div>
+        <div class="fw-semibold">{{ request.user.display_name }}</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Registration Number</div>
+        <div class="fw-semibold">{{ placement.request.student.reg_no }}</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Program</div>
+        <div class="fw-semibold">{{ evaluation.program|default:"—" }}</div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Internship Site</div>
+        <div class="fw-semibold">{{ evaluation.internship_site|default:placement.company.name }}</div>
+      </div>
+      <div class="col-12">
+        <div class="text-muted small">Submitted At</div>
+        <div class="fw-semibold">{{ evaluation.submitted_at|date:"Y-m-d H:i" }}</div>
+      </div>
+    </div>
+
+    <hr class="my-3"/>
+
+    {% include "tracking/partials/student_evaluation_qna.html" with evaluation=evaluation %}
+  </div>
+</div>
+{% endblock %}

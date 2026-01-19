@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Acceptance Letter — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">Upload Company Acceptance Letter</div>
+          <div class="text-muted small">Upload the official acceptance letter from your internship company.</div>
+        </div>
+
+        {% if req.status == "recommended" %}
+          <span class="badge text-bg-warning">Recommended</span>
+        {% elif req.status == "acceptance_uploaded" %}
+          <span class="badge text-bg-info">Acceptance Uploaded</span>
+        {% elif req.status == "acceptance_verified" %}
+          <span class="badge text-bg-success">Verified</span>
+        {% else %}
+          <span class="badge text-bg-primary">{{ req.status }}</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        {% if form.errors %}
+          <div class="alert alert-danger">
+            <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix the errors below</div>
+            <div class="small">Your upload could not be saved. Check the file and try again.</div>
+          </div>
+        {% endif %}
+
+        {% if req.acceptance_letter %}
+          <div class="alert alert-info d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Acceptance letter already uploaded
+              </div>
+              {% if req.status == "acceptance_verified" %}
+                <div class="small mb-0">This acceptance letter has already been verified by the coordinator.</div>
+              {% else %}
+                <div class="small mb-0">If you need to replace it, upload a new file below.</div>
+              {% endif %}
+            </div>
+            <a class="btn btn-primary btn-sm" href="{{ req.acceptance_letter.url }}">
+              <i class="bi bi-box-arrow-up-right me-1"></i> Open
+            </a>
+          </div>
+        {% else %}
+          <div class="alert alert-warning">
+            <div class="fw-semibold">
+              <i class="bi bi-exclamation-triangle me-1"></i> Upload required
+            </div>
+            <div class="small mb-0">
+              Ensure the letter is signed/stamped by the company and clearly shows your names and internship dates.
+            </div>
+          </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% for field in form %}
+            <div class="mb-3">
+              <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                {{ field.label }}
+                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+              </label>
+
+              {{ field }}
+
+              {% if field.help_text %}
+                <div class="form-text">{{ field.help_text|safe }}</div>
+              {% endif %}
+
+              {% if field.errors %}
+                <div class="text-danger small mt-1">{{ field.errors }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            {# ✅ Block upload after verified (safer) #}
+            {% if req.status == "acceptance_verified" %}
+              <button class="btn btn-success" type="button" disabled>
+                <i class="bi bi-lock-fill me-1"></i> Upload Locked (Verified)
+              </button>
+            {% else %}
+              <button class="btn btn-success" type="submit">
+                <i class="bi bi-cloud-upload me-1"></i> Upload Letter
+              </button>
+            {% endif %}
+
+            {# ✅ My Request should NOT go to submit_request #}
+            <a class="btn btn-outline-secondary" href="{% url 'my_request' %}">
+              <i class="bi bi-file-earmark-text me-1"></i> My Request
+            </a>
+
+            <a class="btn btn-light border ms-md-auto" href="{% url 'student_logs' %}">
+              <i class="bi bi-journal-check me-1"></i> Weekly Logs
+            </a>
+          </div>
+
+          <div class="small text-muted mt-2">
+            Recommended formats: PDF / JPG / PNG. Keep file size reasonable.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> What the letter should contain
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Company name and address</li>
+          <li>Student name / registration number</li>
+          <li>Internship period (start and end dates)</li>
+          <li>Company stamp / signature</li>
+          <li>Contact person (optional)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

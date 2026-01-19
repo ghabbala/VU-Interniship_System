@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-warning">
+  This request is not ready for acceptance verification.
+  Current status: <b>{{ req.status }}</b>
+</div>
+<a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">Back</a>
+{% endblock %}

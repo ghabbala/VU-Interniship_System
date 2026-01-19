@@ -1,0 +1,7 @@
+<h2>No placement found</h2>
+<p>You don’t have an active placement yet. Contact the internship office.</p>
+
+<form method="post" action="{% url 'logout' %}">
+  {% csrf_token %}
+  <button type="submit">Logout</button>
+</form>

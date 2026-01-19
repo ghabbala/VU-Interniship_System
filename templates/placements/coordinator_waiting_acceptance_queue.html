@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Coordinator — Awaiting Acceptance Upload</h4>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <table class="table table-sm table-hover">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Company</th>
+          <th>Status</th>
+          <th>Recommendation</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in requests %}
+        <tr>
+          <td>{{ r.student.reg_no }}<br><small>{{ r.student.user.email }}</small></td>
+          <td>{% if r.preferred_company %}{{ r.preferred_company.name }}{% else %}{{ r.proposed_company_name }}{% endif %}</td>
+          <td><span class="badge text-bg-warning">{{ r.status }}</span></td>
+          <td>
+            {% if r.recommendation_letter %}
+              <span class="text-success">Issued</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a class="btn btn-sm btn-outline-danger" href="{% url 'coordinator_return_for_acceptance' r.id %}">
+              Comment / Remind Student
+            </a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">No students pending acceptance upload.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

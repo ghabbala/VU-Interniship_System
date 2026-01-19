@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Return Request — Acceptance Letter Needed</h5>
+
+    <p>
+      <b>Student:</b> {{ req.student.reg_no }} ({{ req.student.user.email }})<br>
+      <b>Company:</b> {% if req.preferred_company %}{{ req.preferred_company.name }}{% else %}{{ req.proposed_company_name }}{% endif %}
+    </p>
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-danger" type="submit">Send Comment</button>
+      <a class="btn btn-outline-secondary" href="{% url 'coordinator_waiting_acceptance_queue' %}">Back</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Evaluation Submitted — Industry Supervisor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="fw-bold">Submitted Evaluation (Read-only)</div>
+          <div class="text-muted small">
+            Student: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
+            — {{ placement.request.student.user.display_name }}
+          </div>
+          <div class="text-muted small">
+            Company: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
+          </div>
+        </div>
+
+        <span class="badge text-bg-success">Submitted</span>
+      </div>
+
+      <div class="card-body">
+        <div class="alert alert-light border small mb-3">
+          <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> Note</div>
+          <div class="text-muted" style="white-space: pre-line;">
+The purpose of this evaluation is to help students on internship to further develop their job performance.
+You are encouraged to discuss your responses with the student in a positive and objective manner, just as you would review job performance with your colleagues.
+This evaluation will assist in determining the student’s grade.
+Your assessment of the student’s learning experience, the attainment of goals, and the professional development achieved over the service period is valued.
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-light border">Total: {{ evaluation.total_marks }}/{{ evaluation.max_marks }}</span>
+          <span class="badge text-bg-success">{{ evaluation.score_out_of_10|floatformat:1 }}/10</span>
+          <span class="badge text-bg-primary">{{ evaluation.score_out_of_100|floatformat:0 }}/100</span>
+        </div>
+
+        <div class="table-responsive mb-3 eval-left">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:45%;">Criteria</th>
+                <th style="width:90px;">Score</th>
+                <th>Comment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="fw-semibold">1. Basic work expectations</td><td>{{ evaluation.basic_work_expectations }}</td><td style="white-space: pre-line;">{{ evaluation.basic_work_expectations_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">2. Knowledge and ability to learn</td><td>{{ evaluation.knowledge_and_learning }}</td><td style="white-space: pre-line;">{{ evaluation.knowledge_and_learning_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">3. Ethical awareness and conduct</td><td>{{ evaluation.ethical_awareness }}</td><td style="white-space: pre-line;">{{ evaluation.ethical_awareness_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">4. Interpersonal relations</td><td>{{ evaluation.interpersonal_relations }}</td><td style="white-space: pre-line;">{{ evaluation.interpersonal_relations_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">5. Communication skills</td><td>{{ evaluation.communication_skills }}</td><td style="white-space: pre-line;">{{ evaluation.communication_skills_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">6. Attendance</td><td>{{ evaluation.attendance }}</td><td style="white-space: pre-line;">{{ evaluation.attendance_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">7. Punctuality</td><td>{{ evaluation.punctuality }}</td><td style="white-space: pre-line;">{{ evaluation.punctuality_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">8. Flexibility</td><td>{{ evaluation.flexibility }}</td><td style="white-space: pre-line;">{{ evaluation.flexibility_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">9. Dependability</td><td>{{ evaluation.dependability }}</td><td style="white-space: pre-line;">{{ evaluation.dependability_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">10. Culture fit</td><td>{{ evaluation.culture_fit }}</td><td style="white-space: pre-line;">{{ evaluation.culture_fit_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">11. Dress code</td><td>{{ evaluation.dress_code }}</td><td style="white-space: pre-line;">{{ evaluation.dress_code_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">12. Behaviour</td><td>{{ evaluation.behaviour }}</td><td style="white-space: pre-line;">{{ evaluation.behaviour_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">13. Work productivity</td><td>{{ evaluation.work_productivity }}</td><td style="white-space: pre-line;">{{ evaluation.work_productivity_comment|default:"—" }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="row g-3 eval-left">
+          <div class="col-12 col-lg-6">
+            <div class="fw-semibold mb-1">Recommend for employment?</div>
+            <div class="text-muted">{{ evaluation.recommend_employment|yesno:"YES,NO" }}</div>
+
+            <div class="fw-semibold mt-3 mb-1">Comment</div>
+            <div class="text-muted small" style="white-space: pre-line;">
+              {{ evaluation.recommend_comment|default:"—" }}
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="fw-semibold mb-1">Other comments / suggestions</div>
+            <div class="text-muted small" style="white-space: pre-line;">
+              {{ evaluation.other_comments|default:"—" }}
+            </div>
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <div class="row g-3 eval-left">
+          <div class="col-12 col-md-6">
+            <div class="fw-semibold">Supervisor Name</div>
+            <div class="text-muted small">{{ evaluation.supervisor_name|default:"—" }}</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="fw-semibold">Supervisor Signature</div>
+            <div class="text-muted small">{{ evaluation.supervisor_signature|default:"—" }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+          <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+            <i class="bi bi-people me-1"></i> Back to Students
+          </a>
+          <a class="btn btn-outline-success" href="{% url 'company_approved_evaluations' %}">
+            <i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .eval-left, .eval-left * { text-align:left !important; }
+</style>
+{% endblock %}

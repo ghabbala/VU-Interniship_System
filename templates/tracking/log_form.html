@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Weekly Log — Victoria University{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'tracking/css/weekly_log_a4.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Top tools (screen only) -->
+<div class="a4-toolbar no-print d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'student_logs' %}">
+    <i class="bi bi-arrow-left me-1"></i> Back to Logs
+  </a>
+
+  <div class="d-flex align-items-center gap-2">
+    <button class="btn btn-outline-dark btn-sm" type="button" onclick="window.print()">
+      <i class="bi bi-printer me-1"></i> Print
+    </button>
+  </div>
+</div>
+
+<div class="a4-sheet">
+
+  <!-- Header -->
+  <div class="a4-header d-flex align-items-center gap-3">
+    <img class="vu-header-logo" src="{% static 'accounts/img/vu_log.jpg' %}" alt="Victoria University">
+
+    <div class="a4-header-text">
+      <div class="vu-title">VICTORIA UNIVERSITY</div>
+      <div class="vu-sub">Kampala, Uganda</div>
+      <div class="small text-muted">Internship Weekly Log Sheet</div>
+    </div>
+
+    <div class="ms-auto no-print">
+      {% if log.status == "draft" %}
+        <span class="badge text-bg-secondary">Draft</span>
+      {% elif log.status == "submitted" %}
+        <span class="badge text-bg-primary">Submitted</span>
+      {% elif log.status == "returned_for_edit" %}
+        <span class="badge text-bg-warning">Returned</span>
+      {% elif log.status == "approved_by_company" %}
+        <span class="badge text-bg-success">Approved</span>
+      {% else %}
+        <span class="badge text-bg-dark">{{ log.status }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Title -->
+  <div class="doc-title">Record of Work (Weekly Log)</div>
+
+  {% if log.status == "returned_for_edit" and log.return_reason %}
+    <div class="alert alert-warning no-print mt-3">
+      <div class="fw-semibold d-flex align-items-center gap-2">
+        <i class="bi bi-chat-left-text"></i> Industry Supervisor Comment
+      </div>
+      <div class="small mt-1">{{ log.return_reason }}</div>
+    </div>
+  {% endif %}
+
+  <form id="weeklyLogForm" method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="a4-error">{{ form.non_field_errors }}</div>
+    {% endif %}
+    {% if formset.non_form_errors %}
+      <div class="a4-error">{{ formset.non_form_errors }}</div>
+    {% endif %}
+
+    <!-- Info block -->
+    <div class="a4-card mt-3">
+      <div class="a4-card-title">
+        <i class="bi bi-info-circle me-1"></i> Log Details
+      </div>
+
+      <div class="a4-grid">
+        <div class="a4-field">
+          <label class="lbl">Week No.</label>
+          <div class="fill">
+            {{ form.week_no }}
+            {% if form.week_no.errors %}<div class="err">{{ form.week_no.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="a4-field">
+          <label class="lbl">Start Date</label>
+          <div class="fill">
+            {{ form.from_date }}
+            {% if form.from_date.errors %}<div class="err">{{ form.from_date.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="a4-field">
+          <label class="lbl">End Date</label>
+          <div class="fill">
+            {{ form.to_date }}
+            {% if form.to_date.errors %}<div class="err">{{ form.to_date.errors }}</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily entries table -->
+    <div class="a4-card mt-3">
+      <div class="a4-card-title">
+        <i class="bi bi-table me-1"></i> Daily Work Record (Monday – Friday)
+      </div>
+
+      <table class="log-table mt-2">
+        <thead>
+          <tr>
+            <th class="col-day">Day</th>
+            <th class="col-work">Work Assignments</th>
+            <th class="col-steps">Activities / Steps</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ formset.management_form }}
+
+          {% for f in formset %}
+            <tr>
+              <td class="day-col">
+                <strong>{{ f.instance.get_day_display }}</strong>
+                {{ f.id }}
+                {{ f.day }}
+              </td>
+
+              <td class="day-cell">
+                {{ f.work_assignment }}
+                {% if f.work_assignment.errors %}<div class="err">{{ f.work_assignment.errors }}</div>{% endif %}
+              </td>
+
+              <td class="day-cell">
+                {{ f.activities_steps }}
+                {% if f.activities_steps.errors %}<div class="err">{{ f.activities_steps.errors }}</div>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Remarks -->
+    <div class="a4-card mt-3">
+      <div class="a4-card-title">
+        <i class="bi bi-journal-text me-1"></i> Remarks
+      </div>
+
+      <div class="a4-two mt-2">
+        <div>
+          <div class="lbl mb-1">Challenges</div>
+          {{ form.challenges }}
+          {% if form.challenges.errors %}<div class="err">{{ form.challenges.errors }}</div>{% endif %}
+        </div>
+
+        <div>
+          <div class="lbl mb-1">Lessons Learnt</div>
+          {{ form.lessons }}
+          {% if form.lessons.errors %}<div class="err">{{ form.lessons.errors }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Attachment -->
+    <div class="a4-card mt-3">
+      <div class="a4-card-title">
+        <i class="bi bi-paperclip me-1"></i> Attachment (Optional)
+      </div>
+
+      <div class="mt-2">
+        {{ form.attachment }}
+        <div class="small text-muted mt-1">Max file size: <b>5MB</b></div>
+
+        <div id="fileSizeError" class="alert alert-danger py-2 mt-2 d-none">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Attachment is too large. Maximum allowed size is <b>5MB</b>.
+        </div>
+
+        {% if form.attachment.errors %}<div class="err">{{ form.attachment.errors }}</div>{% endif %}
+
+        {% if log.attachment %}
+          <div class="small mt-2">
+            Current file:
+            <a href="{{ log.attachment.url }}" target="_blank" rel="noopener">Open attachment</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Actions (screen only) -->
+    <div class="a4-actions no-print mt-3">
+      <button class="btn btn-outline-secondary"
+              name="action" value="save" type="submit"
+              {% if log.status == "approved_by_company" %}disabled{% endif %}>
+        <i class="bi bi-save me-1"></i> Save Draft
+      </button>
+
+      <button class="btn btn-danger"
+              name="action" value="submit" type="submit"
+              {% if log.status == "approved_by_company" %}disabled{% endif %}>
+        <i class="bi bi-send me-1"></i> Submit for Approval
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  (function () {
+    const MAX = 5 * 1024 * 1024; // 5MB
+    const form = document.getElementById('weeklyLogForm');
+    const input = form ? form.querySelector('input[type="file"]') : null;
+    const errorBox = document.getElementById('fileSizeError');
+
+    if (!form || !input || !errorBox) return;
+
+    function toggleError(show) {
+      errorBox.classList.toggle('d-none', !show);
+    }
+
+    input.addEventListener('change', function () {
+      const file = input.files && input.files[0];
+      toggleError(!!file && file.size > MAX);
+    });
+
+    form.addEventListener('submit', function (e) {
+      const file = input.files && input.files[0];
+      if (file && file.size > MAX) {
+        e.preventDefault();
+        toggleError(true);
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Issue Recommendation Letter</h5>
+
+    <p>
+      <b>Student:</b> {{ req.student.reg_no }} ({{ req.student.user.email }})<br>
+      <b>Company:</b>
+      {% if req.preferred_company %}{{ req.preferred_company.name }}{% else %}{{ req.proposed_company_name }}{% endif %}
+    </p>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn btn-success" type="submit">Issue Letter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">Back</a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-warning">
+  You can only upload acceptance letter after the coordinator issues the recommendation letter.
+  Current status: <b>{{ req.status }}</b>
+</div>
+<a class="btn btn-outline-secondary" href="{% url 'my_request' %}">Back</a>
+{% endblock %}

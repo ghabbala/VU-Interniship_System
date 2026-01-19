@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Weekly Logs — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+      <div>
+        <h5 class="mb-1 fw-bold">Weekly Logs</h5>
+        <div class="text-muted small">
+          Placement: <span class="fw-semibold">{{ placement.company.name }}</span>
+          • Period: {{ placement.start_date }} — {{ placement.end_date }}
+        </div>
+      </div>
+
+      <a class="btn btn-danger" href="{% url 'student_log_new' %}">
+        <i class="bi bi-plus-circle me-1"></i> Create Weekly Log
+      </a>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header fw-bold">
+        <i class="bi bi-journal-text me-1"></i> Your Logs
+      </div>
+
+      <div class="card-body p-0">
+        {% if logs %}
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:120px;">Week</th>
+                  <th style="width:220px;">Dates</th>
+                  <th>Status</th>
+                  <th style="width:160px;" class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in logs %}
+                  <tr>
+                    <td class="fw-semibold">Week {{ log.week_no }}</td>
+                    <td class="small text-muted">
+                      {{ log.from_date }} → {{ log.to_date }}
+                    </td>
+                    <td>
+                      {% if log.status == "draft" %}
+                        <span class="badge text-bg-secondary">Draft</span>
+                      {% elif log.status == "submitted" %}
+                        <span class="badge text-bg-primary">Submitted</span>
+                      {% elif log.status == "returned_for_edit" %}
+                        <span class="badge text-bg-warning">Returned</span>
+                      {% elif log.status == "approved_by_company" %}
+                        <span class="badge text-bg-success">Approved</span>
+                      {% else %}
+                        <span class="badge text-bg-dark">{{ log.status }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      <a class="btn btn-outline-secondary btn-sm"
+                        href="{% url 'student_log_edit' log.id %}">
+                        <i class="bi bi-pencil-square me-1"></i> Open
+                      </a>
+
+                      {% if log.status == "draft" %}
+                        <form method="post"
+                              action="{% url 'student_log_delete' log.id %}"
+                              class="d-inline"
+                              onsubmit="return confirm('Delete Week {{ log.week_no }} draft log? This cannot be undone.');">
+                          {% csrf_token %}
+                          <button class="btn btn-outline-danger btn-sm" type="submit">
+                            <i class="bi bi-trash me-1"></i> Delete
+                          </button>
+                        </form>
+                      {% endif %}
+                    </td>
+
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="p-4">
+            <div class="text-muted">No weekly logs yet.</div>
+            <div class="small text-muted">Click <b>Create Weekly Log</b> to start Week 1.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Submitted Results Report — Coordinator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-2 align-items-start align-items-md-center">
+      <div>
+        <div class="fw-bold fs-5">
+          <i class="bi bi-file-earmark-text me-1 text-danger"></i>
+          Submitted Results Report
+        </div>
+        <div class="text-muted small">
+          Snapshot report submitted by a University Supervisor.
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'coordinator_results_reports' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Back to Reports
+        </a>
+
+        {# If you later create a coordinator PDF view for a single report, enable this #}
+        {# <a href="{% url 'coordinator_results_report_pdf' report.id %}" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-filetype-pdf me-1"></i> Download PDF
+        </a> #}
+
+        {% if report.status != "received" %}
+          <form method="post" action="{% url 'coordinator_mark_report_received' report.id %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm" type="submit">
+              <i class="bi bi-check2-circle me-1"></i> Mark as Received
+            </button>
+          </form>
+        {% else %}
+          <span class="badge text-bg-success align-self-center">
+            <i class="bi bi-check2-circle me-1"></i> Received
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header d-flex flex-column flex-md-row justify-content-between gap-2 align-items-start align-items-md-center">
+        <div class="fw-bold">
+          <i class="bi bi-person-badge me-1 text-danger"></i>
+          Supervisor: {{ report.supervisor_user.display_name|default:report.supervisor_user.username }}
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          {% if report.status == "submitted" %}
+            <span class="badge text-bg-primary">
+              <i class="bi bi-send-check me-1"></i> Submitted
+            </span>
+          {% elif report.status == "received" %}
+            <span class="badge text-bg-success">
+              <i class="bi bi-check2-circle me-1"></i> Received
+            </span>
+          {% else %}
+            <span class="badge text-bg-warning">
+              <i class="bi bi-pencil-square me-1"></i> {{ report.status|title }}
+            </span>
+          {% endif %}
+
+          {% if report.submitted_at %}
+            <span class="badge text-bg-light border">
+              <i class="bi bi-clock me-1"></i> {{ report.submitted_at|date:"Y-m-d H:i" }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if rows %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Reg No</th>
+                  <th>Student</th>
+                  <th>Company</th>
+                  <th class="text-end">Industry /100</th>
+                  <th class="text-end">Academic /100</th>
+                  <th class="text-end">Average /100</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in rows %}
+                  <tr>
+                    <td class="fw-semibold">{{ r.reg_no }}</td>
+                    <td>{{ r.name }}</td>
+                    <td class="text-muted small">{{ r.company }}</td>
+
+                    <td class="text-end">
+                      {% if r.industry_100 is not None %}
+                        <span class="badge text-bg-success">{{ r.industry_100|floatformat:0 }}</span>
+                      {% else %}—{% endif %}
+                    </td>
+
+                    <td class="text-end">
+                      {% if r.academic_100 is not None %}
+                        <span class="badge text-bg-primary">{{ r.academic_100|floatformat:0 }}</span>
+                      {% else %}—{% endif %}
+                    </td>
+
+                    <td class="text-end">
+                      {% if r.average_100 is not None %}
+                        <span class="badge text-bg-dark">{{ r.average_100|floatformat:0 }}</span>
+                      {% else %}—{% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="small text-muted mt-3">
+            Average = (Industry /100 + Academic /100) ÷ 2
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+            <div class="fw-bold mt-2">No rows found in this report</div>
+            <div class="text-muted small">
+              This submitted report has no saved snapshot rows.
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

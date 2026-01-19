@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Victoria University | Login</title>
+
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'accounts/css/vu_login.css' %}">
+</head>
+
+<body>
+  <main class="shell">
+    <section class="brand">
+      <div class="brand-top">
+        <div class="badge">
+          <div class="logo">VU</div>
+          <div>Victoria University</div>
+        </div>
+
+        <h1>Internship Portal</h1>
+        <p>Sign in to submit requests, upload acceptance letters, and manage your internship progress.</p>
+      </div>
+
+      <div class="brand-bottom">
+        <span>Secure access • Role-based workflows</span>
+        <span>© {% now "Y" %} Victoria University</span>
+      </div>
+    </section>
+
+    <section class="form-area">
+      <div class="card">
+        <h2>Login</h2>
+        <p class="sub">Use your email and password to continue.</p>
+
+        {% if form.errors %}
+          <div class="alert">Invalid email or password. Please try again.</div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="field">
+            <label for="{{ form.username.id_for_label }}">Email</label>
+            {{ form.username }}
+          </div>
+
+          <div class="field">
+            <label for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+          </div>
+
+          <button class="btn" type="submit">Sign in</button>
+        </form>
+
+        <div class="links">
+          Don’t have an account?
+          <a href="{% url 'register_student' %}">Register as Student</a>
+        </div>
+
+        <div class="footer">
+          Tip: If inputs look plain, add widget classes in your Django form.
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

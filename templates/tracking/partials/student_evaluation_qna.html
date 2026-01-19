@@ -1,0 +1,57 @@
+{# tracking/templates/tracking/partials/student_evaluation_qna.html #}
+
+<div class="vstack gap-3">
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">1. How did you find this internship?</div>
+    <div class="text-muted">{{ evaluation.q1|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">2. Were you given sufficient supervision?</div>
+    <div class="text-muted">{{ evaluation.q2|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">3. Were you given helpful feedback on your work?</div>
+    <div class="text-muted">{{ evaluation.q3|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">4. What do you consider to be the major strength of this internship?</div>
+    <div class="text-muted">{{ evaluation.q4|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">5. How have you benefited from participating in this internship?</div>
+    <div class="text-muted">{{ evaluation.q5|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">6. How did your internship site benefit from your attachment activities?</div>
+    <div class="text-muted">{{ evaluation.q6|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">7. Was your internship attachment relevant to your degree program?</div>
+    <div class="text-muted">{{ evaluation.q7|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">
+      8. Did you experience any major challenges that might be faced by future interns and how can this be solved?
+    </div>
+    <div class="text-muted">{{ evaluation.q8|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">9. What factors do you think would have enabled you to perform better during internship?</div>
+    <div class="text-muted">{{ evaluation.q9|linebreaksbr|default:"—" }}</div>
+  </div>
+
+  <div class="border rounded-4 p-3">
+    <div class="fw-semibold mb-1">10. What would you change about this internship?</div>
+    <div class="text-muted">{{ evaluation.q10|linebreaksbr|default:"—" }}</div>
+  </div>
+
+</div>

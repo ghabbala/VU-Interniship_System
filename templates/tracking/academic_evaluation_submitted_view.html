@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Academic Evaluation Submitted — University Supervisor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="fw-bold">Submitted Academic Evaluation (Read-only)</div>
+          <div class="text-muted small">
+            Student: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
+            — {{ placement.request.student.user.display_name }}
+          </div>
+          <div class="text-muted small">
+            Company: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
+          </div>
+        </div>
+        <span class="badge text-bg-success">Submitted</span>
+      </div>
+
+      <div class="card-body eval-left">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-light border">Total: {{ evaluation.total_marks }}/{{ evaluation.max_marks }}</span>
+          <span class="badge text-bg-success">{{ evaluation.score_out_of_10|floatformat:1 }}/10</span>
+          <span class="badge text-bg-primary">{{ evaluation.score_out_of_100|floatformat:0 }}/100</span>
+        </div>
+
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:45%;">Criteria</th>
+                <th style="width:90px;">Score</th>
+                <th>Comment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="fw-semibold">1. Understanding of Internship</td><td>{{ evaluation.understanding_of_internship }}</td><td style="white-space: pre-line;">{{ evaluation.understanding_of_internship_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">2. Support framework</td><td>{{ evaluation.support_framework }}</td><td style="white-space: pre-line;">{{ evaluation.support_framework_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">3. Culture fit</td><td>{{ evaluation.culture_fit }}</td><td style="white-space: pre-line;">{{ evaluation.culture_fit_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">4. Work output</td><td>{{ evaluation.work_output }}</td><td style="white-space: pre-line;">{{ evaluation.work_output_comment|default:"—" }}</td></tr>
+              <tr><td class="fw-semibold">5. General presentation</td><td>{{ evaluation.general_presentation }}</td><td style="white-space: pre-line;">{{ evaluation.general_presentation_comment|default:"—" }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="fw-semibold mb-1">Recommendation</div>
+        <div class="text-muted small mb-3" style="white-space: pre-line;">
+          {{ evaluation.recommendation|default:"—" }}
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="fw-semibold">Supervisor Name</div>
+            <div class="text-muted small">{{ evaluation.supervisor_name|default:"—" }}</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="fw-semibold">Supervisor Signature</div>
+            <div class="text-muted small">{{ evaluation.supervisor_signature|default:"—" }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+          <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+            <i class="bi bi-people me-1"></i> Back to Students
+          </a>
+          <a class="btn btn-outline-success" href="{% url 'supervisor_submitted_academic_evaluations' %}">
+            <i class="bi bi-clipboard-check me-1"></i> Submitted Academic Evaluations
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .eval-left, .eval-left * { text-align:left !important; }
+</style>
+{% endblock %}

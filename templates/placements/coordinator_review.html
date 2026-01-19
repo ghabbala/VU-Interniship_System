@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Review Request — Coordinator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN -->
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">Review Internship Request</div>
+          <div class="text-muted small">Confirm details and take action.</div>
+        </div>
+
+        <a href="{% url 'coordinator_queue' %}" class="btn btn-light border btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Back to Queue
+        </a>
+      </div>
+
+      <div class="card-body">
+        <!-- Student + Status -->
+        <div class="p-3 border rounded-4 bg-white mb-3">
+          <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+            <div>
+              <div class="fw-bold">
+                <i class="bi bi-person-badge text-danger me-1"></i>
+                {{ req.student.reg_no }}
+              </div>
+              <div class="small text-muted">{{ req.student.user.email }}</div>
+            </div>
+
+            <div>
+              {% if req.status == "submitted" %}
+                <span class="badge text-bg-primary">Submitted</span>
+              {% elif req.status == "under_review" %}
+                <span class="badge text-bg-warning">Under Review</span>
+              {% elif req.status == "rejected" %}
+                <span class="badge text-bg-danger">Rejected</span>
+              {% elif req.status == "recommended" %}
+                <span class="badge text-bg-success">Recommended</span>
+              {% else %}
+                <span class="badge text-bg-secondary">{{ req.status }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Details -->
+        <div class="p-3 border rounded-4 bg-white mb-3">
+          <div class="fw-bold mb-2"><i class="bi bi-building text-danger me-1"></i> Company Details</div>
+
+          {% if req.preferred_company %}
+            <div class="fw-semibold">{{ req.preferred_company.name }}</div>
+            <div class="small text-muted">Preferred company selected by student.</div>
+          {% else %}
+            <div class="fw-semibold">{{ req.proposed_company_name }}</div>
+            <div class="small text-muted">
+              {{ req.proposed_company_district }} • {{ req.proposed_company_address }}
+            </div>
+            <div class="small text-muted">
+              <i class="bi bi-telephone me-1"></i> {{ req.proposed_company_contact }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Attachments -->
+        <div class="p-3 border rounded-4 bg-white mb-4">
+          <div class="fw-bold mb-2"><i class="bi bi-paperclip text-danger me-1"></i> Attachments</div>
+
+          <div class="d-flex flex-column gap-2">
+            {% if req.cv %}
+              <a class="btn btn-outline-danger btn-sm w-100 text-start" href="{{ req.cv.url }}">
+                <i class="bi bi-file-earmark-person me-1"></i> View CV
+              </a>
+            {% else %}
+              <div class="small text-muted">CV: —</div>
+            {% endif %}
+
+            {% if req.request_letter %}
+              <a class="btn btn-outline-danger btn-sm w-100 text-start" href="{{ req.request_letter.url }}">
+                <i class="bi bi-file-earmark-text me-1"></i> View Request Letter
+              </a>
+            {% else %}
+              <div class="small text-muted">Request Letter: —</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions Form -->
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Review Notes (optional)</label>
+            <textarea class="form-control" name="review_notes" rows="4"
+                      placeholder="Write notes for record keeping (e.g., missing details, clarification needed, decision reason)">{{ req.review_notes }}</textarea>
+            <div class="form-text">
+              Notes help with audit trail and follow-up with the student.
+            </div>
+          </div>
+
+          <div class="d-flex flex-column flex-md-row gap-2">
+            <button name="action" value="mark_under_review" type="submit" class="btn btn-outline-secondary">
+              <i class="bi bi-hourglass-split me-1"></i> Mark Under Review
+            </button>
+
+            <button name="action" value="reject" type="submit" class="btn btn-warning">
+              <i class="bi bi-x-circle me-1"></i> Reject
+            </button>
+
+            <button name="action" value="approve_and_create_placement" type="submit" class="btn btn-success ms-md-auto">
+              <i class="bi bi-check2-circle me-1"></i> Approve & Create Placement
+            </button>
+          </div>
+
+          <div class="small text-muted mt-2">
+            Approving creates placement and allows issuing recommendation letter.
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> Review Checklist
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Student details are correct.</li>
+          <li>Company details are valid and reachable.</li>
+          <li>Attachments are present (CV, request letter).</li>
+          <li>Decision is recorded with notes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-link-45deg me-1"></i> Quick Links
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
+          <i class="bi bi-inbox me-1"></i> Requests Queue
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">
+          <i class="bi bi-patch-check me-1"></i> Acceptance Queue
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

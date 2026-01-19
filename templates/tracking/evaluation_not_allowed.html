@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Evaluation Not Available — Industry Supervisor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-start gap-2">
+        <div>
+          <div class="fw-bold">Evaluation Not Available Yet</div>
+          <div class="text-muted small">
+            You can only evaluate an intern near the end of the internship period.
+          </div>
+        </div>
+        <span class="badge text-bg-warning">Locked</span>
+      </div>
+
+      <div class="card-body">
+        <div class="alert alert-light border">
+          <div class="fw-semibold mb-1">Why you’re seeing this</div>
+          <div class="small text-muted">
+            This evaluation becomes available only within the last
+            <b>{{ window_days }}</b> days of the internship (or after the end date).
+          </div>
+        </div>
+
+        <div class="border rounded-4 p-3 bg-white">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="small text-muted">Student</div>
+              <div class="fw-semibold">
+                {{ placement.request.student.reg_no }} — {{ placement.request.student.user.display_name }}
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="small text-muted">Company</div>
+              <div class="fw-semibold">{{ placement.company.name }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="small text-muted">Internship End Date</div>
+              <div class="fw-semibold">{{ placement.end_date|default:"—" }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="small text-muted">Days remaining</div>
+              <div class="fw-semibold">
+                {{ days_to_end }} day(s)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+          <a href="{% url 'company_pending_logs' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back
+          </a>
+
+          <a href="{% url 'company_approved_logs' %}" class="btn btn-light border">
+            <i class="bi bi-journal-check me-1"></i> Approved Logs
+          </a>
+
+          <a href="{% url 'supervisor_students' %}" class="btn btn-danger ms-md-auto">
+            <i class="bi bi-people me-1"></i> Assigned Students
+          </a>
+        </div>
+
+        <div class="small text-muted mt-3">
+          Tip: If you need evaluation earlier, change <code>EVALUATION_WINDOW_DAYS</code> in the view.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

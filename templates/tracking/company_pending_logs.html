@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Logs — Industry Supervisor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- MAIN -->
+  <div class="col-12 col-lg-9">
+    <div class="card">
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold">Company Pending Logs</div>
+          <div class="text-muted small">
+            Company: <span class="fw-semibold text-dark">{{ company.name }}</span>
+          </div>
+        </div>
+
+        <!-- ✅ Added Approved Logs button -->
+        <div class="d-flex gap-2">
+          <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-check2-circle me-1"></i> Approved Logs
+          </a>
+
+          <a href="{% url 'company_pending_logs' %}" class="btn btn-light border btn-sm">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+          </a>
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if logs %}
+          <div class="d-flex flex-column gap-3">
+            {% for log in logs %}
+              <div class="border rounded-4 p-3 p-md-4 bg-white">
+
+                <!-- Header -->
+                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                  <div>
+                    <div class="fw-bold">
+                      <i class="bi bi-person-badge me-1 text-danger"></i>
+                      {{ log.placement.request.student.reg_no }}
+                      <span class="text-muted fw-normal">— Week {{ log.week_no }}</span>
+                    </div>
+                    <div class="small text-muted mt-1">
+                      <i class="bi bi-calendar3 me-1"></i>
+                      {{ log.from_date }} → {{ log.to_date }}
+                      <span class="mx-2">•</span>
+                      <span class="badge text-bg-primary">Submitted</span>
+                    </div>
+                  </div>
+
+                  <div class="d-flex flex-column flex-sm-row gap-2">
+                    {% if log.attachment %}
+                      <a href="{{ log.attachment.url }}" class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener">
+                        <i class="bi bi-paperclip me-1"></i> Attachment
+                      </a>
+                    {% endif %}
+
+                    <a href="{% url 'supervisor_students' %}" class="btn btn-light border btn-sm">
+                      <i class="bi bi-people me-1"></i> Assigned Students
+                    </a>
+                  </div>
+                </div>
+
+                <hr class="my-3"/>
+
+                <!-- ✅ DAILY TABLE -->
+                <div class="mb-3">
+                  <div class="fw-semibold mb-2">
+                    <i class="bi bi-table me-1"></i> Daily Activities (Mon – Fri)
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th style="width:140px;">Day</th>
+                          <th>Work Assignments</th>
+                          <th>Activities / Steps</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for e in log.entries.all %}
+                          <tr>
+                            <td class="fw-semibold">{{ e.get_day_display }}</td>
+
+                            {# ✅ pre-line keeps new lines but removes weird extra spaces #}
+                            <td style="white-space: pre-line; text-align:left;">{{ e.work_assignment }}</td>
+                            <td style="white-space: pre-line; text-align:left;">{{ e.activities_steps }}</td>
+                          </tr>
+                        {% empty %}
+                          <tr>
+                            <td colspan="3" class="text-muted small">
+                              No daily entries found for this log.
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Remarks -->
+                <div class="row g-3 mt-3 company-remarks">
+                  <div class="col-12 col-lg-6">
+                    <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
+                      <i class="bi bi-exclamation-triangle"></i> <span>Challenges</span>
+                    </div>
+
+                    <div class="remarks-text text-muted small" style="white-space: pre-line; text-align:left;">
+                      {{ log.challenges|default:"—" }}
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-lg-6">
+                    <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
+                      <i class="bi bi-lightbulb"></i> <span>Lessons Learnt</span>
+                    </div>
+
+                    <div class="remarks-text text-muted small" style="white-space: pre-line; text-align:left;">
+                      {{ log.lessons|default:"—" }}
+                    </div>
+                  </div>
+                </div>
+
+                <hr class="my-3"/>
+
+                <!-- Action Form -->
+                <form method="post" action="{% url 'company_action_log' log.id %}">
+                  {% csrf_token %}
+
+                  <div class="d-flex flex-column flex-md-row gap-2">
+                    <button name="action" value="approve" type="submit" class="btn btn-success">
+                      <i class="bi bi-check-circle me-1"></i> Approve
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-warning js-return-toggle"
+                      data-target="returnBox-{{ log.id }}"
+                      data-textarea="reason-{{ log.id }}"
+                    >
+                      <i class="bi bi-arrow-return-left me-1"></i> Return
+                    </button>
+                  </div>
+
+                  <!-- Hidden return reason box -->
+                  <div id="returnBox-{{ log.id }}" class="border rounded-4 p-3 mt-3 bg-light d-none">
+                    <div class="fw-semibold mb-1">
+                      <i class="bi bi-chat-left-text me-1"></i> Return reason (required)
+                    </div>
+
+                    <textarea
+                      id="reason-{{ log.id }}"
+                      name="reason"
+                      class="form-control"
+                      rows="3"
+                      placeholder="Explain what the student should fix (dates, missing details, evidence, etc.)"></textarea>
+
+                    <div class="form-text">
+                      This reason will be shown to the student so they can correct the log and resubmit.
+                    </div>
+
+                    <div class="d-flex flex-column flex-md-row gap-2 mt-3">
+                      <button name="action" value="return" type="submit" class="btn btn-danger">
+                        <i class="bi bi-arrow-return-left me-1"></i> Confirm Return
+                      </button>
+
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary js-return-cancel"
+                        data-target="returnBox-{{ log.id }}"
+                        data-textarea="reason-{{ log.id }}"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <div class="mb-2">
+              <i class="bi bi-inbox text-danger" style="font-size: 2rem;"></i>
+            </div>
+            <div class="fw-bold">No submitted logs pending approval</div>
+            <div class="text-muted small">
+              When students submit weekly logs, they will appear here for review.
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="col-12 col-lg-3">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> Approval Checklist
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Dates match the week number.</li>
+          <li>Daily entries are clear and complete.</li>
+          <li>Work assignments & steps are realistic.</li>
+          <li>Evidence attached if needed (optional).</li>
+          <li>Professional language is used.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-link-45deg me-1"></i> Quick Links
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
+          <i class="bi bi-hourglass-split me-1"></i> Pending Logs
+        </a>
+
+        <!-- ✅ Added Approved Logs link -->
+        <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
+          <i class="bi bi-check2-circle me-1"></i> Approved Logs
+        </a>
+
+        <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+          <i class="bi bi-people me-1"></i> Assigned Students
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Hard force left alignment in the remarks area */
+  .company-remarks, .company-remarks * { text-align: left !important; }
+  .company-remarks .remarks-text { width:100% !important; display:block !important; margin:0 !important; }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".js-return-toggle").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const box = document.getElementById(btn.dataset.target);
+        const textarea = document.getElementById(btn.dataset.textarea);
+        if (!box || !textarea) return;
+        box.classList.remove("d-none");
+        textarea.setAttribute("required", "required");
+        textarea.focus();
+      });
+    });
+
+    document.querySelectorAll(".js-return-cancel").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const box = document.getElementById(btn.dataset.target);
+        const textarea = document.getElementById(btn.dataset.textarea);
+        if (!box || !textarea) return;
+        box.classList.add("d-none");
+        textarea.removeAttribute("required");
+        textarea.value = "";
+      });
+    });
+  });
+</script>
+{% endblock %}
