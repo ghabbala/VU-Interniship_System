@@ -1,108 +1,89 @@
-:root{
-  --vu-red:#8B0000;
-  --vu-red-2:#B30000;
-  --vu-dark:#111827;
-  --vu-bg:#f6f7fb;
-  --vu-card:#ffffff;
+:root {
+  --vu-red: #8B0000;
+  --vu-red-2: #B30000;
+  --vu-dark: #111827;
+  --vu-bg: #f6f7fb;
+  --vu-card: #ffffff;
 }
 
-.vu-body{
-  min-height:100vh;
-  display:flex;
-  flex-direction:column;
+/* ================= GLOBAL ================= */
+.vu-body {
+  min-height: 100vh;
   background:
     radial-gradient(1200px 600px at 15% 10%, rgba(179,0,0,.10), transparent 60%),
     radial-gradient(900px 500px at 85% 80%, rgba(179,0,0,.08), transparent 55%),
     var(--vu-bg);
 }
 
-/* Topbar */
-.vu-topbar{
+/* ================= TOP BAR ================= */
+.vu-topbar {
   background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
   box-shadow: 0 12px 30px rgba(0,0,0,.18);
 }
 
-.vu-badge{
-  width:36px;
-  height:36px;
-  display:inline-grid;
-  place-items:center;
-  border-radius:12px;
+.vu-badge {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
   background: rgba(255,255,255,.18);
   border: 1px solid rgba(255,255,255,.25);
-  font-weight:800;
-  letter-spacing:.3px;
+  font-weight: 800;
+  letter-spacing: .3px;
 }
 
-/* Make content cards look better */
-.card{
-  border:0;
-  border-radius:16px;
+/* ================= CARDS ================= */
+.card {
+  border: 0;
+  border-radius: 16px;
   box-shadow: 0 12px 30px rgba(0,0,0,.08);
 }
 
-.card-header{
+.card-header {
   background: transparent;
   border-bottom: 1px solid rgba(0,0,0,.06);
-  font-weight:700;
+  font-weight: 700;
 }
 
-/* Buttons */
-.btn{
-  border-radius:12px;
-}
-.btn-outline-light:hover{
-  color:#111;
-  background:#fff;
+/* ================= BUTTONS ================= */
+.btn {
+  border-radius: 12px;
 }
 
-/* Footer */
-.vu-footer{
+.btn-outline-light:hover {
+  color: #111;
+  background: #fff;
+}
+
+/* ================= TABLES ================= */
+.table-hover tbody tr:hover {
+  background: rgba(179,0,0,.03);
+}
+
+/* ================= FOOTER ================= */
+.vu-footer {
   background: linear-gradient(135deg, #141414, #0b0f1a);
 }
 
-a .border.rounded-4:hover{
-  border-color: rgba(179,0,0,.35) !important;
-  box-shadow: 0 12px 25px rgba(0,0,0,.06);
-  transform: translateY(-1px);
-  transition: .15s ease;
-}
-
-a .border.rounded-4:hover{
-  border-color: rgba(179,0,0,.35) !important;
-  box-shadow: 0 12px 25px rgba(0,0,0,.06);
-  transform: translateY(-1px);
-  transition: .15s ease;
-}
-.table-hover tbody tr:hover{
-  background: rgba(179,0,0,.03);
-}
-/* Force left alignment inside company remarks (overrides any theme centering) */
+/* ================= REMARK ALIGNMENT ================= */
 .company-remarks,
-.company-remarks * {
+.company-remarks *,
+.supervisor-remarks,
+.supervisor-remarks * {
   text-align: left !important;
 }
 
-/* FORCE left alignment for coordinator/company remarks */
-body .company-remarks,
-body .company-remarks * {
-  text-align: left !important;
+.accordion-body .remarks-text {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
-/* also force table cells left (just in case) */
-body table td,
-body table th {
-  text-align: left;
+/* ================= CARD HOVER ================= */
+a .border.rounded-4:hover {
+  border-color: rgba(179,0,0,.35) !important;
+  box-shadow: 0 12px 25px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+  transition: .15s ease;
 }
-  /* Force left alignment even if parent is centered */
-  .accordion-body .supervisor-remarks,
-  .accordion-body .supervisor-remarks *{
-    text-align: left !important;
-  }
-
-  /* Make sure the text behaves like a full-width block */
-  .accordion-body .supervisor-remarks .remarks-text{
-    display: block !important;
-    width: 100% !important;
-    margin: 0 !important;
-  }

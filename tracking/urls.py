@@ -20,6 +20,7 @@ urlpatterns = [
     # ✅ keep ONLY this one for evaluation
     path("company/placement/<int:placement_id>/evaluate/", views.company_evaluate_student,name="company_evaluate_student"),
     path("company/evaluations/approved/", views.company_approved_evaluations, name="company_approved_evaluations"),
+    path("industry/dashboard/",views.industry_dashboard,name="industry_dashboard"),
     
 
 

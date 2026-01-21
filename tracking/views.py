@@ -1007,9 +1007,9 @@ def supervisor_dashboard(request):
     ready_for_average_count = Placement.objects.filter(
         university_supervisor=staff
     ).exclude(status__in=["completed", "terminated"]).filter(
-        industryevaluation__status="submitted",
-        academicevaluation__status="submitted",
-        academicevaluation__supervisor_user=request.user,
+        industry_evaluation__status="submitted",
+        academic_evaluation__status="submitted",
+        academic_evaluation__supervisor_user=request.user,
     ).distinct().count()
 
     # ✅ NEW: submitted Student Evaluation Forms (from students)
@@ -1028,7 +1028,7 @@ def supervisor_dashboard(request):
     student_eval_count = student_eval_qs.count()
     latest_student_evals = list(student_eval_qs[:5])
 
-    return render(request, "tracking/supervisor_dashboard.html", {
+    return render(request, "dashboards/supervisor_dashboard.html", {
         "latest_report": latest_report,
         "assigned_count": assigned_count,
         "industry_submitted_count": industry_submitted_count,
@@ -1516,3 +1516,8 @@ def student_dashboard(request):
     return render(request, "dashboards/student_dashboard.html", {
         "placement": placement,
     })
+
+
+@login_required
+def industry_dashboard(request):
+    return render(request, "dashboards/industry_dashboard.html")
