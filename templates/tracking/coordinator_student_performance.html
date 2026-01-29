@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Student Performance — Coordinator{% endblock %}
+
+{% block content %}
+<style>
+  /* Page-specific polish (safe to keep inline) */
+  .perf-card .card-header{
+    background: linear-gradient(180deg, rgba(220,53,69,.06), rgba(255,255,255,1));
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  .perf-chip{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .6rem; border-radius:999px;
+    border:1px solid rgba(0,0,0,.08);
+    background:#fff;
+    font-size:.825rem;
+  }
+  .perf-chip i{ opacity:.75; }
+
+  .perf-search .form-control{
+    border-radius:999px;
+    padding-left:.9rem;
+  }
+  .perf-search .btn{
+    border-radius:999px;
+    padding-inline:.85rem;
+  }
+
+  .table-perf thead th{
+    position: sticky; top: 0; z-index: 2;
+    background: #f8f9fa;
+  }
+  .student-cell .name{
+    font-weight: 700;
+    line-height: 1.15;
+  }
+  .student-cell .email{
+    font-size:.8rem;
+    color:#6c757d;
+  }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.2rem .55rem;
+    border-radius:999px;
+    background: rgba(0,0,0,.04);
+    color:#6c757d;
+    font-size:.75rem;
+    border: 1px solid rgba(0,0,0,.05);
+  }
+
+  .eval-box{
+    display:inline-flex;
+    flex-direction:column;
+    gap:.2rem;
+    align-items:center;
+    min-width: 160px;
+  }
+  .eval-sub{
+    font-size:.78rem;
+    color:#6c757d;
+    line-height: 1.1;
+  }
+  .avg-pill{
+    border-radius:999px;
+    padding:.35rem .6rem;
+    font-weight:700;
+  }
+
+  @media (max-width: 768px){
+    .eval-box{ min-width: auto; }
+    .table-perf td, .table-perf th{ white-space: nowrap; }
+  }
+</style>
+
+<div class="card shadow-sm perf-card">
+  <div class="card-header">
+    <div class="d-flex flex-column flex-md-row gap-3 justify-content-between align-items-start align-items-md-center">
+
+      <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div class="fw-bold">
+            <i class="bi bi-bar-chart-line me-1 text-danger"></i> Student Performance
+          </div>
+          <span class="perf-chip">
+            <i class="bi bi-people"></i>
+            {{ count }} record{{ count|pluralize }}
+          </span>
+        </div>
+        <div class="text-muted small mt-1">
+          View submitted Industry & Academic evaluations and open full forms for each student.
+        </div>
+      </div>
+
+      <form method="get" class="perf-search d-flex gap-2 align-items-center w-100 w-md-auto">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white border-end-0" style="border-radius:999px 0 0 999px;">
+            <i class="bi bi-search text-muted"></i>
+          </span>
+          <input
+            name="q"
+            value="{{ q }}"
+            class="form-control border-start-0"
+            placeholder="Search name / reg no / company"
+            style="border-radius:0 999px 999px 0;"
+          >
+        </div>
+
+        {% if q %}
+          <a class="btn btn-sm btn-outline-secondary" href="?" title="Clear search">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        {% endif %}
+
+        <button class="btn btn-sm btn-danger" type="submit">
+          Search
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-perf">
+        <thead class="table-light">
+          <tr>
+            <th style="min-width:240px;">Student</th>
+            <th style="min-width:130px;">Reg No</th>
+            <th style="min-width:200px;">Company</th>
+            <th class="text-center" style="min-width:200px;">Industry Evaluation</th>
+            <th class="text-center" style="min-width:200px;">Academic Evaluation</th>
+            <th class="text-center" style="min-width:150px;">Average</th>
+            <th class="text-end" style="min-width:110px;">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for p in placements %}
+          <tr>
+            <!-- Student -->
+            <td class="student-cell">
+              <div class="name">
+                {{ p.request.student.user.get_full_name|default:p.request.student.user.email }}
+              </div>
+              <div class="email">{{ p.request.student.user.email }}</div>
+            </td>
+
+            <!-- Reg -->
+            <td class="text-muted fw-semibold">{{ p.request.student.reg_no }}</td>
+
+            <!-- Company -->
+            <td>
+              <div class="fw-semibold">{{ p.company.name|default:"—" }}</div>
+              <div class="status-pill mt-1">
+                <i class="bi bi-activity"></i> {{ p.status }}
+              </div>
+            </td>
+
+            <!-- Industry -->
+            <td class="text-center">
+              {% if p.industry_eval_id %}
+                <div class="eval-box">
+                  <span class="badge text-bg-success">
+                    <i class="bi bi-check2-circle me-1"></i> Submitted
+                  </span>
+
+                  <div class="eval-sub">
+                    {% if p.industry_total is not None and p.industry_max %}
+                      Total: <b>{{ p.industry_total }}</b>/{{ p.industry_max }}
+                    {% endif %}
+                    {% if p.industry_submitted_at %}
+                      <div>On {{ p.industry_submitted_at|date:"Y-m-d" }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <span class="badge text-bg-secondary">
+                  <i class="bi bi-dash-circle me-1"></i> Not submitted
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Academic -->
+            <td class="text-center">
+              {% if p.academic_eval_id %}
+                <div class="eval-box">
+                  <span class="badge text-bg-success">
+                    <i class="bi bi-check2-circle me-1"></i> Submitted
+                  </span>
+
+                  <div class="eval-sub">
+                    {% if p.academic_total is not None and p.academic_max %}
+                      Total: <b>{{ p.academic_total }}</b>/{{ p.academic_max }}
+                    {% endif %}
+                    {% if p.academic_submitted_at %}
+                      <div>On {{ p.academic_submitted_at|date:"Y-m-d" }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <span class="badge text-bg-secondary">
+                  <i class="bi bi-dash-circle me-1"></i> Not submitted
+                </span>
+              {% endif %}
+            </td>
+
+            <!-- Average -->
+            <td class="text-center">
+              {% if p.avg_total is not None %}
+                <span class="badge text-bg-primary">
+                    <i class="bi bi-calculator me-1"></i>
+                    {{ p.avg_total|floatformat:0 }}/{{ p.avg_max }}
+                </span>
+                {% else %}
+                <span class="badge text-bg-light border text-muted">Waiting both</span>
+                {% endif %}
+
+            </td>
+
+            <!-- Action -->
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-dark"
+                 href="{% url 'coordinator_student_performance_detail' p.id %}">
+                <i class="bi bi-eye me-1"></i> View
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <div class="mb-2">
+                <i class="bi bi-inbox" style="font-size:2rem;"></i>
+              </div>
+              <div class="fw-bold">No placements found</div>
+              <div class="small">Try adjusting your search or check if placements exist.</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-footer bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <a href="{% url 'coordinator_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </a>
+
+    <div class="small text-muted">
+      Tip: Click <b>View</b> to see the full submitted forms and computed totals.
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -11,18 +11,34 @@
 
 <body>
   <main class="shell">
+
     <!-- LEFT BRAND PANEL -->
     <section class="brand">
       <div class="brand-top">
+
         <div class="badge">
-          <div class="logo">VU</div>
-          <div>Victoria University</div>
+          <div class="logo-wrap">
+            <img src="{% static 'accounts/img/vu_log.jpg' %}" alt="Victoria University Logo" class="vu-logo">
+          </div>
+
+          <div class="badge-text">
+            <div class="uni-name">Victoria University</div>
+            <div class="uni-sub">Internship & Placement Portal</div>
+          </div>
         </div>
 
         <h1>Create Student Account</h1>
         <p>
-          Register to submit internship requests, upload acceptance letters, and track weekly logs.
+          Register to submit internship requests, upload company acceptance letters,
+          and track your weekly internship logs.
         </p>
+
+        <div class="mini-points">
+          <div class="chip">Use a valid email</div>
+          <div class="chip">Use a strong password</div>
+          <div class="chip">Complete profile after signup</div>
+        </div>
+
       </div>
 
       <div class="brand-bottom">
@@ -34,6 +50,7 @@
     <!-- RIGHT FORM -->
     <section class="form-area">
       <div class="card">
+
         <h2>Student Registration</h2>
         <p class="sub">Fill in the details below to create your account.</p>
 
@@ -43,31 +60,43 @@
           </div>
         {% endif %}
 
+        {% if form.non_field_errors %}
+          <div class="alert">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
         <form method="post" novalidate>
           {% csrf_token %}
 
-          {# Non-field errors (e.g. "passwords don't match") #}
-          {% if form.non_field_errors %}
-            <div class="alert">
-              {{ form.non_field_errors }}
-            </div>
-          {% endif %}
+          <!-- 2-column grid on desktop -->
+          <div class="form-grid">
+            {% for field in form %}
+              <div class="field
+                          {% if field.errors %}has-error{% endif %}
+                          {% if field.name in 'email program password1 password2' %} span-2 {% endif %}">
+                <label for="{{ field.id_for_label }}">
+                  {{ field.label }}
+                  {% if field.field.required %}<span class="req">*</span>{% endif %}
+                </label>
 
-          {# Render each field nicely (better than form.as_p) #}
-          {% for field in form %}
-            <div class="field">
-              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-              {{ field }}
+                {{ field }}
 
-              {% if field.help_text %}
-                <div class="help">{{ field.help_text|safe }}</div>
-              {% endif %}
+                <!-- Password hint (front-end only, no backend changes) -->
+                {% if field.name == "password1" or field.name == "password" %}
+                  <div class="hint">
+                    Tip: Use 8+ characters, mix letters & numbers. Avoid common words.
+                    <span class="strength" id="pwStrength"></span>
+                  </div>
+                {% endif %}
 
-              {% if field.errors %}
-                <div class="error">{{ field.errors }}</div>
-              {% endif %}
-            </div>
-          {% endfor %}
+                {% if field.errors %}
+                  <div class="error-line"></div>
+                  <div class="error-msg">{{ field.errors }}</div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
 
           <button class="btn" type="submit">Create account</button>
         </form>
@@ -80,8 +109,50 @@
         <div class="footer">
           By creating an account, you agree to follow Victoria University internship guidelines.
         </div>
+
       </div>
     </section>
+
   </main>
+
+  <!-- Password strength (simple, client-side) -->
+  <script>
+    (function(){
+      const pw =
+        document.querySelector('input[name="password1"]') ||
+        document.querySelector('input[name="password"]');
+
+      const out = document.getElementById("pwStrength");
+      if(!pw || !out) return;
+
+      function scorePassword(v){
+        let score = 0;
+        if(!v) return 0;
+        if(v.length >= 8) score++;
+        if(v.length >= 12) score++;
+        if(/[A-Z]/.test(v)) score++;
+        if(/[0-9]/.test(v)) score++;
+        if(/[^A-Za-z0-9]/.test(v)) score++;
+        return score;
+      }
+
+      function label(score){
+        if(score <= 1) return {t:"Weak", c:"weak"};
+        if(score === 2) return {t:"Fair", c:"fair"};
+        if(score === 3) return {t:"Good", c:"good"};
+        return {t:"Strong", c:"strong"};
+      }
+
+      function update(){
+        const s = scorePassword(pw.value);
+        const L = label(s);
+        out.textContent = " " + L.t;
+        out.className = "strength " + L.c;
+      }
+
+      pw.addEventListener("input", update);
+      update();
+    })();
+  </script>
 </body>
 </html>

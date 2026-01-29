@@ -40,6 +40,7 @@ if RENDER_HOST:
 # ==============================
 
 INSTALLED_APPS = [
+    "jazzmin", 
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -190,3 +191,47 @@ LOGOUT_REDIRECT_URL = "login"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = "internship@university.local"
+
+
+
+JAZZMIN_SETTINGS = {
+    # Titles
+    "site_title": "VU Admin",
+    "site_header": "Victoria University",
+    "site_brand": "VU Admin",
+
+    # Welcome text on login screen
+    "welcome_sign": "Welcome to the Victoria University Internship System",
+
+    # Logo (optional)
+    # Put a file in: static/img/vu-logo.png
+    "site_logo": "base/img/vu_logo.jpg",
+    "site_logo_classes": "img-circle",
+
+    # Icon on browser tab
+    #"site_icon": "img/vu-favicon.png",
+
+    # Footer
+    "copyright": "© Victoria University",
+
+    # Search bar model (optional)
+    # Use a model you have, e.g. accounts.User
+    "search_model": "accounts.User",
+
+    # Sidebar / menu ordering (optional, but makes it clean)
+    "order_with_respect_to": [
+        "accounts",
+        "placements",
+        "companies",
+        "tracking",
+        "auth",
+    ],
+
+    # Custom links on top menu
+    "topmenu_links": [
+        {"name": "Dashboard", "url": "admin:index", "permissions": ["auth.view_user"]},
+    ],
+
+    # Show UI builder (lets you tweak layout in the admin UI)
+    "show_ui_builder": True,
+}

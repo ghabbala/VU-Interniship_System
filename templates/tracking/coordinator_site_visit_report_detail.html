@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Site Visit Report — Coordinator{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0 overflow-hidden">
+  <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <div class="fw-bold">
+        <i class="bi bi-file-earmark-text me-1 text-danger"></i> Site Visit Report
+      </div>
+      <div class="text-muted small">
+        {{ visit.placement.request.student.reg_no }} • {{ visit.placement.request.student.user.display_name }}
+      </div>
+    </div>
+
+    <a href="{% url 'coordinator_site_visits' %}" class="btn btn-light border btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+  </div>
+
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Company</div>
+        <div class="fw-semibold">{{ visit.placement.company.name|default:"—" }}</div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Supervisor</div>
+        <div class="fw-semibold">
+          {{ visit.supervisor.user.get_full_name|default:visit.supervisor.user.email }}
+        </div>
+        <div class="small text-muted">{{ visit.supervisor.user.email }}</div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Scheduled</div>
+        <div class="fw-semibold">{{ visit.scheduled_at|date:"Y-m-d H:i" }}</div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Submitted</div>
+        <div class="fw-semibold">{{ report.submitted_at|date:"Y-m-d H:i" }}</div>
+      </div>
+    </div>
+
+    <hr class="my-3">
+
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="text-muted small">Summary</div>
+        <div style="white-space:pre-line;">{{ report.summary|default:"—" }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="text-muted small">Progress</div>
+        <div style="white-space:pre-line;">{{ report.progress|default:"—" }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="text-muted small">Challenges</div>
+        <div style="white-space:pre-line;">{{ report.challenges|default:"—" }}</div>
+      </div>
+
+      <div class="col-12">
+        <div class="text-muted small">Recommendations</div>
+        <div style="white-space:pre-line;">{{ report.recommendations|default:"—" }}</div>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="text-muted small">Student Attended</div>
+        <span class="badge {% if report.student_attended %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+          {% if report.student_attended %}Yes{% else %}No{% endif %}
+        </span>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="text-muted small">Industry Supervisor Present</div>
+        <span class="badge {% if report.industry_supervisor_present %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+          {% if report.industry_supervisor_present %}Yes{% else %}No{% endif %}
+        </span>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <div class="text-muted small">Assessment</div>
+        <span class="badge text-bg-light border">{{ report.get_assessment_display }}</span>
+      </div>
+
+      {% if report.attachment %}
+        <div class="col-12">
+          <a href="{{ report.attachment.url }}" target="_blank" rel="noopener"
+             class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-paperclip me-1"></i> View Attachment
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

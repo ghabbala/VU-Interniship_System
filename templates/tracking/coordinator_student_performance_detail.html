@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Performance Details — Coordinator{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft:#fff5f5;
+  }
+  .vu-page{
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .vu-header{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    color:#fff;
+    border:0;
+  }
+  .vu-header .title{
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+  .vu-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:.45rem;
+    padding:.4rem .7rem;
+    border-radius:999px;
+    background: rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.22);
+    color:#fff;
+    font-weight:600;
+    font-size:.88rem;
+    white-space:nowrap;
+  }
+  .vu-summary{
+    background: linear-gradient(180deg, #ffffff, var(--vu-soft));
+    border:1px solid rgba(179,0,0,.14);
+  }
+  .vu-kpi{
+    background:#fff;
+    border:1px solid rgba(179,0,0,.12);
+    border-radius: 1rem;
+    padding: .95rem 1.05rem;
+  }
+  .vu-kpi .label{ color:#6c757d; font-size:.82rem; }
+  .vu-kpi .value{ font-weight:900; color:#212529; font-size:1.05rem; }
+  .vu-section{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:1rem;
+    background:#fff;
+  }
+  .vu-section-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:.75rem;
+    padding: 1rem 1rem .75rem 1rem;
+    border-bottom:1px solid rgba(0,0,0,.06);
+  }
+  .vu-section-title{
+    font-weight:900;
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+  }
+  .vu-muted{ color:#6c757d; }
+  .vu-table thead th{
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:#6c757d;
+    background:#f8f9fa !important;
+  }
+  .vu-empty{
+    background:#f8f9fa;
+    border:1px dashed rgba(0,0,0,.16);
+    border-radius:1rem;
+    padding:1rem;
+  }
+  .vu-total-badge{
+    background: var(--vu-red);
+  }
+</style>
+
+<div class="vu-page">
+  <div class="card shadow-sm overflow-hidden border-0">
+    <div class="card-header vu-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span class="vu-chip">
+          <i class="bi bi-clipboard-data"></i>
+          <span class="title">Performance Details</span>
+        </span>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        {% if industry_eval or academic_eval %}
+          <button class="btn btn-sm btn-light" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print
+          </button>
+        {% endif %}
+        <a href="{% url 'coordinator_student_performance' %}" class="btn btn-sm btn-light">
+          <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+      </div>
+    </div>
+
+    <div class="card-body p-3 p-md-4">
+
+      <div class="vu-summary rounded-4 p-3 p-md-4 mb-3">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+
+          <div>
+            <div class="fw-bold fs-5 mb-1">
+              {{ placement.request.student.user.get_full_name|default:placement.request.student.user.email }}
+            </div>
+
+            <div class="small vu-muted d-flex flex-wrap gap-2 align-items-center">
+              <span>Reg No: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span></span>
+              <span class="vu-muted">•</span>
+              <span>Company: <span class="fw-semibold text-dark">{{ placement.company.name|default:"—" }}</span></span>
+              <span class="vu-muted">•</span>
+              <span>Status: <span class="badge bg-white text-dark border">{{ placement.status }}</span></span>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2" style="min-width: 300px;">
+            {% with combined_total=ind_total|add:ac_total combined_max=ind_max|add:ac_max %}
+              <div class="vu-kpi">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="label">Combined Score (Industry + Academic)</div>
+                    {% if industry_eval or academic_eval %}
+                      <div class="value">{{ combined_total|floatformat:0 }} <span class="text-muted">/ {{ combined_max }}</span></div>
+                    {% else %}
+                      <div class="value text-muted">—</div>
+                    {% endif %}
+                  </div>
+
+                  {% if industry_eval and academic_eval %}
+                    <span class="badge text-bg-success"><i class="bi bi-check2-circle me-1"></i> Complete</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary"><i class="bi bi-hourglass-split me-1"></i> Pending</span>
+                  {% endif %}
+                </div>
+
+                {% if combined_pct is not None %}
+                  <div class="progress mt-2" style="height:10px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ combined_pct }}%; background: var(--vu-red);"
+                         aria-valuenow="{{ combined_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                  </div>
+                  <div class="small text-muted mt-1">{{ combined_pct }}% overall</div>
+                {% endif %}
+              </div>
+            {% endwith %}
+          </div>
+
+        </div>
+      </div>
+
+      <div class="row g-3 g-lg-4">
+
+        <div class="col-12 col-lg-6">
+          <div class="vu-section h-100">
+            <div class="vu-section-head">
+              <div>
+                <div class="vu-section-title">
+                  <i class="bi bi-building" style="color:var(--vu-red)"></i>
+                  Industry Supervisor Evaluation
+                </div>
+                {% if industry_eval %}
+                  <div class="small vu-muted mt-1">
+                    Submitted: <span class="fw-semibold text-dark">{{ industry_eval.submitted_at|date:"M d, Y • H:i"|default:"—" }}</span>
+                    <span class="mx-1">•</span>
+                    Supervisor: <span class="fw-semibold text-dark">{{ industry_eval.supervisor_name|default:"—" }}</span>
+                  </div>
+                {% endif %}
+              </div>
+
+              {% if industry_eval %}
+                <span class="badge text-bg-success"><i class="bi bi-check2-circle me-1"></i> Submitted</span>
+              {% else %}
+                <span class="badge text-bg-secondary"><i class="bi bi-dash-circle me-1"></i> Not submitted</span>
+              {% endif %}
+            </div>
+
+            <div class="p-3 p-md-4">
+              {% if industry_eval %}
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle mb-0 vu-table">
+                    <thead>
+                      <tr>
+                        <th>Criterion</th>
+                        <th class="text-center" style="width:92px;">Mark</th>
+                        <th>Comment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for r in ind_rows %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.label }}</td>
+                          <td class="text-center"><span class="badge bg-light text-dark border">{{ r.mark }}</span></td>
+                          <td class="text-muted" style="white-space:normal;">{{ r.comment|default:"—" }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot>
+                      <tr class="table-light">
+                        <th class="text-end">TOTAL</th>
+                        <th class="text-center">
+                          <span class="badge vu-total-badge">{{ ind_total|floatformat:0 }}</span>
+                          <span class="text-muted">/ {{ ind_max }}</span>
+                        </th>
+                        <th></th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              {% else %}
+                <div class="vu-empty small">
+                  <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> No Industry Evaluation yet</div>
+                  <div class="vu-muted">The Industry Supervisor has not submitted an evaluation for this student.</div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <div class="vu-section h-100">
+            <div class="vu-section-head">
+              <div>
+                <div class="vu-section-title">
+                  <i class="bi bi-mortarboard" style="color:var(--vu-red)"></i>
+                  University Supervisor Evaluation
+                </div>
+                {% if academic_eval %}
+                  <div class="small vu-muted mt-1">
+                    Submitted: <span class="fw-semibold text-dark">{{ academic_eval.submitted_at|date:"M d, Y • H:i"|default:"—" }}</span>
+                    <span class="mx-1">•</span>
+                    Supervisor: <span class="fw-semibold text-dark">{{ academic_eval.supervisor_name|default:"—" }}</span>
+                  </div>
+                {% endif %}
+              </div>
+
+              {% if academic_eval %}
+                <span class="badge text-bg-success"><i class="bi bi-check2-circle me-1"></i> Submitted</span>
+              {% else %}
+                <span class="badge text-bg-secondary"><i class="bi bi-dash-circle me-1"></i> Not submitted</span>
+              {% endif %}
+            </div>
+
+            <div class="p-3 p-md-4">
+              {% if academic_eval %}
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle mb-0 vu-table">
+                    <thead>
+                      <tr>
+                        <th>Criterion</th>
+                        <th class="text-center" style="width:92px;">Mark</th>
+                        <th>Comment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for r in ac_rows %}
+                        <tr>
+                          <td class="fw-semibold">{{ r.label }}</td>
+                          <td class="text-center"><span class="badge bg-light text-dark border">{{ r.mark }}</span></td>
+                          <td class="text-muted" style="white-space:normal;">{{ r.comment|default:"—" }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot>
+                      <tr class="table-light">
+                        <th class="text-end">TOTAL</th>
+                        <th class="text-center">
+                          <span class="badge vu-total-badge">{{ ac_total|floatformat:0 }}</span>
+                          <span class="text-muted">/ {{ ac_max }}</span>
+                        </th>
+                        <th></th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              {% else %}
+                <div class="vu-empty small">
+                  <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> No Academic Evaluation yet</div>
+                  <div class="vu-muted">The University Supervisor has not submitted an evaluation for this student.</div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mt-4 d-flex justify-content-between flex-wrap gap-2">
+        <a href="{% url 'coordinator_student_performance' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Back to Student Performance
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

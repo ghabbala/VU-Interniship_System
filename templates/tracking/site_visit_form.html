@@ -1,16 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}New Site Visit — Victoria University{% endblock %}
+{% block title %}Schedule Site Visit — Victoria University{% endblock %}
 
 {% block content %}
 <div class="row g-4">
+
   <!-- MAIN FORM -->
   <div class="col-12 col-lg-8">
-    <div class="card">
+    <div class="card shadow-sm border-0 overflow-hidden">
       <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
         <div>
-          <div class="fw-bold">New Site Visit</div>
-          <div class="text-muted small">Record an official internship site visit for this placement.</div>
+          <div class="fw-bold">
+            <i class="bi bi-geo-alt me-1 text-danger"></i> Schedule Site Visit
+          </div>
+          <div class="text-muted small">
+            Plan a physical or virtual (Zoom/Google Meet) visit for this placement.
+          </div>
         </div>
 
         <a href="{% url 'supervisor_students' %}" class="btn btn-light border btn-sm">
@@ -19,14 +24,18 @@
       </div>
 
       <div class="card-body">
+
         <!-- Placement summary -->
-        <div class="p-3 border rounded-4 bg-white mb-3">
-          <div class="row g-2">
+        <div class="p-3 p-md-4 rounded-4 border bg-light mb-3">
+          <div class="row g-3 align-items-start">
             <div class="col-12 col-md-6">
               <div class="text-muted small">Student</div>
               <div class="fw-bold">
                 <i class="bi bi-person-badge text-danger me-1"></i>
                 {{ placement.request.student.reg_no }}
+              </div>
+              <div class="small text-muted">
+                {{ placement.request.student.user.get_full_name|default:placement.request.student.user.email }}
               </div>
               <div class="small text-muted">{{ placement.request.student.user.email }}</div>
             </div>
@@ -51,7 +60,6 @@
           </div>
         {% endif %}
 
-        <!-- Form -->
         <form method="post" enctype="multipart/form-data" novalidate>
           {% csrf_token %}
 
@@ -59,30 +67,115 @@
             <div class="alert alert-danger">{{ form.non_field_errors }}</div>
           {% endif %}
 
-          <div class="row g-3">
-            {% for field in form %}
-              <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
-                  {{ field.label }}
-                  {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                </label>
-
-                {{ field }}
-
-                {% if field.help_text %}
-                  <div class="form-text">{{ field.help_text|safe }}</div>
-                {% endif %}
-
-                {% if field.errors %}
-                  <div class="text-danger small mt-1">{{ field.errors }}</div>
-                {% endif %}
+          <!-- VISIT DETAILS -->
+          <div class="border rounded-4 p-3 p-md-4 bg-white">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <div class="fw-bold">
+                <i class="bi bi-calendar-check me-1 text-danger"></i> Visit Details
               </div>
-            {% endfor %}
+              <span class="badge text-bg-light border">Physical or Virtual</span>
+            </div>
+
+            <div class="row g-3">
+
+              {% if form.visit_type %}
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-semibold" for="{{ form.visit_type.id_for_label }}">
+                    {{ form.visit_type.label }}{% if form.visit_type.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                  {{ form.visit_type }}
+                  <div class="form-text">Choose Physical, Zoom, or Google Meet.</div>
+                  {% if form.visit_type.errors %}<div class="text-danger small mt-1">{{ form.visit_type.errors }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.scheduled_at %}
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-semibold" for="{{ form.scheduled_at.id_for_label }}">
+                    {{ form.scheduled_at.label }}{% if form.scheduled_at.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                  {{ form.scheduled_at }}
+                  <div class="form-text">Set the date and time for the visit.</div>
+                  {% if form.scheduled_at.errors %}<div class="text-danger small mt-1">{{ form.scheduled_at.errors }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.duration_minutes %}
+                <div class="col-12 col-md-6">
+                  <label class="form-label fw-semibold" for="{{ form.duration_minutes.id_for_label }}">
+                    {{ form.duration_minutes.label }}{% if form.duration_minutes.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                  {{ form.duration_minutes }}
+                  <div class="form-text">Recommended: 30–60 minutes.</div>
+                  {% if form.duration_minutes.errors %}<div class="text-danger small mt-1">{{ form.duration_minutes.errors }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.meeting_link %}
+                <div class="col-12 col-md-6" id="meetingLinkWrap">
+                  <label class="form-label fw-semibold" for="{{ form.meeting_link.id_for_label }}">
+                    {{ form.meeting_link.label }}{% if form.meeting_link.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                  {{ form.meeting_link }}
+                  <div class="form-text">
+                    Required for Zoom / Google Meet. Example: https://meet.google.com/xxx-xxxx-xxx
+                  </div>
+                  {% if form.meeting_link.errors %}<div class="text-danger small mt-1">{{ form.meeting_link.errors }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+              {% if form.agenda %}
+                <div class="col-12">
+                  <label class="form-label fw-semibold" for="{{ form.agenda.id_for_label }}">
+                    {{ form.agenda.label }}{% if form.agenda.field.required %} <span class="text-danger">*</span>{% endif %}
+                  </label>
+                  {{ form.agenda }}
+                  <div class="form-text">Optional: objectives for the visit (progress check, challenges, evaluation).</div>
+                  {% if form.agenda.errors %}<div class="text-danger small mt-1">{{ form.agenda.errors }}</div>{% endif %}
+                </div>
+              {% endif %}
+
+            </div>
           </div>
 
+          <!-- NOTES & EVIDENCE (safe fallback) -->
+          <div class="mt-3 border rounded-4 p-3 p-md-4 bg-white">
+            <div class="fw-bold mb-2">
+              <i class="bi bi-paperclip me-1 text-danger"></i> Notes & Evidence
+            </div>
+
+            <div class="row g-3">
+              {% for field in form %}
+                {% if field.name != "visit_type" and field.name != "scheduled_at" and field.name != "duration_minutes" and field.name != "meeting_link" and field.name != "agenda" %}
+                  <div class="col-12">
+                    <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
+                      {{ field.label }}
+                      {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                    </label>
+
+                    {{ field }}
+
+                    {% if field.help_text %}
+                      <div class="form-text">{{ field.help_text|safe }}</div>
+                    {% endif %}
+
+                    {% if field.errors %}
+                      <div class="text-danger small mt-1">{{ field.errors }}</div>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+
+            <div class="small text-muted mt-2">
+              Keep notes professional and evidence-based. Attach photos/screenshots or signed forms if needed.
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
           <div class="d-flex flex-column flex-md-row gap-2 mt-4">
             <button type="submit" class="btn btn-danger">
-              <i class="bi bi-save me-1"></i> Save Visit
+              <i class="bi bi-save me-1"></i> Save & Schedule
             </button>
 
             <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary">
@@ -95,9 +188,10 @@
           </div>
 
           <div class="small text-muted mt-2">
-            Keep visit notes professional and evidence-based. Attach photos or documents if required.
+            After scheduling, the student will confirm the visit. After the visit, submit the official visit report.
           </div>
         </form>
+
       </div>
     </div>
   </div>
@@ -114,7 +208,7 @@
           <li>Review weekly logs (company-approved).</li>
           <li>Inspect work environment and tasks given.</li>
           <li>Record observations and recommendations.</li>
-          <li>Attach evidence (optional): photos / signed forms.</li>
+          <li>Attach evidence: photos / screenshot / signed form.</li>
         </ul>
       </div>
     </div>
@@ -124,10 +218,35 @@
         <i class="bi bi-info-circle me-1"></i> VU Standard Note
       </div>
       <div class="card-body small text-muted">
-        Use clear language and include the date, location, and key findings.
-        This record supports academic monitoring and internship assessment.
+        Include the date/time, type (physical/virtual), and key findings. This record supports academic monitoring and assessment.
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  // Show meeting link only for virtual visits
+  document.addEventListener("DOMContentLoaded", () => {
+    const typeEl = document.getElementById("id_visit_type");
+    const wrap = document.getElementById("meetingLinkWrap");
+
+    function toggleMeetingLink(){
+      if(!typeEl || !wrap) return;
+      const v = (typeEl.value || "").toLowerCase();
+      const isVirtual = (v === "zoom" || v === "gmeet" || v === "other");
+      wrap.classList.toggle("d-none", !isVirtual);
+
+      const linkInput = wrap.querySelector("input, textarea, select");
+      if(linkInput){
+        if(isVirtual) linkInput.setAttribute("required", "required");
+        else linkInput.removeAttribute("required");
+      }
+    }
+
+    if(typeEl){
+      typeEl.addEventListener("change", toggleMeetingLink);
+      toggleMeetingLink();
+    }
+  });
+</script>
 {% endblock %}

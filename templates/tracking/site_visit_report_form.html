@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Site Visit Report — Victoria University{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0 overflow-hidden">
+      <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <div class="fw-bold">
+            <i class="bi bi-clipboard-check me-1 text-danger"></i>
+            {% if visit.status == "scheduled" or visit.status == "confirmed" %}
+              Site Visit Report
+            {% else %}
+              View Site Visit Report
+            {% endif %}
+          </div>
+          <div class="text-muted small">
+            {% if visit.status == "scheduled" or visit.status == "confirmed" %}
+              Submit an official report after the visit.
+            {% else %}
+              This report is read-only because the visit is <b>{{ visit.status|title }}</b>.
+            {% endif %}
+          </div>
+        </div>
+
+        <a href="{% url 'supervisor_site_visits' %}" class="btn btn-light border btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Back to Site Visits
+        </a>
+      </div>
+
+      <div class="card-body">
+
+        <!-- Visit summary -->
+        <div class="p-3 p-md-4 rounded-4 border bg-light mb-3">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Student</div>
+              <div class="fw-bold">
+                <i class="bi bi-person-badge text-danger me-1"></i>
+                {{ visit.placement.request.student.reg_no }}
+              </div>
+              <div class="small text-muted">{{ visit.placement.request.student.user.email }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Visit</div>
+              <div class="fw-semibold">
+                {{ visit.get_visit_type_display }}
+                <span class="text-muted fw-normal">• {{ visit.scheduled_at|date:"Y-m-d H:i" }}</span>
+              </div>
+
+              {% if visit.meeting_link %}
+                <div class="small mt-1">
+                  <a href="{{ visit.meeting_link }}" target="_blank" rel="noopener" class="text-danger">
+                    <i class="bi bi-link-45deg"></i> Open meeting link
+                  </a>
+                </div>
+              {% endif %}
+
+              {% if visit.actual_at %}
+                <div class="small text-muted mt-1">
+                  <i class="bi bi-clock-history me-1"></i> Actual: {{ visit.actual_at|date:"Y-m-d H:i" }}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Read-only info (NO parentheses) -->
+        {% if visit.status != "scheduled" and visit.status != "confirmed" %}
+          <div class="alert alert-light border mb-3">
+            <div class="fw-semibold">
+              <i class="bi bi-shield-lock me-1 text-danger"></i> Read-only mode
+            </div>
+            <div class="small text-muted">
+              This visit is <b>{{ visit.status|title }}</b>. You can view the submitted report, but editing is disabled.
+            </div>
+          </div>
+        {% endif %}
+
+        {% if form.errors %}
+          <div class="alert alert-danger vu-alert">
+            <div class="fw-semibold">
+              <i class="bi bi-x-circle me-1"></i> Please fix the errors below
+            </div>
+            <div class="small">Some fields are missing or invalid.</div>
+          </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger vu-alert">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <!-- ✅ Disable fields when not editable (NO parentheses) -->
+          <fieldset {% if visit.status != "scheduled" and visit.status != "confirmed" %}disabled{% endif %}>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.student_attended.id_for_label }}">
+                  {{ form.student_attended.label }}
+                </label>
+                <div class="form-check">
+                  {{ form.student_attended }}
+                  <label class="form-check-label" for="{{ form.student_attended.id_for_label }}">
+                    Student attended the visit
+                  </label>
+                </div>
+                {% if form.student_attended.errors %}
+                  <div class="text-danger small mt-1">{{ form.student_attended.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.industry_supervisor_present.id_for_label }}">
+                  {{ form.industry_supervisor_present.label }}
+                </label>
+                <div class="form-check">
+                  {{ form.industry_supervisor_present }}
+                  <label class="form-check-label" for="{{ form.industry_supervisor_present.id_for_label }}">
+                    Industry supervisor was present
+                  </label>
+                </div>
+                {% if form.industry_supervisor_present.errors %}
+                  <div class="text-danger small mt-1">{{ form.industry_supervisor_present.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.assessment.id_for_label }}">
+                  {{ form.assessment.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.assessment }}
+                {% if form.assessment.errors %}
+                  <div class="text-danger small mt-1">{{ form.assessment.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.summary.id_for_label }}">
+                  {{ form.summary.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.summary }}
+                <div class="form-text">Brief summary of what was observed and discussed.</div>
+                {% if form.summary.errors %}
+                  <div class="text-danger small mt-1">{{ form.summary.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.progress.id_for_label }}">
+                  {{ form.progress.label }}
+                </label>
+                {{ form.progress }}
+                {% if form.progress.errors %}
+                  <div class="text-danger small mt-1">{{ form.progress.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.challenges.id_for_label }}">
+                  {{ form.challenges.label }}
+                </label>
+                {{ form.challenges }}
+                {% if form.challenges.errors %}
+                  <div class="text-danger small mt-1">{{ form.challenges.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.recommendations.id_for_label }}">
+                  {{ form.recommendations.label }}
+                </label>
+                {{ form.recommendations }}
+                {% if form.recommendations.errors %}
+                  <div class="text-danger small mt-1">{{ form.recommendations.errors }}</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.attachment.id_for_label }}">
+                  {{ form.attachment.label }}
+                </label>
+                {{ form.attachment }}
+                <div class="form-text">Optional: photo, signed form, screenshot, or any evidence.</div>
+                {% if form.attachment.errors %}
+                  <div class="text-danger small mt-1">{{ form.attachment.errors }}</div>
+                {% endif %}
+
+                {% if report.attachment %}
+                  <div class="small mt-2">
+                    <i class="bi bi-paperclip me-1"></i>
+                    Current attachment:
+                    <a class="text-danger" href="{{ report.attachment.url }}" target="_blank" rel="noopener">
+                      View file
+                    </a>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+          </fieldset>
+
+          <!-- Buttons -->
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            {% if visit.status == "scheduled" or visit.status == "confirmed" %}
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-send-check me-1"></i> Submit Report
+              </button>
+              <a href="{% url 'supervisor_site_visits' %}" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+            {% else %}
+              <a href="{% url 'supervisor_site_visits' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="small text-muted mt-2">
+            {% if visit.status == "scheduled" or visit.status == "confirmed" %}
+              Submitting this report marks the visit as <b>Completed</b> and enables student acknowledgement.
+            {% else %}
+              This report is locked because the visit is <b>{{ visit.status|title }}</b>.
+            {% endif %}
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square me-1"></i> Report Checklist
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>State key observations clearly.</li>
+          <li>Highlight progress and gaps.</li>
+          <li>Give actionable recommendations.</li>
+          <li>Attach evidence if available.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-info-circle me-1"></i> VU Note
+      </div>
+      <div class="card-body small text-muted">
+        This report supports monitoring and final academic assessment.
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

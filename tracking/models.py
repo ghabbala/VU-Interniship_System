@@ -5,6 +5,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 from placements.models import Placement
+    
+from django.db.models import Case, When, Value, IntegerField
 
 class WeeklyLog(models.Model):
     STATUS = [
@@ -66,7 +68,7 @@ class WeeklyLog(models.Model):
 
     def __str__(self):
         return f"{self.placement} - Week {self.week_no} ({self.status})"
-    
+
 
 class WeeklyLogEntry(models.Model):
     DAYS = [
@@ -89,29 +91,100 @@ class WeeklyLogEntry(models.Model):
 
     class Meta:
         unique_together = [("weekly_log", "day")]
-        ordering = ["day"]
+
+    @staticmethod
+    def day_order_case():
+        return Case(
+            When(day="mon", then=Value(1)),
+            When(day="tue", then=Value(2)),
+            When(day="wed", then=Value(3)),
+            When(day="thu", then=Value(4)),
+            When(day="fri", then=Value(5)),
+            default=Value(99),
+            output_field=IntegerField(),
+        )
 
     def __str__(self):
         return f"{self.get_day_display()} — Week {self.weekly_log.week_no}"
-
-
+    
 
 class SiteVisit(models.Model):
-    placement = models.ForeignKey("placements.Placement", on_delete=models.CASCADE, related_name="site_visits")
-    supervisor = models.ForeignKey("accounts.StaffProfile", on_delete=models.PROTECT)
+    VISIT_TYPE = [
+        ("physical", "Physical"),
+        ("zoom", "Virtual (Zoom)"),
+        ("gmeet", "Virtual (Google Meet)"),
+        ("other", "Virtual (Other)"),
+    ]
 
-    visit_date = models.DateField()
-    findings = models.TextField()
-    recommendations = models.TextField(blank=True)
-    attachment = models.FileField(upload_to="tracking/site_visits/", null=True, blank=True)
+    STATUS = [
+        ("scheduled", "Scheduled"),
+        ("confirmed", "Confirmed"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    placement = models.ForeignKey("placements.Placement", on_delete=models.CASCADE, related_name="site_visits")
+    supervisor = models.ForeignKey("accounts.StaffProfile", on_delete=models.CASCADE, related_name="site_visits")
+
+    visit_type = models.CharField(max_length=12, choices=VISIT_TYPE)
+    meeting_link = models.URLField(blank=True)  # required for zoom/gmeet/other
+    scheduled_at = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField(default=60)
+
+    status = models.CharField(max_length=12, choices=STATUS, default="scheduled")
+
+    # optional participants / context
+    agenda = models.TextField(blank=True)
+
+    # what actually happened
+    actual_at = models.DateTimeField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-visit_date"]
+        ordering = ["-scheduled_at"]
 
     def __str__(self):
-        return f"{self.placement} visit on {self.visit_date}"
+        return f"{self.placement} — {self.get_visit_type_display()} ({self.get_status_display()})"
+
+    @property
+    def is_virtual(self):
+        return self.visit_type in ["zoom", "gmeet", "other"]
+
+
+class SiteVisitReport(models.Model):
+    ASSESSMENT = [
+        ("satisfactory", "Satisfactory"),
+        ("needs_improvement", "Needs improvement"),
+    ]
+
+    site_visit = models.OneToOneField(SiteVisit, on_delete=models.CASCADE, related_name="report")
+
+    summary = models.TextField()
+    progress = models.TextField(blank=True)
+    challenges = models.TextField(blank=True)
+    recommendations = models.TextField(blank=True)
+
+    student_attended = models.BooleanField(default=True)
+    industry_supervisor_present = models.BooleanField(default=False)
+
+    assessment = models.CharField(max_length=20, choices=ASSESSMENT, default="satisfactory")
+
+    attachment = models.FileField(upload_to="site_visits/", blank=True)  # photo/signed form/screenshot
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Report — {self.site_visit}"
+
+
+class SiteVisitAcknowledgement(models.Model):
+    site_visit = models.OneToOneField(SiteVisit, on_delete=models.CASCADE, related_name="ack")
+    student = models.ForeignKey("accounts.StudentProfile", on_delete=models.CASCADE)  # adjust to your student profile model
+    acknowledged_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Acknowledged — {self.site_visit}"
+
 
 
 

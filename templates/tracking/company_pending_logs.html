@@ -15,8 +15,7 @@
           </div>
         </div>
 
-        <!-- ✅ Added Approved Logs button -->
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
           <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success btn-sm">
             <i class="bi bi-check2-circle me-1"></i> Approved Logs
           </a>
@@ -41,10 +40,10 @@
                       {{ log.placement.request.student.reg_no }}
                       <span class="text-muted fw-normal">— Week {{ log.week_no }}</span>
                     </div>
-                    <div class="small text-muted mt-1">
-                      <i class="bi bi-calendar3 me-1"></i>
-                      {{ log.from_date }} → {{ log.to_date }}
-                      <span class="mx-2">•</span>
+
+                    <div class="small text-muted mt-1 d-flex flex-wrap align-items-center gap-2">
+                      <span><i class="bi bi-calendar3 me-1"></i>{{ log.from_date }} → {{ log.to_date }}</span>
+                      <span class="text-muted">•</span>
                       <span class="badge text-bg-primary">Submitted</span>
                     </div>
                   </div>
@@ -64,7 +63,7 @@
 
                 <hr class="my-3"/>
 
-                <!-- ✅ DAILY TABLE -->
+                <!-- DAILY TABLE (Mon → Fri order comes from the view Prefetch ordering) -->
                 <div class="mb-3">
                   <div class="fw-semibold mb-2">
                     <i class="bi bi-table me-1"></i> Daily Activities (Mon – Fri)
@@ -83,10 +82,8 @@
                         {% for e in log.entries.all %}
                           <tr>
                             <td class="fw-semibold">{{ e.get_day_display }}</td>
-
-                            {# ✅ pre-line keeps new lines but removes weird extra spaces #}
-                            <td style="white-space: pre-line; text-align:left;">{{ e.work_assignment }}</td>
-                            <td style="white-space: pre-line; text-align:left;">{{ e.activities_steps }}</td>
+                            <td style="white-space: pre-line; text-align:left;">{{ e.work_assignment|default:"—" }}</td>
+                            <td style="white-space: pre-line; text-align:left;">{{ e.activities_steps|default:"—" }}</td>
                           </tr>
                         {% empty %}
                           <tr>
@@ -98,6 +95,10 @@
                       </tbody>
                     </table>
                   </div>
+
+                  <div class="small text-muted mt-2">
+                    Days are shown in order (Mon → Fri).
+                  </div>
                 </div>
 
                 <!-- Remarks -->
@@ -106,8 +107,7 @@
                     <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
                       <i class="bi bi-exclamation-triangle"></i> <span>Challenges</span>
                     </div>
-
-                    <div class="remarks-text text-muted small" style="white-space: pre-line; text-align:left;">
+                    <div class="remarks-text text-muted small" style="white-space: pre-line;">
                       {{ log.challenges|default:"—" }}
                     </div>
                   </div>
@@ -116,8 +116,7 @@
                     <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
                       <i class="bi bi-lightbulb"></i> <span>Lessons Learnt</span>
                     </div>
-
-                    <div class="remarks-text text-muted small" style="white-space: pre-line; text-align:left;">
+                    <div class="remarks-text text-muted small" style="white-space: pre-line;">
                       {{ log.lessons|default:"—" }}
                     </div>
                   </div>
@@ -222,7 +221,6 @@
           <i class="bi bi-hourglass-split me-1"></i> Pending Logs
         </a>
 
-        <!-- ✅ Added Approved Logs link -->
         <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
           <i class="bi bi-check2-circle me-1"></i> Approved Logs
         </a>
@@ -236,7 +234,6 @@
 </div>
 
 <style>
-  /* Hard force left alignment in the remarks area */
   .company-remarks, .company-remarks * { text-align: left !important; }
   .company-remarks .remarks-text { width:100% !important; display:block !important; margin:0 !important; }
 </style>

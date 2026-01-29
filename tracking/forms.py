@@ -6,6 +6,8 @@ from .models import AcademicEvaluation
 from .models import StudentEvaluation
 
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from .models import SiteVisit, SiteVisitReport
 
 
 MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB
@@ -85,18 +87,6 @@ WeeklyLogEntryFormSet = inlineformset_factory(
     extra=0,
     can_delete=False,
 )
-
-
-class SiteVisitForm(forms.ModelForm):
-    class Meta:
-        model = SiteVisit
-        fields = ["visit_date", "findings", "recommendations", "attachment"]
-        widgets = {
-            "visit_date": forms.DateInput(attrs={"type": "date", "class": "a4-input"}),
-            "findings": forms.Textarea(attrs={"rows": 4, "class": "a4-textarea"}),
-            "recommendations": forms.Textarea(attrs={"rows": 4, "class": "a4-textarea"}),
-            "attachment": forms.ClearableFileInput(attrs={"class": "a4-file"}),
-        }
 
 
 from .models import IndustryEvaluation
@@ -240,7 +230,6 @@ class AcademicEvaluationForm(forms.ModelForm):
 
 
 
-
 class StudentEvaluationForm(forms.ModelForm):
     class Meta:
         model = StudentEvaluation
@@ -266,4 +255,64 @@ class StudentEvaluationForm(forms.ModelForm):
             "q8": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "q9": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "q10": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+
+# --- SITE VISITS (NEW STRUCTURE) ---
+from django import forms
+from django.utils import timezone
+from .models import SiteVisit, SiteVisitReport
+
+
+class SiteVisitScheduleForm(forms.ModelForm):
+    class Meta:
+        model = SiteVisit
+        fields = ["visit_type", "meeting_link", "scheduled_at", "duration_minutes", "agenda"]
+        widgets = {
+            "scheduled_at": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
+            "duration_minutes": forms.NumberInput(attrs={"class": "form-control", "min": 15, "max": 300}),
+            "agenda": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "meeting_link": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
+            "visit_type": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        visit_type = cleaned.get("visit_type")
+        meeting_link = (cleaned.get("meeting_link") or "").strip()
+        scheduled_at = cleaned.get("scheduled_at")
+
+        if scheduled_at and scheduled_at < timezone.now():
+            self.add_error("scheduled_at", "Scheduled date/time must be in the future.")
+
+        if visit_type in ["zoom", "gmeet", "other"] and not meeting_link:
+            self.add_error("meeting_link", "Meeting link is required for virtual visits.")
+
+        if visit_type == "physical":
+            cleaned["meeting_link"] = ""
+
+        return cleaned
+
+
+class SiteVisitReportForm(forms.ModelForm):
+    class Meta:
+        model = SiteVisitReport
+        fields = [
+            "student_attended",
+            "industry_supervisor_present",
+            "assessment",
+            "summary",
+            "progress",
+            "challenges",
+            "recommendations",
+            "attachment",
+        ]
+        widgets = {
+            "assessment": forms.Select(attrs={"class": "form-select"}),
+            "summary": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "progress": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "challenges": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "recommendations": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "student_attended": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "industry_supervisor_present": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }

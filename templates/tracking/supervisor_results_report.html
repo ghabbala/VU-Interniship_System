@@ -7,10 +7,10 @@
     <div class="d-flex flex-column flex-md-row justify-content-between gap-2 align-items-start align-items-md-center">
       <div>
         <div class="fw-bold fs-5">Internship Results Report</div>
-        <div class="text-muted small">Average = (Industry /100 + Academic /100) ÷ 2</div>
+       
       </div>
 
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap align-items-center">
         <a class="btn btn-outline-secondary btn-sm" href="{% url 'supervisor_students' %}">
           <i class="bi bi-people me-1"></i> Back to Students
         </a>
@@ -19,19 +19,40 @@
           <i class="bi bi-filetype-pdf me-1"></i> Download PDF
         </a>
 
-        <form method="post" action="{% url 'supervisor_submit_results_report' %}">
-          {% csrf_token %}
-          <button class="btn btn-success btn-sm" type="submit">
-            <i class="bi bi-send-check me-1"></i> Submit to Coordinator
-          </button>
-        </form>
+        {# ✅ Hide Submit button if already submitted #}
+        {% if latest_report and latest_report.status == "submitted" %}
+          <span class="badge text-bg-success">
+            <i class="bi bi-check2-circle me-1"></i> Submitted to Coordinator
+          </span>
+          {% if latest_report.submitted_at %}
+            <span class="small text-muted">
+              {{ latest_report.submitted_at|date:"Y-m-d H:i" }}
+            </span>
+          {% endif %}
+        {% else %}
+          <form method="post" action="{% url 'supervisor_submit_results_report' %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm" type="submit">
+              <i class="bi bi-send-check me-1"></i> Submit to Coordinator
+            </button>
+          </form>
+        {% endif %}
       </div>
     </div>
 
     <div class="card mt-3">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span class="fw-bold"><i class="bi bi-clipboard-data me-1"></i> Results</span>
-        <span class="badge text-bg-light border">{{ count }} students</span>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge text-bg-light border">{{ count }} students</span>
+
+          {# Optional: show status badge in header too #}
+          {% if latest_report and latest_report.status == "submitted" %}
+            <span class="badge text-bg-success">Submitted</span>
+          {% else %}
+            
+          {% endif %}
+        </div>
       </div>
 
       <div class="card-body">

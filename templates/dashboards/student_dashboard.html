@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block title %}Student Dashboard — Victoria University{% endblock %}
 
 {% block content %}
@@ -65,22 +64,18 @@
 
         <!-- Quick actions -->
         <div class="row g-3">
-          <!-- Submit Request -->
           <div class="col-12 col-md-6">
             <a href="{% url 'submit_request' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100 hover-shadow">
+              <div class="p-3 border rounded-4 h-100">
                 <div class="d-flex align-items-center gap-2 mb-1">
                   <i class="bi bi-file-earmark-text text-danger"></i>
                   <div class="fw-bold">Submit Internship Request</div>
                 </div>
-                <div class="text-muted small">
-                  Fill your internship request form and submit to the coordinator.
-                </div>
+                <div class="text-muted small">Fill your internship request form and submit to the coordinator.</div>
               </div>
             </a>
           </div>
 
-          <!-- Upload Acceptance -->
           <div class="col-12 col-md-6">
             <a href="{% url 'student_upload_acceptance' %}" class="text-decoration-none">
               <div class="p-3 border rounded-4 h-100">
@@ -88,14 +83,11 @@
                   <i class="bi bi-cloud-upload text-danger"></i>
                   <div class="fw-bold">Upload Acceptance Letter</div>
                 </div>
-                <div class="text-muted small">
-                  After receiving the company acceptance letter, upload it here.
-                </div>
+                <div class="text-muted small">After receiving the company acceptance letter, upload it here.</div>
               </div>
             </a>
           </div>
 
-          <!-- Weekly Logs -->
           <div class="col-12 col-md-6">
             <a href="{% url 'student_logs' %}" class="text-decoration-none">
               <div class="p-3 border rounded-4 h-100">
@@ -103,14 +95,11 @@
                   <i class="bi bi-journal-check text-danger"></i>
                   <div class="fw-bold">Weekly Logs</div>
                 </div>
-                <div class="text-muted small">
-                  View your weekly logs and track approvals.
-                </div>
+                <div class="text-muted small">View your weekly logs and track approvals.</div>
               </div>
             </a>
           </div>
 
-          <!-- Add New Log -->
           <div class="col-12 col-md-6">
             <a href="{% url 'student_log_new' %}" class="text-decoration-none">
               <div class="p-3 border rounded-4 h-100">
@@ -118,11 +107,43 @@
                   <i class="bi bi-plus-circle text-danger"></i>
                   <div class="fw-bold">Add New Weekly Log</div>
                 </div>
-                <div class="text-muted small">
-                  Create a new weekly log entry, then submit it for approval.
-                </div>
+                <div class="text-muted small">Create a new weekly log entry, then submit it for approval.</div>
               </div>
             </a>
+          </div>
+
+          <!-- ✅ NEW: SITE VISITS -->
+          <div class="col-12">
+            <div class="p-3 border rounded-4 bg-light">
+              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                <div>
+                  <div class="fw-bold mb-1">
+                    <i class="bi bi-geo-alt text-danger me-1"></i> Site Visits
+                  </div>
+                  <div class="small text-muted">
+                    Your university supervisor will schedule a physical or virtual visit. You may be required to confirm attendance.
+                  </div>
+
+                  {% if site_visit_next %}
+                    <div class="small mt-2">
+                      <span class="badge text-bg-info">
+                        Next: {{ site_visit_next.scheduled_at|date:"Y-m-d H:i" }}
+                      </span>
+                      {% if site_visit_next.visit_type %}
+                        <span class="badge text-bg-light border ms-1">{{ site_visit_next.visit_type|title }}</span>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="d-flex gap-2">
+                  {# Replace with your real student site visits url name #}
+                  <a class="btn btn-outline-danger" href="{% url 'student_site_visits' %}">
+                    <i class="bi bi-calendar2-check me-1"></i> View Visits
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Student Evaluation Form -->
@@ -140,10 +161,7 @@
 
                 <div>
                   {% if placement and placement.status == "active" %}
-                    <a class="btn btn-outline-primary"
-                       href="{% url 'student_evaluation_form' %}">
-                      Fill Form
-                    </a>
+                    <a class="btn btn-outline-primary" href="{% url 'student_evaluation_form' %}">Fill Form</a>
                   {% else %}
                     <button class="btn btn-outline-secondary" disabled>
                       <i class="bi bi-lock me-1"></i> Requires Active Placement
@@ -167,7 +185,7 @@
             <i class="bi bi-info-circle text-danger fs-5"></i>
             <div class="small text-muted">
               <div class="fw-semibold text-dark mb-1">How approvals work</div>
-              Your industry supervisor approves your logs first. After approval, your university supervisor can review and plan site visits.
+              Industry supervisor approves logs first. Then university supervisor schedules site visit and completes academic evaluation.
             </div>
           </div>
         </div>
@@ -178,7 +196,6 @@
 
   <!-- SIDEBAR -->
   <div class="col-12 col-lg-4">
-    <!-- Summary -->
     <div class="card">
       <div class="card-header fw-bold">
         <i class="bi bi-clipboard-data me-1"></i> Summary
@@ -201,13 +218,13 @@
         </div>
 
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="text-muted">Acceptance Letter</span>
-          <span class="badge text-bg-light border">Check upload</span>
+          <span class="text-muted">Weekly Logs</span>
+          <a class="badge text-bg-primary text-decoration-none" href="{% url 'student_logs' %}">View</a>
         </div>
 
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="text-muted">Weekly Logs</span>
-          <a class="badge text-bg-primary text-decoration-none" href="{% url 'student_logs' %}">View</a>
+          <span class="text-muted">Site Visits</span>
+          <a class="badge text-bg-danger text-decoration-none" href="{% url 'student_site_visits' %}">Open</a>
         </div>
 
         <div class="d-flex align-items-center justify-content-between">
@@ -222,27 +239,10 @@
         <hr class="my-3"/>
 
         <div class="small text-muted">
-          Tip: Submit your weekly logs on time to avoid delays in approvals.
+          Tip: Confirm a scheduled visit quickly so the supervisor can complete the visit report.
         </div>
       </div>
     </div>
-
-    <!-- Next steps -->
-    <div class="card mt-4">
-      <div class="card-header fw-bold">
-        <i class="bi bi-lightbulb me-1"></i> Next Steps
-      </div>
-      <div class="card-body">
-        <ol class="small mb-0">
-          <li>Submit internship request.</li>
-          <li>Upload your company acceptance letter.</li>
-          <li>Create weekly logs and submit for approval.</li>
-          <li>Follow up when supervisor is allocated.</li>
-          <li>Complete student evaluation form at the end.</li>
-        </ol>
-      </div>
-    </div>
-
   </div>
 </div>
 {% endblock %}

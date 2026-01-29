@@ -2,8 +2,20 @@
   --vu-red: #8B0000;
   --vu-red-2: #B30000;
   --vu-dark: #111827;
+
   --vu-bg: #f6f7fb;
   --vu-card: #ffffff;
+
+  --vu-border: rgba(0,0,0,.08);
+  --vu-muted: #6b7280;
+
+  --vu-radius: 16px;
+  --vu-radius-sm: 12px;
+
+  --vu-shadow: 0 12px 30px rgba(0,0,0,.08);
+  --vu-shadow-hover: 0 14px 34px rgba(0,0,0,.10);
+
+  --vu-soft: rgba(179,0,0,.08);
 }
 
 /* ================= GLOBAL ================= */
@@ -13,42 +25,182 @@
     radial-gradient(1200px 600px at 15% 10%, rgba(179,0,0,.10), transparent 60%),
     radial-gradient(900px 500px at 85% 80%, rgba(179,0,0,.08), transparent 55%),
     var(--vu-bg);
+  color: var(--vu-dark);
+}
+
+a { text-decoration: none; }
+a:hover { text-decoration: none; }
+
+:focus-visible {
+  outline: 3px solid rgba(179,0,0,.35);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* nicer container spacing for dashboards */
+.vu-page {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* ================= TOP BAR ================= */
 .vu-topbar {
   background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
   box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+
+.vu-topbar .navbar-brand {
+  letter-spacing: .2px;
 }
 
 .vu-badge {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border-radius: 12px;
   background: rgba(255,255,255,.18);
   border: 1px solid rgba(255,255,255,.25);
-  font-weight: 800;
-  letter-spacing: .3px;
+  font-weight: 900;
+  letter-spacing: .4px;
+}
+
+/* small pill used for user display on navbar */
+.vu-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .38rem .65rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.18);
+  color: #fff;
+  font-size: .85rem;
+  white-space: nowrap;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255,255,255,.92);
+  font-weight: 600;
+}
+.navbar-dark .navbar-nav .nav-link:hover {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ================= CARDS ================= */
 .card {
   border: 0;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+  border-radius: var(--vu-radius);
+  box-shadow: var(--vu-shadow);
 }
 
 .card-header {
   background: transparent;
   border-bottom: 1px solid rgba(0,0,0,.06);
+  font-weight: 800;
+}
+
+/* a reusable section panel */
+.vu-section {
+  background: var(--vu-card);
+  border: 1px solid var(--vu-border);
+  border-radius: var(--vu-radius);
+  box-shadow: var(--vu-shadow);
+}
+.vu-section .vu-section-head {
+  padding: .95rem 1rem;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.vu-section .vu-section-title {
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.vu-section .vu-section-body {
+  padding: 1rem;
+}
+
+/* KPI cards */
+.vu-kpi {
+  background: var(--vu-card);
+  border: 1px solid rgba(179,0,0,.12);
+  border-radius: var(--vu-radius);
+  padding: 1rem;
+  height: 100%;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.vu-kpi:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--vu-shadow-hover);
+  border-color: rgba(179,0,0,.22);
+}
+.vu-kpi .label { color: var(--vu-muted); font-size: .82rem; }
+.vu-kpi .value { font-weight: 900; font-size: 1.25rem; line-height: 1.1; }
+.vu-kpi .icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: rgba(179,0,0,.08);
+  border: 1px solid rgba(179,0,0,.14);
+  color: var(--vu-red-2);
+  flex: 0 0 auto;
+}
+
+/* empty state */
+.vu-empty {
+  background: #f8f9fa;
+  border: 1px dashed rgba(0,0,0,.16);
+  border-radius: var(--vu-radius);
+  padding: 1rem;
+}
+
+/* chips / badges */
+.vu-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .4rem .7rem;
+  border-radius: 999px;
+  background: rgba(179,0,0,.08);
+  border: 1px solid rgba(179,0,0,.14);
+  color: var(--vu-dark);
   font-weight: 700;
+  font-size: .86rem;
 }
 
 /* ================= BUTTONS ================= */
 .btn {
-  border-radius: 12px;
+  border-radius: var(--vu-radius-sm);
+}
+
+.btn-danger {
+  background: var(--vu-red-2);
+  border-color: var(--vu-red-2);
+}
+.btn-danger:hover,
+.btn-danger:focus {
+  background: var(--vu-red);
+  border-color: var(--vu-red);
+}
+
+.btn-outline-danger {
+  border-color: rgba(179,0,0,.45);
+  color: var(--vu-red-2);
+}
+.btn-outline-danger:hover {
+  background: var(--vu-red-2);
+  border-color: var(--vu-red-2);
+  color: #fff;
 }
 
 .btn-outline-light:hover {
@@ -57,13 +209,37 @@
 }
 
 /* ================= TABLES ================= */
+.table thead th {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #6c757d;
+}
 .table-hover tbody tr:hover {
   background: rgba(179,0,0,.03);
+}
+.table td, .table th { vertical-align: middle; }
+
+/* nicer badges inside tables */
+.table .badge {
+  font-weight: 700;
+}
+
+/* ================= ALERTS / MESSAGES ================= */
+.alert {
+  border-radius: var(--vu-radius);
+}
+
+/* optional: make alerts look VU */
+.vu-alert {
+  border: 1px solid rgba(0,0,0,.08);
+  border-left: 5px solid var(--vu-red-2);
 }
 
 /* ================= FOOTER ================= */
 .vu-footer {
   background: linear-gradient(135deg, #141414, #0b0f1a);
+  border-top: 1px solid rgba(255,255,255,.08);
 }
 
 /* ================= REMARK ALIGNMENT ================= */
@@ -80,10 +256,13 @@
   margin: 0 !important;
 }
 
-/* ================= CARD HOVER ================= */
-a .border.rounded-4:hover {
+/* ================= CARD HOVER FOR LINK CARDS ================= */
+/* safer selector: only applies to cards you explicitly mark */
+.vu-linkcard {
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.vu-linkcard:hover {
   border-color: rgba(179,0,0,.35) !important;
   box-shadow: 0 12px 25px rgba(0,0,0,.06);
   transform: translateY(-1px);
-  transition: .15s ease;
 }

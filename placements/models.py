@@ -1,6 +1,9 @@
 from django.db import models
 from django.utils import timezone
 from companies.models import Company, CompanyContact
+from django.conf import settings
+from companies.models import Company
+
 
 class InternshipPeriod(models.Model):
     name = models.CharField(max_length=120)  # e.g. "May–Aug 2026"
@@ -11,6 +14,8 @@ class InternshipPeriod(models.Model):
 
     def __str__(self):
         return self.name
+
+
 
 
 class InternshipRequest(models.Model):
@@ -24,22 +29,29 @@ class InternshipRequest(models.Model):
         ("draft", "Draft"),
         ("submitted", "Submitted"),
         ("under_review", "Under review"),
+
+        # ✅ NEW: generated but not yet approved/released to student
+        ("recommendation_pending", "Recommendation pending approval"),
+
         ("recommended", "Recommendation issued"),
         ("acceptance_uploaded", "Acceptance uploaded"),
         ("acceptance_verified", "Acceptance verified"),
         ("rejected", "Rejected"),
         ("returned_for_acceptance", "Returned: Upload Acceptance Letter"),
-
     ]
 
-    student = models.ForeignKey("accounts.StudentProfile", on_delete=models.CASCADE, related_name="requests")
+    student = models.ForeignKey(
+        "accounts.StudentProfile",
+        on_delete=models.CASCADE,
+        related_name="requests"
+    )
     period = models.ForeignKey(InternshipPeriod, on_delete=models.PROTECT)
     request_source = models.CharField(max_length=30, choices=SOURCE)
 
     preferred_company = models.ForeignKey(Company, null=True, blank=True, on_delete=models.SET_NULL)
+
     coordinator_comment = models.TextField(blank=True)
     coordinator_commented_at = models.DateTimeField(null=True, blank=True)
-
 
     # proposed company details
     proposed_company_name = models.CharField(max_length=200, blank=True)
@@ -57,9 +69,46 @@ class InternshipRequest(models.Model):
     status = models.CharField(max_length=40, choices=STATUS, default="draft")
     submitted_at = models.DateTimeField(null=True, blank=True)
 
-    reviewed_by = models.ForeignKey("accounts.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_requests")
+    reviewed_by = models.ForeignKey(
+        "accounts.User",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_requests"
+    )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     review_notes = models.TextField(blank=True)
+
+    # ==========================
+    # Recommendation letter
+    # ==========================
+    recommendation_letter = models.FileField(
+        upload_to="requests/recommendation_letters/",
+        null=True, blank=True
+    )
+    recommendation_issued_at = models.DateTimeField(null=True, blank=True)
+
+    # ✅ NEW: approval gate (student can only access when True)
+    recommendation_approved = models.BooleanField(default=False)
+    recommendation_approved_at = models.DateTimeField(null=True, blank=True)
+    recommendation_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_recommendation_requests"
+    )
+
+    # ==========================
+    # Acceptance letter
+    # ==========================
+    acceptance_letter = models.FileField(
+        upload_to="requests/acceptance_letters/",
+        null=True, blank=True
+    )
+    acceptance_uploaded_at = models.DateTimeField(null=True, blank=True)
+
+    # Coordinator verifies acceptance
+    acceptance_verified = models.BooleanField(default=False)
+    acceptance_verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = [("student", "period")]  # one request per period
@@ -67,27 +116,10 @@ class InternshipRequest(models.Model):
     def submit(self):
         self.status = "submitted"
         self.submitted_at = timezone.now()
-        self.save()
+        self.save(update_fields=["status", "submitted_at"])
 
     def __str__(self):
         return f"{self.student.reg_no} - {self.period.name} ({self.status})"
-    
-
-        # Coordinator issues recommendation letter
-    recommendation_letter = models.FileField(
-        upload_to="requests/recommendation_letters/", null=True, blank=True
-    )
-    recommendation_issued_at = models.DateTimeField(null=True, blank=True)
-
-    # Student uploads acceptance letter
-    acceptance_letter = models.FileField(
-        upload_to="requests/acceptance_letters/", null=True, blank=True
-    )
-    acceptance_uploaded_at = models.DateTimeField(null=True, blank=True)
-
-    # Coordinator verifies acceptance
-    acceptance_verified = models.BooleanField(default=False)
-    acceptance_verified_at = models.DateTimeField(null=True, blank=True)
 
 
 

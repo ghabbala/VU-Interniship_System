@@ -27,7 +27,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    username = None  # remove username
+    username = None
     email = models.EmailField(_("email address"), unique=True)
 
     USERNAME_FIELD = "email"
@@ -35,20 +35,36 @@ class User(AbstractUser):
 
     objects = UserManager()
 
+    class Meta:
+        permissions = [
+            ("role_university_supervisor", "Role: VU_UniversitySupervisor"),
+            ("role_industry_supervisor", "Role: IndustrySupervisor"),
+            ("role_coordinator", "Role: VU_Coordinator"),
+        ]
+
     @property
     def display_name(self):
-        full = self.get_full_name().strip()  # uses first_name + last_name
+        full = self.get_full_name().strip()
         return full if full else self.email
 
     def __str__(self):
         return self.display_name
-    
+
+
 
 class StudentProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="student_profile")
+    user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="student_profile")
     reg_no = models.CharField(max_length=50, unique=True)
     phone = models.CharField(max_length=30, blank=True)
-    
+
+    # ✅ NEW: link to academics.Program
+    program = models.ForeignKey(
+        "academics.Program",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="students",
+    )
 
     def __str__(self):
         return f"{self.reg_no} - {self.user.email}"
@@ -58,6 +74,7 @@ class StaffProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="staff_profile")
     staff_no = models.CharField(max_length=50, unique=True)
     department = models.CharField(max_length=120, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
 
     def __str__(self):
         return f"{self.staff_no} - {self.user.email}"

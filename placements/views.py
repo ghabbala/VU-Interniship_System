@@ -18,10 +18,14 @@ from .models import InternshipRequest
 from django.http import FileResponse, Http404, HttpResponseForbidden
 
 from django.core.files.storage import default_storage
+from tracking.utils.recommendation_letter import generate_recommendation_letter_pdf
+
 
 
 def is_coordinator(user):
     return user.is_superuser or user.groups.filter(name__in=["Coordinator", "Admin"]).exists()
+
+
 
 @login_required
 def my_request(request):
@@ -53,18 +57,45 @@ def my_request(request):
             action = request.POST.get("action", "save")
 
             if action == "submit":
-                # Prevent submitting if already submitted onward
-                if req.status in ["submitted", "under_review", "recommended", "acceptance_uploaded", "acceptance_verified"]:
+                # Prevent re-submitting if already moved onward
+                if req.status in [
+                    "submitted",
+                    "under_review",
+                    "recommendation_pending",
+                    "recommended",
+                    "acceptance_uploaded",
+                    "acceptance_verified",
+                ]:
                     req.save()
                     return redirect("my_request")
 
                 # Must pick or propose a company before submitting
                 if not req.preferred_company and not (req.proposed_company_name or "").strip():
                     form.add_error(None, "Please select an approved company or propose a company before submitting.")
-                    return render(request, "placements/my_request.html", {"form": form, "req": req, "period": period})
+                    return render(
+                        request,
+                        "placements/my_request.html",
+                        {"form": form, "req": req, "period": period},
+                    )
 
+                # ✅ mark submitted
                 req.status = "submitted"
-                req.submitted_at = timezone.now()  # make sure this field exists in model
+                req.submitted_at = timezone.now()
+
+                # ✅ auto-generate recommendation letter as DRAFT (not issued to student)
+                if not req.recommendation_letter:
+                    # coordinator_user can be None; function will handle it if you updated it
+                    filename, content = generate_recommendation_letter_pdf(req, coordinator_user=None)
+                    req.recommendation_letter.save(filename, content, save=False)
+
+                # ✅ keep locked until coordinator approves
+                req.recommendation_approved = False
+                req.recommendation_approved_at = None
+                req.recommendation_approved_by = None
+
+                # ✅ move to "pending approval" state (clearer than staying "submitted")
+                req.status = "recommendation_pending"
+
             else:
                 # Save draft
                 if req.status not in ["returned_for_edit"]:
@@ -115,7 +146,13 @@ def coordinator_queue(request):
     if not is_coordinator(request.user):
         return redirect("dashboard")
 
-    qs = InternshipRequest.objects.filter(status__in=["submitted", "under_review"]).order_by("-submitted_at")
+    qs = (
+        InternshipRequest.objects
+        .select_related("student", "student__user", "preferred_company", "period")
+        .filter(status__in=["submitted", "under_review", "recommendation_pending"])
+        .order_by("-submitted_at")
+    )
+
     return render(request, "placements/coordinator_queue.html", {"requests": qs})
 
 @login_required
@@ -174,6 +211,8 @@ def coordinator_review(request, request_id):
 
     return render(request, "placements/coordinator_review.html", {"req": req})
 
+
+
 @login_required
 def coordinator_issue_recommendation(request, request_id):
     if not is_coordinator(request.user):
@@ -182,32 +221,67 @@ def coordinator_issue_recommendation(request, request_id):
     req = get_object_or_404(InternshipRequest, id=request_id)
 
     if request.method == "POST":
-        form = RecommendationLetterForm(request.POST, request.FILES, instance=req)
-        if form.is_valid():
-            # If proposed company, ensure it exists (approved or pending based on your policy)
-            if not req.preferred_company and req.proposed_company_name.strip():
-                company, _ = Company.objects.get_or_create(
-                    name=req.proposed_company_name.strip(),
-                    defaults={
-                        "district": req.proposed_company_district,
-                        "address": req.proposed_company_address,
-                        "status": "approved",  # change to pending_verification if you want strict vetting
-                    },
-                )
-                req.preferred_company = company
+        action = request.POST.get("action", "").strip()
 
-            form.save()
-            req.status = "recommended"
+        # -----------------------------
+        # 1) Generate / Regenerate PDF
+        # -----------------------------
+        if action in ["generate", "regenerate"]:
+            # Always regenerate so stamp/signature updates reflect in the PDF
+            filename, content = generate_recommendation_letter_pdf(req, request.user)
+
+            # Save/overwrite file (new filename each time)
+            req.recommendation_letter.save(filename, content, save=False)
+
+            # Generation does NOT mean issued to student
+            req.recommendation_approved = False
+            req.recommendation_approved_at = None
+            req.recommendation_approved_by = None
+
+            # Optional: keep it pending until approved
+            if req.status not in ["acceptance_uploaded", "acceptance_verified", "recommended"]:
+                req.status = "recommendation_pending"
+
+            req.save(update_fields=[
+                "recommendation_letter",
+                "recommendation_approved",
+                "recommendation_approved_at",
+                "recommendation_approved_by",
+                "status",
+            ])
+            return redirect("coordinator_issue_recommendation", request_id=req.id)
+
+        # -----------------------------
+        # 2) Approve / Issue to student
+        # -----------------------------
+        if action == "approve":
+            # Ensure letter exists; if not, generate it first
+            if not req.recommendation_letter:
+                filename, content = generate_recommendation_letter_pdf(req, request.user)
+                req.recommendation_letter.save(filename, content, save=False)
+
+            req.recommendation_approved = True
+            req.recommendation_approved_at = timezone.now()
+            req.recommendation_approved_by = request.user
+
+            # "Issued" time (when it becomes visible to student)
             req.recommendation_issued_at = timezone.now()
-            req.reviewed_by = request.user
-            req.reviewed_at = timezone.now()
-            req.save()
 
-            return redirect("coordinator_queue")
-    else:
-        form = RecommendationLetterForm(instance=req)
+            # Update status
+            req.status = "recommended"
 
-    return render(request, "placements/coordinator_issue_recommendation.html", {"req": req, "form": form})
+            req.save(update_fields=[
+                "recommendation_letter",
+                "recommendation_approved",
+                "recommendation_approved_at",
+                "recommendation_approved_by",
+                "recommendation_issued_at",
+                "status",
+            ])
+            return redirect("coordinator_issue_recommendation", request_id=req.id)
+
+    return render(request, "placements/coordinator_issue_recommendation.html", {"req": req})
+
 
 
 
@@ -337,6 +411,10 @@ def download_recommendation_letter(request, request_id):
 
     if not req.recommendation_letter:
         raise Http404("No recommendation letter found.")
+
+    # ✅ NEW: Only allow download after coordinator approves
+    if not getattr(req, "recommendation_approved", False):
+        return HttpResponseForbidden("Recommendation letter is awaiting coordinator approval.")
 
     return FileResponse(
         req.recommendation_letter.open("rb"),

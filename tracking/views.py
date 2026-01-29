@@ -14,6 +14,8 @@ from .forms import StudentEvaluationForm
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+from django.db.models import OuterRef, Subquery
+
 
 from placements.models import Placement
 from .models import (
@@ -27,7 +29,6 @@ from .models import (
 from .forms import (
     WeeklyLogForm,
     WeeklyLogEntryFormSet,
-    SiteVisitForm,
     IndustryEvaluationForm,
     AcademicEvaluationForm,
     StudentEvaluation,
@@ -50,20 +51,40 @@ from tracking.models import (
 
 from django.db.models import Count, Q
 from accounts.models import StaffProfile
+#from .utils import generate_recommendation_letter_pdf
 
-# -------------------------------------------------------------------
-# Helpers / role checks (SINGLE SOURCE OF TRUTH)
-# -------------------------------------------------------------------
+from django.db.models import (
+    Q, OuterRef, Subquery, F, Value,
+    IntegerField, FloatField, ExpressionWrapper,
+    Case, When
+)
+from django.db.models.functions import Coalesce, Cast
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from .models import Placement, SiteVisit, SiteVisitReport, SiteVisitAcknowledgement
+from .forms import SiteVisitScheduleForm, SiteVisitReportForm
+
+
+
 def is_university_supervisor(user):
-    return user.is_superuser or user.groups.filter(name__in=["UniversitySupervisor", "Admin"]).exists()
-
+    return user.is_authenticated and (user.is_superuser or user.has_perm("accounts.role_university_supervisor"))
 
 def is_industry_supervisor(user):
-    return user.is_superuser or user.groups.filter(name__in=["IndustrySupervisor", "Admin"]).exists()
-
+    return user.is_authenticated and (user.is_superuser or user.has_perm("accounts.role_industry_supervisor"))
 
 def is_coordinator(user):
-    return user.is_superuser or user.groups.filter(name__in=["Coordinator", "Admin"]).exists()
+    return user.is_authenticated and (user.is_superuser or user.has_perm("accounts.role_coordinator"))
+
+
+
+def _get_staff_profile(user):
+    # ✅ correct related_name="staff_profile"
+    return getattr(user, "staff_profile", None)
 
 
 def _get_student_active_placement(user):
@@ -83,9 +104,11 @@ def _get_student_latest_placement(user):
         return None
     student = user.student_profile
     return (
-        Placement.objects
-        .filter(request__student=student)
-        .select_related("company", "request", "request__student", "request__student__user", "university_supervisor")
+        Placement.objects.filter(request__student=student)
+        .select_related(
+            "company", "request", "request__student", "request__student__user",
+            "university_supervisor", "university_supervisor__user"
+        )
         .order_by("-created_at")
         .first()
     )
@@ -95,10 +118,16 @@ def _get_latest_report(user):
     return (
         SupervisorResultsReport.objects
         .filter(supervisor_user=user)
-        .order_by("-submitted_at", "-created_at")
+        .annotate(
+            submitted_rank=Case(
+                When(status="submitted", then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("-submitted_rank", "-submitted_at", "-created_at")
         .first()
     )
-
 
 DAYS = [("mon", "Monday"), ("tue", "Tuesday"), ("wed", "Wednesday"), ("thu", "Thursday"), ("fri", "Friday")]
 
@@ -110,6 +139,83 @@ DAY_ORDER = Case(
     When(day="fri", then=4),
     output_field=IntegerField(),
 )
+
+# -------------------------------------------------------------------
+# Small helpers
+# -------------------------------------------------------------------
+def _safe_int(v):
+    try:
+        return int(v or 0)
+    except Exception:
+        return 0
+
+
+def _get_attr(obj, name, default=None):
+    if not obj:
+        return default
+    return getattr(obj, name, default)
+
+
+def _build_rows(obj, items):
+    """
+    items = [(field_mark, field_comment, "Label"), ...]
+    Returns (rows, total)
+    """
+    rows = []
+    total = 0
+    for mark_field, comment_field, label in items:
+        mark = _safe_int(_get_attr(obj, mark_field, 0))
+        comment = (_get_attr(obj, comment_field, "") or "").strip()
+        total += mark
+        rows.append({"field": mark_field, "label": label, "mark": mark, "comment": comment})
+    return rows, total
+
+def _extract_industry_rows_and_total(industry_eval):
+    """
+    Based on your IndustryEvaluation fields from the error:
+    attendance, punctuality, dependability, behaviour, communication_skills,
+    culture_fit, flexibility, interpersonal_relations, knowledge_and_learning,
+    ethical_awareness, dress_code, basic_work_expectations, work_productivity
+    """
+    IND_ITEMS = [
+        ("attendance", "attendance_comment", "Attendance"),
+        ("punctuality", "punctuality_comment", "Punctuality / Time Management"),
+        ("dependability", "dependability_comment", "Dependability"),
+        ("behaviour", "behaviour_comment", "Behaviour / Conduct"),
+        ("communication_skills", "communication_skills_comment", "Communication Skills"),
+        ("interpersonal_relations", "interpersonal_relations_comment", "Interpersonal Relations"),
+        ("knowledge_and_learning", "knowledge_and_learning_comment", "Knowledge & Learning"),
+        ("basic_work_expectations", "basic_work_expectations_comment", "Basic Work Expectations"),
+        ("work_productivity", "work_productivity_comment", "Work Productivity"),
+        ("culture_fit", "culture_fit_comment", "Culture Fit"),
+        ("flexibility", "flexibility_comment", "Flexibility / Adaptability"),
+        ("ethical_awareness", "ethical_awareness_comment", "Ethical Awareness"),
+        ("dress_code", "dress_code_comment", "Dress Code / Professionalism"),
+    ]
+    rows, total = _build_rows(industry_eval, IND_ITEMS)
+    # If you want a max shown, set it here (optional)
+    max_marks = 65
+    return rows, total, max_marks
+
+
+def _extract_academic_rows_and_total(academic_eval):
+    """
+    Based on your AcademicEvaluation fields from the error:
+    culture_fit, general_presentation, support_framework,
+    understanding_of_internship, work_output
+    """
+    AC_ITEMS = [
+        ("understanding_of_internship", "understanding_of_internship_comment", "Understanding of Internship"),
+        ("support_framework", "support_framework_comment", "Support Framework at Placement"),
+        ("work_output", "work_output_comment", "Work Output / Contribution"),
+        ("general_presentation", "general_presentation_comment", "General Presentation"),
+        ("culture_fit", "culture_fit_comment", "Culture Fit"),
+    ]
+    rows, total = _build_rows(academic_eval, AC_ITEMS)
+    max_marks = 25
+    return rows, total, max_marks
+
+
 
 # -------------------------------------------------------------------
 # STUDENT: LOGS
@@ -233,6 +339,7 @@ def student_log_delete(request, log_id):
 # -------------------------------------------------------------------
 # INDUSTRY SUPERVISOR: LOG REVIEW
 # -------------------------------------------------------------------
+
 @login_required
 def company_pending_logs(request):
     if not is_industry_supervisor(request.user):
@@ -243,6 +350,23 @@ def company_pending_logs(request):
 
     company = request.user.industry_profile.company
 
+    # ✅ Force entries order: Monday → Friday (mon, tue, wed, thu, fri)
+    entry_qs = (
+        WeeklyLogEntry.objects
+        .annotate(
+            day_order=Case(
+                When(day="mon", then=Value(1)),
+                When(day="tue", then=Value(2)),
+                When(day="wed", then=Value(3)),
+                When(day="thu", then=Value(4)),
+                When(day="fri", then=Value(5)),
+                default=Value(99),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("day_order")
+    )
+
     logs = (
         WeeklyLog.objects
         .filter(placement__company=company, status="submitted")
@@ -250,11 +374,12 @@ def company_pending_logs(request):
             "placement", "placement__company",
             "placement__request__student", "placement__request__student__user"
         )
-        .prefetch_related(Prefetch("entries", queryset=WeeklyLogEntry.objects.order_by("day")))
+        .prefetch_related(Prefetch("entries", queryset=entry_qs))
         .order_by("placement__request__student__reg_no", "-week_no")
     )
 
     return render(request, "tracking/company_pending_logs.html", {"company": company, "logs": logs})
+
 
 
 @login_required
@@ -442,27 +567,39 @@ def supervisor_students(request):
 # -------------------------------------------------------------------
 @login_required
 def supervisor_add_site_visit(request, placement_id):
-    if not is_university_supervisor(request.user):
-        return HttpResponseForbidden("University supervisors only.")
+    staff_profile = getattr(request.user, "staffprofile", None)
+    if not staff_profile:
+        return HttpResponseForbidden("University Supervisors only.")
 
-    staff = getattr(request.user, "staff_profile", None)
-    if not staff:
-        return HttpResponseForbidden("Staff profile not set.")
+    placement = get_object_or_404(
+        Placement.objects.select_related(
+            "company", "request__student__user", "university_supervisor"
+        ),
+        pk=placement_id
+    )
 
-    placement = get_object_or_404(Placement, id=placement_id, university_supervisor=staff)
+    # Ensure supervisor is assigned to this placement
+    if placement.university_supervisor_id != staff_profile.id:
+        return HttpResponseForbidden("You are not assigned to this student.")
 
-    if request.method == "POST":
-        form = SiteVisitForm(request.POST, request.FILES)
-        if form.is_valid():
-            sv = form.save(commit=False)
-            sv.placement = placement
-            sv.supervisor = staff
-            sv.save()
-            return redirect("supervisor_students")
-    else:
-        form = SiteVisitForm()
+    form = SiteVisitScheduleForm(request.POST or None)
 
-    return render(request, "tracking/site_visit_form.html", {"form": form, "placement": placement})
+    if request.method == "POST" and form.is_valid():
+        visit = form.save(commit=False)
+        visit.placement = placement
+        visit.supervisor = staff_profile
+        visit.status = "scheduled"
+        visit.save()
+
+        messages.success(request, "Site visit scheduled. Student can now confirm it.")
+        return redirect("supervisor_site_visits")
+
+    return render(request, "tracking/site_visit_form.html", {
+        "form": form,
+        "placement": placement,
+        "title": "Schedule Site Visit",
+    })
+
 
 
 @login_required
@@ -975,7 +1112,6 @@ def _get_latest_report(user):
         .first()
     )
 
-
 @login_required
 def supervisor_dashboard(request):
     if not is_university_supervisor(request.user):
@@ -987,10 +1123,12 @@ def supervisor_dashboard(request):
 
     latest_report = _get_latest_report(request.user)
 
-    # Optional quick stats (nice for dashboard badges)
-    assigned_count = Placement.objects.filter(
-        university_supervisor=staff
-    ).exclude(status__in=["completed", "terminated"]).count()
+    assigned_count = (
+        Placement.objects
+        .filter(university_supervisor=staff)
+        .exclude(status__in=["completed", "terminated"])
+        .count()
+    )
 
     industry_submitted_count = IndustryEvaluation.objects.filter(
         placement__university_supervisor=staff,
@@ -1003,16 +1141,19 @@ def supervisor_dashboard(request):
         status="submitted"
     ).count()
 
-    # students where BOTH evals are submitted (ready for average)
-    ready_for_average_count = Placement.objects.filter(
-        university_supervisor=staff
-    ).exclude(status__in=["completed", "terminated"]).filter(
-        industry_evaluation__status="submitted",
-        academic_evaluation__status="submitted",
-        academic_evaluation__supervisor_user=request.user,
-    ).distinct().count()
+    ready_for_average_count = (
+        Placement.objects
+        .filter(university_supervisor=staff)
+        .exclude(status__in=["completed", "terminated"])
+        .filter(
+            industry_evaluation__status="submitted",
+            academic_evaluation__status="submitted",
+            academic_evaluation__supervisor_user=request.user,
+        )
+        .distinct()
+        .count()
+    )
 
-    # ✅ NEW: submitted Student Evaluation Forms (from students)
     student_eval_qs = (
         StudentEvaluation.objects
         .filter(status="submitted", placement__university_supervisor=staff)
@@ -1034,12 +1175,9 @@ def supervisor_dashboard(request):
         "industry_submitted_count": industry_submitted_count,
         "academic_submitted_count": academic_submitted_count,
         "ready_for_average_count": ready_for_average_count,
-
-        # ✅ pass to template
         "student_eval_count": student_eval_count,
         "latest_student_evals": latest_student_evals,
     })
-
 
 """""
 @login_required
@@ -1180,18 +1318,165 @@ def coordinator_mark_report_received(request, report_id):
     return redirect("coordinator_results_reports")
 
 
+
 @login_required
 def coordinator_dashboard(request):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    # ✅ Permission-based access (works even if group names are VU_Coordinator, etc.)
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
 
-    qs = SupervisorResultsReport.objects.filter(status__in=["submitted", "received"]).order_by("-submitted_at", "-created_at")
-    latest_report = qs.first()
-    pending_count = qs.filter(status="submitted").count()
+    today = timezone.localdate()
 
-    return render(request, "tracking/coordinator_dashboard.html", {
+    # =========================
+    # RESULTS REPORTS
+    # =========================
+    qs_reports = SupervisorResultsReport.objects.filter(
+        status__in=["submitted", "received"]
+    ).order_by("-submitted_at", "-created_at")
+
+    latest_report = qs_reports.first()
+    pending_reports = qs_reports.filter(status="submitted").count()
+
+    # =========================
+    # PLACEMENTS / INTERNSHIP STATUS
+    # =========================
+    placements = Placement.objects.select_related(
+        "company", "request", "request__student", "request__student__user"
+    )
+
+    students_on_internship = placements.filter(status="active").count()
+    students_completed = placements.filter(status="completed").count()
+    pending_ack = placements.filter(status="pending_student_ack").count()
+    students_on_hold = placements.filter(status="on_hold").count()
+
+    companies_hosting = (
+        placements.filter(status="active")
+        .values("company_id", "company__name")
+        .annotate(interns=Count("id"))
+        .order_by("company__name")
+    )
+    companies_hosting_count = companies_hosting.count()
+
+    # =========================
+    # REQUEST PIPELINE + RECENT SUBMISSIONS
+    # =========================
+    reqs = InternshipRequest.objects.select_related(
+        "student", "student__user", "preferred_company", "period"
+    )
+
+    total_requests = reqs.count()
+    draft_requests = reqs.filter(status="draft").count()
+    submitted_requests = reqs.filter(status="submitted").count()
+    under_review_requests = reqs.filter(status="under_review").count()
+    recommendation_pending_requests = reqs.filter(status="recommendation_pending").count()
+    recommendation_issued = reqs.filter(status="recommended").count()
+    acceptance_uploaded = reqs.filter(status="acceptance_uploaded").count()
+    acceptance_verified = reqs.filter(status="acceptance_verified").count()
+    rejected_requests = reqs.filter(status="rejected").count()
+    returned_for_acceptance = reqs.filter(status="returned_for_acceptance").count()
+
+    recent_requests = (
+        reqs.filter(status__in=["submitted", "under_review", "recommendation_pending"])
+        .order_by("-submitted_at")[:10]
+    )
+
+    # =========================
+    # ✅ UNIVERSITY SUPERVISOR ALLOCATION (permission-based)
+    # =========================
+    # Works whether the permission is assigned directly OR via any group name (e.g., VU_UniversitySupervisor)
+    total_uni_supervisors = (
+        StaffProfile.objects.filter(user__is_active=True)
+        .filter(
+            Q(
+                user__user_permissions__codename="role_university_supervisor",
+                user__user_permissions__content_type__app_label="accounts",
+            )
+            |
+            Q(
+                user__groups__permissions__codename="role_university_supervisor",
+                user__groups__permissions__content_type__app_label="accounts",
+            )
+        )
+        .distinct()
+        .count()
+    )
+
+    active_with_uni_supervisor = placements.filter(status="active", university_supervisor__isnull=False).count()
+    active_without_uni_supervisor = placements.filter(status="active", university_supervisor__isnull=True).count()
+
+    uni_supervisors_with_load = (
+        placements.filter(status="active", university_supervisor__isnull=False)
+        .values("university_supervisor_id")
+        .distinct()
+        .count()
+    )
+    uni_supervisors_zero_load = max(total_uni_supervisors - uni_supervisors_with_load, 0)
+
+    uni_supervisor_workload = (
+        placements.filter(status="active", university_supervisor__isnull=False)
+        .values(
+            "university_supervisor_id",
+            "university_supervisor__staff_no",
+            "university_supervisor__user__first_name",
+            "university_supervisor__user__last_name",
+            "university_supervisor__user__email",
+        )
+        .annotate(interns=Count("id"))
+        .order_by("university_supervisor__user__first_name", "university_supervisor__user__last_name")
+    )
+
+    # =========================
+    # PERFORMANCE STATS
+    # =========================
+    logs_approved = WeeklyLog.objects.filter(status="approved_by_company").count()
+    industry_eval_submitted = IndustryEvaluation.objects.filter(status="submitted").count()
+    academic_eval_submitted = AcademicEvaluation.objects.filter(status="submitted").count()
+    student_eval_submitted = StudentEvaluation.objects.filter(status="submitted").count()
+
+    ready_for_average = Placement.objects.filter(
+        industry_evaluation__status="submitted",
+        academic_evaluation__status="submitted",
+    ).distinct().count()
+
+    return render(request, "dashboards/coordinator_dashboard.html", {
+        "today": today,
+
         "latest_report": latest_report,
-        "pending_reports": pending_count,
+        "pending_reports": pending_reports,
+
+        "students_on_internship": students_on_internship,
+        "students_completed": students_completed,
+        "pending_ack": pending_ack,
+        "students_on_hold": students_on_hold,
+
+        "companies_hosting": companies_hosting,
+        "companies_hosting_count": companies_hosting_count,
+
+        "total_requests": total_requests,
+        "draft_requests": draft_requests,
+        "submitted_requests": submitted_requests,
+        "under_review_requests": under_review_requests,
+        "recommendation_pending_requests": recommendation_pending_requests,
+        "recommendation_issued": recommendation_issued,
+        "acceptance_uploaded": acceptance_uploaded,
+        "acceptance_verified": acceptance_verified,
+        "returned_for_acceptance": returned_for_acceptance,
+        "rejected_requests": rejected_requests,
+
+        "logs_approved": logs_approved,
+        "industry_eval_submitted": industry_eval_submitted,
+        "academic_eval_submitted": academic_eval_submitted,
+        "student_eval_submitted": student_eval_submitted,
+        "ready_for_average": ready_for_average,
+
+        "recent_requests": recent_requests,
+
+        "total_uni_supervisors": total_uni_supervisors,
+        "active_with_uni_supervisor": active_with_uni_supervisor,
+        "active_without_uni_supervisor": active_without_uni_supervisor,
+        "uni_supervisors_with_load": uni_supervisors_with_load,
+        "uni_supervisors_zero_load": uni_supervisors_zero_load,
+        "uni_supervisor_workload": uni_supervisor_workload,
     })
 
 
@@ -1333,175 +1618,201 @@ def coordinator_student_evaluation_detail(request, evaluation_id):
 
 
 
-# You already have is_coordinator()
-# def is_coordinator(user): ...
-
-
-
 @login_required
-def coordinator_dashboard(request):
+def coordinator_student_performance(request):
     if not is_coordinator(request.user):
         return HttpResponseForbidden("Coordinators only.")
 
-    today = timezone.localdate()
-
-    # ----------------------------
-    # PLACEMENTS / INTERNSHIP STATUS
-    # ----------------------------
-    placements = Placement.objects.select_related(
-        "company", "request", "request__student", "request__student__user", "university_supervisor", "university_supervisor__user"
-    )
-
-    students_on_internship = placements.filter(status="active").count()
-    students_completed = placements.filter(status="completed").count()
-    students_on_hold = placements.filter(status="on_hold").count()
-    students_terminated = placements.filter(status="terminated").count()
-    pending_ack = placements.filter(status="pending_student_ack").count()
-
-    # Companies hosting ACTIVE interns + number of interns per company
-    companies_hosting = (
-        placements.filter(status="active")
-        .values("company_id", "company__name")
-        .annotate(interns=Count("id"))
-        .order_by("company__name")
-    )
-    companies_hosting_count = companies_hosting.count()
-
-    total_companies_used = placements.values("company_id").distinct().count()
-
-    # ----------------------------
-    # ✅ UNIVERSITY SUPERVISOR ALLOCATION (NEW)
-    # ----------------------------
-    total_uni_supervisors = StaffProfile.objects.filter(
-        user__groups__name="UniversitySupervisor",
-        user__is_active=True
-    ).count()
-
-    # Active placements with / without assigned university supervisor
-    active_with_uni_supervisor = placements.filter(status="active", university_supervisor__isnull=False).count()
-    active_without_uni_supervisor = placements.filter(status="active", university_supervisor__isnull=True).count()
-
-    # Supervisors who currently supervise at least 1 ACTIVE intern
-    uni_supervisors_with_load = (
-        placements.filter(status="active", university_supervisor__isnull=False)
-        .values("university_supervisor_id")
-        .distinct()
-        .count()
-    )
-
-    uni_supervisors_zero_load = max(total_uni_supervisors - uni_supervisors_with_load, 0)
-
-    # Workload table: supervisor -> number of ACTIVE interns
-    uni_supervisor_workload = (
-        placements.filter(status="active", university_supervisor__isnull=False)
-        .values(
-            "university_supervisor_id",
-            "university_supervisor__staff_no",
-            "university_supervisor__user__first_name",
-            "university_supervisor__user__last_name",
-            "university_supervisor__user__email",
+    placements = (
+        Placement.objects
+        .select_related(
+            "company",
+            "request",
+            "request__student",
+            "request__student__user",
+            "university_supervisor",
+            "university_supervisor__user",
         )
-        .annotate(interns=Count("id"))
-        .order_by(
-            "university_supervisor__user__first_name",
-            "university_supervisor__user__last_name",
+        .exclude(status__in=["terminated"])
+        .order_by("-created_at")
+    )
+
+    # -------------------------
+    # INDUSTRY totals (13 fields * 5 = 65)
+    # -------------------------
+    IND_MAX = 65
+
+    ind_total_expr = (
+        Coalesce(F("attendance"), 0) +
+        Coalesce(F("basic_work_expectations"), 0) +
+        Coalesce(F("behaviour"), 0) +
+        Coalesce(F("communication_skills"), 0) +
+        Coalesce(F("culture_fit"), 0) +
+        Coalesce(F("dependability"), 0) +
+        Coalesce(F("dress_code"), 0) +
+        Coalesce(F("ethical_awareness"), 0) +
+        Coalesce(F("flexibility"), 0) +
+        Coalesce(F("interpersonal_relations"), 0) +
+        Coalesce(F("knowledge_and_learning"), 0) +
+        Coalesce(F("punctuality"), 0) +
+        Coalesce(F("work_productivity"), 0)
+    )
+
+    ind_qs = (
+        IndustryEvaluation.objects
+        .filter(placement_id=OuterRef("pk"), status="submitted")
+        .annotate(
+            total_marks=Cast(ind_total_expr, IntegerField()),
+            max_marks=Value(IND_MAX, output_field=IntegerField()),
+        )
+        .order_by("-submitted_at", "-created_at")
+    )
+
+    # -------------------------
+    # ACADEMIC totals (5 fields * 5 = 25)
+    # -------------------------
+    AC_MAX = 25
+
+    ac_total_expr = (
+        Coalesce(F("understanding_of_internship"), 0) +
+        Coalesce(F("support_framework"), 0) +
+        Coalesce(F("culture_fit"), 0) +
+        Coalesce(F("work_output"), 0) +
+        Coalesce(F("general_presentation"), 0)
+    )
+
+    ac_qs = (
+        AcademicEvaluation.objects
+        .filter(placement_id=OuterRef("pk"), status="submitted")
+        .annotate(
+            total_marks=Cast(ac_total_expr, IntegerField()),
+            max_marks=Value(AC_MAX, output_field=IntegerField()),
+        )
+        .order_by("-submitted_at", "-created_at")
+    )
+
+    # -------------------------
+    # Annotate placements with latest submitted evaluations
+    # -------------------------
+    placements = placements.annotate(
+        industry_eval_id=Subquery(ind_qs.values("id")[:1]),
+        industry_total=Subquery(ind_qs.values("total_marks")[:1]),
+        industry_max=Subquery(ind_qs.values("max_marks")[:1]),
+        industry_submitted_at=Subquery(ind_qs.values("submitted_at")[:1]),
+
+        academic_eval_id=Subquery(ac_qs.values("id")[:1]),
+        academic_total=Subquery(ac_qs.values("total_marks")[:1]),
+        academic_max=Subquery(ac_qs.values("max_marks")[:1]),
+        academic_submitted_at=Subquery(ac_qs.values("submitted_at")[:1]),
+    )
+
+    # Optional average using totals (not /100)
+    placements = placements.annotate(
+        avg_total=Case(
+            When(
+                industry_eval_id__isnull=False,
+                academic_eval_id__isnull=False,
+                then=ExpressionWrapper(
+                    (Coalesce(F("industry_total"), 0.0) + Coalesce(F("academic_total"), 0.0)) / Value(2.0),
+                    output_field=FloatField(),
+                ),
+            ),
+            default=Value(None),
+            output_field=FloatField(),
         )
     )
 
-    # ----------------------------
-    # REQUEST PIPELINE
-    # ----------------------------
-    reqs = InternshipRequest.objects.select_related("student", "student__user", "preferred_company", "period")
+    # Search
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        placements = placements.filter(
+            Q(request__student__reg_no__icontains=q)
+            | Q(request__student__user__first_name__icontains=q)
+            | Q(request__student__user__last_name__icontains=q)
+            | Q(company__name__icontains=q)
+        )
 
-    total_requests = reqs.count()
-    draft_requests = reqs.filter(status="draft").count()
-    submitted_requests = reqs.filter(status="submitted").count()
-    under_review_requests = reqs.filter(status="under_review").count()
+    return render(request, "tracking/coordinator_student_performance.html", {
+        "placements": placements,
+        "q": q,
+        "count": placements.count(),
+    })
+@login_required
+def coordinator_student_performance_detail(request, placement_id):
+    if not is_coordinator(request.user):
+        return HttpResponseForbidden("Coordinators only.")
 
-    recommendation_issued = reqs.filter(status="recommended").count()
-    acceptance_uploaded = reqs.filter(status="acceptance_uploaded").count()
-    acceptance_verified = reqs.filter(status="acceptance_verified").count()
+    placement = get_object_or_404(
+        Placement.objects.select_related(
+            "company",
+            "request",
+            "request__student",
+            "request__student__user",
+            "university_supervisor",
+            "university_supervisor__user",
+        ),
+        id=placement_id
+    )
 
-    rejected_requests = reqs.filter(status="rejected").count()
-    returned_for_acceptance = reqs.filter(status="returned_for_acceptance").count()
+    industry_eval = (
+        IndustryEvaluation.objects
+        .filter(placement=placement, status="submitted")
+        .order_by("-submitted_at", "-created_at")
+        .first()
+    )
 
-    # ----------------------------
-    # WEEKLY LOGS OVERVIEW
-    # ----------------------------
-    logs_draft = WeeklyLog.objects.filter(status="draft").count()
-    logs_submitted = WeeklyLog.objects.filter(status="submitted").count()
-    logs_returned = WeeklyLog.objects.filter(status="returned_for_edit").count()
-    logs_approved = WeeklyLog.objects.filter(status="approved_by_company").count()
+    academic_eval = (
+        AcademicEvaluation.objects
+        .filter(placement=placement, status="submitted")
+        .order_by("-submitted_at", "-created_at")
+        .first()
+    )
 
-    # ----------------------------
-    # EVALUATIONS & REPORTS
-    # ----------------------------
-    industry_eval_submitted = IndustryEvaluation.objects.filter(status="submitted").count()
-    academic_eval_submitted = AcademicEvaluation.objects.filter(status="submitted").count()
-    student_eval_submitted = StudentEvaluation.objects.filter(status="submitted").count()
+    # ✅ EXACT order from your IndustryEvaluation.SCORE_FIELDS
+    IND_ITEMS = [
+        ("basic_work_expectations", "basic_work_expectations_comment", "Basic Work Expectations"),
+        ("knowledge_and_learning", "knowledge_and_learning_comment", "Knowledge and Learning"),
+        ("ethical_awareness", "ethical_awareness_comment", "Ethical Awareness"),
+        ("interpersonal_relations", "interpersonal_relations_comment", "Interpersonal Relations"),
+        ("communication_skills", "communication_skills_comment", "Communication Skills"),
+        ("attendance", "attendance_comment", "Attendance"),
+        ("punctuality", "punctuality_comment", "Punctuality"),
+        ("flexibility", "flexibility_comment", "Flexibility"),
+        ("dependability", "dependability_comment", "Dependability"),
+        ("culture_fit", "culture_fit_comment", "Culture Fit"),
+        ("dress_code", "dress_code_comment", "Dress Code"),
+        ("behaviour", "behaviour_comment", "Behaviour"),
+        ("work_productivity", "work_productivity_comment", "Work Productivity"),
+    ]
 
-    supervisor_reports_submitted = SupervisorResultsReport.objects.filter(status="submitted").count()
-    latest_report = SupervisorResultsReport.objects.filter(status="submitted").order_by("-submitted_at").first()
+    # ✅ EXACT order from your AcademicEvaluation.SCORE_FIELDS
+    AC_ITEMS = [
+        ("understanding_of_internship", "understanding_of_internship_comment", "Understanding of Internship"),
+        ("support_framework", "support_framework_comment", "Support Framework"),
+        ("culture_fit", "culture_fit_comment", "Culture Fit"),
+        ("work_output", "work_output_comment", "Work Output"),
+        ("general_presentation", "general_presentation_comment", "General Presentation"),
+    ]
 
-    ready_for_average = Placement.objects.filter(
-        status__in=["active", "completed"],
-        industry_evaluation__status="submitted",
-        academic_evaluation__status="submitted",
-    ).distinct().count()
+    ind_rows, ind_total = _build_rows(industry_eval, IND_ITEMS)
+    ac_rows, ac_total = _build_rows(academic_eval, AC_ITEMS)
 
-    context = {
-        "today": today,
+    ind_max = industry_eval.max_marks if industry_eval else 65
+    ac_max = academic_eval.max_marks if academic_eval else 25
 
-        # placements
-        "students_on_internship": students_on_internship,
-        "students_completed": students_completed,
-        "students_on_hold": students_on_hold,
-        "students_terminated": students_terminated,
-        "pending_ack": pending_ack,
+    return render(request, "tracking/coordinator_student_performance_detail.html", {
+        "placement": placement,
 
-        # companies
-        "companies_hosting": companies_hosting,
-        "companies_hosting_count": companies_hosting_count,
-        "total_companies_used": total_companies_used,
+        "industry_eval": industry_eval,
+        "ind_rows": ind_rows,
+        "ind_total": ind_total,
+        "ind_max": ind_max,
 
-        # request pipeline
-        "total_requests": total_requests,
-        "draft_requests": draft_requests,
-        "submitted_requests": submitted_requests,
-        "under_review_requests": under_review_requests,
-        "recommendation_issued": recommendation_issued,
-        "acceptance_uploaded": acceptance_uploaded,
-        "acceptance_verified": acceptance_verified,
-        "returned_for_acceptance": returned_for_acceptance,
-        "rejected_requests": rejected_requests,
-
-        # logs
-        "logs_draft": logs_draft,
-        "logs_submitted": logs_submitted,
-        "logs_returned": logs_returned,
-        "logs_approved": logs_approved,
-
-        # evaluations
-        "industry_eval_submitted": industry_eval_submitted,
-        "academic_eval_submitted": academic_eval_submitted,
-        "student_eval_submitted": student_eval_submitted,
-        "ready_for_average": ready_for_average,
-
-        # reports
-        "supervisor_reports_submitted": supervisor_reports_submitted,
-        "latest_report": latest_report,
-
-        # ✅ supervisor allocation
-        "total_uni_supervisors": total_uni_supervisors,
-        "active_with_uni_supervisor": active_with_uni_supervisor,
-        "active_without_uni_supervisor": active_without_uni_supervisor,
-        "uni_supervisors_with_load": uni_supervisors_with_load,
-        "uni_supervisors_zero_load": uni_supervisors_zero_load,
-        "uni_supervisor_workload": uni_supervisor_workload,
-    }
-
-    return render(request, "dashboards/coordinator_dashboard.html", context)
-
+        "academic_eval": academic_eval,
+        "ac_rows": ac_rows,
+        "ac_total": ac_total,
+        "ac_max": ac_max,
+    })
 
 
 @login_required
@@ -1521,3 +1832,310 @@ def student_dashboard(request):
 @login_required
 def industry_dashboard(request):
     return render(request, "dashboards/industry_dashboard.html")
+
+
+
+# you already have role helpers like is_industry_supervisor(...)
+# assume you have: is_university_supervisor(user), is_student(user), is_coordinator(user)
+# adjust to your project helpers.
+
+
+
+
+@login_required
+def supervisor_add_site_visit(request, placement_id):
+    # ✅ must be University Supervisor
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = _get_staff_profile(request.user)  # ✅ FIXED (no staffprofile)
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set. Admin must create StaffProfile for this user.")
+
+    placement = get_object_or_404(
+        Placement.objects.select_related("company", "request__student__user", "university_supervisor"),
+        pk=placement_id,
+    )
+
+    # ✅ ensure supervisor is assigned to this placement
+    if placement.university_supervisor_id != staff.id:
+        return HttpResponseForbidden("You are not assigned to this student.")
+
+    form = SiteVisitScheduleForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        visit = form.save(commit=False)
+        visit.placement = placement
+        visit.supervisor = staff
+        visit.status = "scheduled"
+        visit.save()
+
+        messages.success(request, "Site visit scheduled. Student can now confirm it.")
+        return redirect("supervisor_site_visits")
+
+    return render(request, "tracking/site_visit_form.html", {
+        "form": form,
+        "placement": placement,
+        "title": "Schedule Site Visit",
+    })
+
+
+@login_required
+def supervisor_site_visits(request):
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = _get_staff_profile(request.user)
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set.")
+
+    visits = (
+        SiteVisit.objects
+        .filter(supervisor=staff)
+        .select_related(
+            "placement",
+            "placement__company",
+            "placement__request__student__user",
+            "supervisor__user",
+        )
+        .order_by("-scheduled_at")
+    )
+
+    return render(request, "tracking/supervisor_site_visits.html", {"visits": visits})
+
+
+@login_required
+def submit_site_visit_report(request, visit_id):
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = _get_staff_profile(request.user)
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set.")
+
+    visit = get_object_or_404(
+        SiteVisit.objects.select_related(
+            "placement",
+            "placement__company",
+            "placement__request__student__user",
+            "supervisor__user",
+        ),
+        id=visit_id,
+        supervisor=staff,
+    )
+
+    # Always allow viewing (GET) for the supervisor's own visits
+    report, _ = SiteVisitReport.objects.get_or_create(site_visit=visit)
+    form = SiteVisitReportForm(request.POST or None, request.FILES or None, instance=report)
+
+    # Only restrict submitting/editing (POST)
+    if request.method == "POST":
+        if visit.status not in ["confirmed", "scheduled"]:
+            messages.error(request, "You can only submit/edit reports for scheduled/confirmed visits.")
+            return redirect("supervisor_site_visits")
+
+        if form.is_valid():
+            form.save()
+            if not visit.actual_at:
+                visit.actual_at = timezone.now()
+            visit.status = "completed"
+            visit.save(update_fields=["status", "actual_at"])
+
+            messages.success(request, "Site visit report submitted. Visit marked as completed.")
+            return redirect("supervisor_site_visits")
+
+    return render(request, "tracking/site_visit_report_form.html", {
+        "visit": visit,
+        "form": form,
+        "report": report,
+    })
+
+# -------------------------------------------------------------------
+# STUDENT: SITE VISITS
+# -------------------------------------------------------------------
+@login_required
+def student_site_visits(request):
+    if not hasattr(request.user, "student_profile"):
+        return HttpResponseForbidden("Students only.")
+
+    visits = (
+        SiteVisit.objects
+        .filter(placement__request__student__user=request.user)
+        .select_related("placement", "placement__company", "supervisor__user")
+        .order_by("-scheduled_at")
+    )
+    return render(request, "tracking/student_site_visits.html", {"visits": visits})
+
+
+@login_required
+def student_confirm_site_visit(request, visit_id):
+    if not hasattr(request.user, "student_profile"):
+        return HttpResponseForbidden("Students only.")
+
+    visit = get_object_or_404(
+        SiteVisit,
+        id=visit_id,
+        placement__request__student__user=request.user
+    )
+
+    if visit.status != "scheduled":
+        messages.info(request, "This visit is not in a schedulable state.")
+        return redirect("student_site_visits")
+
+    if request.method == "POST":
+        visit.status = "confirmed"
+        visit.save(update_fields=["status"])
+        messages.success(request, "Visit confirmed.")
+        return redirect("student_site_visits")
+
+    return render(request, "tracking/student_confirm_site_visit.html", {"visit": visit})
+
+
+@login_required
+def student_ack_site_visit(request, visit_id):
+    """
+    Student acknowledges a completed visit.
+    If you have a real SiteVisitAcknowledgement model, store it there.
+    If not, we just show a success message (no DB write).
+    """
+    if not hasattr(request.user, "student_profile"):
+        return HttpResponseForbidden("Students only.")
+
+    visit = get_object_or_404(
+        SiteVisit.objects.select_related("placement"),
+        id=visit_id,
+        placement__request__student__user=request.user
+    )
+
+    # Only acknowledge after report + completion
+    # (Adjust statuses to match your SiteVisit model)
+    if visit.status != "completed":
+        messages.error(request, "You can only acknowledge a completed site visit.")
+        return redirect("student_site_visits")
+
+    # If your report is OneToOne with related_name="report"
+    has_report = SiteVisitReport.objects.filter(site_visit=visit).exists()
+    if not has_report:
+        messages.error(request, "You can only acknowledge a visit that has a report.")
+        return redirect("student_site_visits")
+
+    if request.method == "POST":
+        messages.success(request, "Acknowledged. Thank you.")
+        return redirect("student_site_visits")
+
+    return render(request, "tracking/student_ack_site_visit.html", {"visit": visit})
+
+@login_required
+def schedule_site_visit(request, placement_id):
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = getattr(request.user, "staff_profile", None)  # ✅ correct related_name
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set.")
+
+    placement = get_object_or_404(
+        Placement.objects.select_related(
+            "request",
+            "request__student",
+            "request__student__user",
+            "company",
+            "university_supervisor",
+        ),
+        pk=placement_id
+    )
+
+    # ✅ strict StaffProfile match
+    if placement.university_supervisor_id != staff.id:
+        return HttpResponseForbidden("You are not assigned to this student.")
+
+    form = SiteVisitScheduleForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        visit = form.save(commit=False)
+        visit.placement = placement
+        visit.supervisor = staff
+        visit.status = "scheduled"
+        visit.save()
+
+        messages.success(request, "Site visit scheduled. The student will see it for confirmation.")
+        return redirect("supervisor_site_visits")
+
+    return render(request, "tracking/site_visit_form.html", {
+        "form": form,
+        "placement": placement,
+        "title": "Schedule Site Visit",
+    })
+
+
+
+# -------------------------------------------------------------------
+# COORDINATOR: SITE VISITS
+@login_required
+def coordinator_site_visits(request):
+    if not request.user.is_superuser and not request.user.groups.filter(name__iexact="Coordinator").exists():
+        return HttpResponseForbidden("Coordinators only.")
+
+    qs = (
+        SiteVisit.objects.select_related(
+            "placement",
+            "placement__company",
+            "placement__request__student__user",
+            "supervisor__user",
+            "report",  # ✅ this assumes related_name="report"
+        )
+        .order_by("-scheduled_at")
+    )
+
+    grouped = {}
+    for v in qs:
+        student = v.placement.request.student
+        sid = student.id
+
+        if sid not in grouped:
+            grouped[sid] = {
+                "student": student,
+                "company_name": getattr(v.placement.company, "name", ""),
+                "supervisor": v.supervisor,
+                "visit": v,  # latest visit
+                "report": getattr(v, "report", None),  # ✅ safe
+                "all_visits": [],
+            }
+
+        grouped[sid]["all_visits"].append(v)
+
+    student_rows = list(grouped.values())
+
+    return render(request, "tracking/coordinator_site_visits.html", {
+        "student_rows": student_rows
+    })
+
+
+def is_coordinator(user):
+    return user.is_superuser or user.groups.filter(name__in=["Coordinator", "Admin"]).exists()
+
+@login_required
+def coordinator_site_visit_report_detail(request, visit_id):
+    if not is_coordinator(request.user):
+        return HttpResponseForbidden("Coordinators only.")
+
+    visit = get_object_or_404(
+        SiteVisit.objects.select_related(
+            "placement",
+            "placement__company",
+            "placement__request__student__user",
+            "supervisor__user",
+            "report",
+        ),
+        id=visit_id,
+    )
+
+    report = getattr(visit, "report", None)
+    if not report:
+        messages.error(request, "No report has been submitted for this visit yet.")
+        return redirect("coordinator_site_visits")
+
+    return render(request, "tracking/coordinator_site_visit_report_detail.html", {
+        "visit": visit,
+        "report": report,
+    })
+

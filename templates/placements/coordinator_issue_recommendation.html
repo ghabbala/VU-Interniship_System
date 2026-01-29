@@ -1,23 +1,174 @@
 {% extends "base.html" %}
+{% block title %}Recommendation Letter — Victoria University{% endblock %}
+
 {% block content %}
-
 <div class="card shadow-sm">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <div class="fw-bold">
+      <i class="bi bi-file-earmark-check me-1"></i> Recommendation Letter
+    </div>
+
+    {# ✅ Status badge: Not Generated / Pending Approval / Approved & Issued #}
+    {% if req.recommendation_letter and req.recommendation_approved %}
+      <span class="badge text-bg-success">
+        <i class="bi bi-check2-circle me-1"></i> Approved & Issued
+      </span>
+    {% elif req.recommendation_letter and not req.recommendation_approved %}
+      <span class="badge text-bg-warning">
+        <i class="bi bi-hourglass-split me-1"></i> Generated (Pending Approval)
+      </span>
+    {% else %}
+      <span class="badge text-bg-secondary">
+        <i class="bi bi-file-earmark me-1"></i> Not Generated
+      </span>
+    {% endif %}
+  </div>
+
   <div class="card-body">
-    <h5 class="card-title">Issue Recommendation Letter</h5>
 
-    <p>
-      <b>Student:</b> {{ req.student.reg_no }} ({{ req.student.user.email }})<br>
-      <b>Company:</b>
-      {% if req.preferred_company %}{{ req.preferred_company.name }}{% else %}{{ req.proposed_company_name }}{% endif %}
-    </p>
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Student</div>
+        <div class="fw-semibold">
+          {{ req.student.user.get_full_name|default:req.student.user.email }}
+        </div>
+        <div class="small text-muted">{{ req.student.reg_no }} • {{ req.student.user.email }}</div>
+      </div>
 
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn btn-success" type="submit">Issue Letter</button>
-      <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">Back</a>
-    </form>
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Company</div>
+        <div class="fw-semibold">
+          {% if req.preferred_company %}
+            {{ req.preferred_company.name }}
+          {% else %}
+            {{ req.proposed_company_name|default:"—" }}
+          {% endif %}
+        </div>
+        <div class="small text-muted">
+          {% if req.preferred_company %}
+            Selected by student/university
+          {% else %}
+            Proposed company
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Internship Period</div>
+        <div class="fw-semibold">{{ req.period.name|default:"—" }}</div>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <div class="text-muted small">Request Status</div>
+        <div class="fw-semibold">{{ req.get_status_display }}</div>
+      </div>
+
+      {# ✅ Approval metadata #}
+      {% if req.recommendation_approved and req.recommendation_approved_at %}
+        <div class="col-12 col-md-6">
+          <div class="text-muted small">Approved At</div>
+          <div class="fw-semibold">{{ req.recommendation_approved_at|date:"Y-m-d H:i" }}</div>
+        </div>
+      {% endif %}
+
+      {% if req.recommendation_approved and req.recommendation_approved_by %}
+        <div class="col-12 col-md-6">
+          <div class="text-muted small">Approved By</div>
+          <div class="fw-semibold">
+            {{ req.recommendation_approved_by.get_full_name|default:req.recommendation_approved_by.email }}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if req.recommendation_issued_at %}
+        <div class="col-12">
+          <div class="text-muted small">Issued At</div>
+          <div class="fw-semibold">{{ req.recommendation_issued_at|date:"Y-m-d H:i" }}</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <hr class="my-3"/>
+
+    {# =========================
+       ACTIONS
+       ========================= #}
+
+    {% if req.recommendation_letter %}
+
+      <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+        {# ✅ Preview always allowed for coordinator #}
+        <a class="btn btn-outline-primary"
+           href="{{ req.recommendation_letter.url }}"
+           target="_blank" rel="noopener">
+          <i class="bi bi-filetype-pdf me-1"></i> Preview Letter
+        </a>
+
+        {% if not req.recommendation_approved %}
+          {# ✅ Approve & Issue #}
+          <form method="post" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-success" name="action" value="approve" type="submit">
+              <i class="bi bi-check2-circle me-1"></i> Approve & Issue to Student
+            </button>
+          </form>
+
+          {# ✅ Regenerate (NOTE: action="regenerate" now matches the view) #}
+          <form method="post" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger" name="action" value="regenerate" type="submit">
+              <i class="bi bi-arrow-repeat me-1"></i> Regenerate Draft
+            </button>
+          </form>
+        {% else %}
+          <span class="badge text-bg-success align-self-center">
+            <i class="bi bi-shield-check me-1"></i> Student Access Enabled
+          </span>
+
+          {# Optional: allow regenerate even after approval (but it will set approved=False in your view) #}
+          <form method="post" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger" name="action" value="regenerate" type="submit">
+              <i class="bi bi-arrow-repeat me-1"></i> Regenerate (will require re-approval)
+            </button>
+          </form>
+        {% endif %}
+
+        <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
+          <i class="bi bi-arrow-left me-1"></i> Back to Queue
+        </a>
+      </div>
+
+      {% if not req.recommendation_approved %}
+        <div class="alert alert-warning mt-3 mb-0 small">
+          <b>Pending Approval:</b> This letter has been generated by the system but is
+          <b>not yet visible to the student</b>. Click <b>Approve & Issue</b> to release it.
+        </div>
+      {% else %}
+        <div class="alert alert-light border mt-3 mb-0 small">
+          This recommendation letter is <b>approved</b> and available to the student in their portal.
+          If you update logo/stamp/signature, regenerate a new PDF and re-approve.
+        </div>
+      {% endif %}
+
+    {% else %}
+
+      <div class="alert alert-secondary small">
+        No recommendation letter has been generated yet. You can generate a draft now, then approve it before release.
+      </div>
+
+      <form method="post" class="d-flex flex-column flex-sm-row gap-2">
+        {% csrf_token %}
+        <button class="btn btn-success" name="action" value="generate" type="submit">
+          <i class="bi bi-magic me-1"></i> Generate Draft
+        </button>
+        <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
+          <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+      </form>
+
+    {% endif %}
+
   </div>
 </div>
-
 {% endblock %}

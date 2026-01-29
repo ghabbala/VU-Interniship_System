@@ -10,6 +10,9 @@ urlpatterns = [
     path("student/evaluation/", views.student_evaluation_form, name="student_evaluation_form"),
     path("student/dashboard/", views.student_dashboard, name="student_dashboard"),
    
+    path("student/site-visits/", views.student_site_visits, name="student_site_visits"),
+    path("student/site-visits/<int:visit_id>/confirm/", views.student_confirm_site_visit, name="student_confirm_site_visit"),
+    path("student/site-visits/<int:visit_id>/ack/", views.student_ack_site_visit, name="student_ack_site_visit"),
 
 
     # COMPANY
@@ -41,6 +44,10 @@ urlpatterns = [
     path("supervisor/student-evaluations/<int:evaluation_id>/", views.supervisor_student_evaluation_detail, name="supervisor_student_evaluation_detail"),
     path("supervisor/dashboard/", views.supervisor_dashboard, name="supervisor_dashboard"),
 
+    path("supervisor/site-visits/", views.supervisor_site_visits, name="supervisor_site_visits"),
+    path("supervisor/site-visits/new/<int:placement_id>/", views.schedule_site_visit, name="schedule_site_visit"),
+    path("supervisor/site-visits/<int:visit_id>/report/", views.submit_site_visit_report, name="submit_site_visit_report"),
+
 
     # COORDINATOR
     path("coordinator/missing-logs/", views.coordinator_missing_logs, name="coordinator_missing_logs"),
@@ -51,4 +58,10 @@ urlpatterns = [
     path("coordinator/student-evaluations/", views.coordinator_student_evaluations, name="coordinator_student_evaluations"),
     path("coordinator/student-evaluations/<int:evaluation_id>/", views.coordinator_student_evaluation_detail, name="coordinator_student_evaluation_detail"),
     path("coordinator/dashboard/", views.coordinator_dashboard, name="coordinator_dashboard"),
+    path("coordinator/performance/", views.coordinator_student_performance, name="coordinator_student_performance"),
+    path("coordinator/performance/<int:placement_id>/", views.coordinator_student_performance_detail, name="coordinator_student_performance_detail"),
+    path("coordinator/site-visits/", views.coordinator_site_visits, name="coordinator_site_visits"),
+    path("coordinator/site-visits/<int:visit_id>/report/", views.coordinator_site_visit_report_detail, name="coordinator_site_visit_report_detail"),
+
+
 ]

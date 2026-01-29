@@ -11,6 +11,7 @@
 }
 
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -26,6 +27,7 @@ body{
   padding:24px;
 }
 
+/* ===== Layout ===== */
 .shell{
   width:min(1100px, 100%);
   display:grid;
@@ -34,24 +36,24 @@ body{
   overflow:hidden;
   box-shadow:var(--shadow);
   background:var(--card);
-  border:1px solid rgba(0,0,0,.04);
 }
 
+/* ===== Brand panel ===== */
 .brand{
   background:linear-gradient(135deg, var(--vu-red), #d01616);
   color:#fff;
   padding:46px 42px;
   position:relative;
-  overflow:hidden;
   display:flex;
   flex-direction:column;
   justify-content:space-between;
 }
 
-.brand:before{
+.brand::before{
   content:"";
   position:absolute;
-  inset:-120px -120px auto auto;
+  top:-120px;
+  right:-120px;
   width:360px;
   height:360px;
   background:rgba(255,255,255,.14);
@@ -59,51 +61,81 @@ body{
   border-radius:60px;
 }
 
-.brand:after{
+.brand::after{
   content:"";
   position:absolute;
-  inset:auto auto -140px -140px;
+  bottom:-140px;
+  left:-140px;
   width:420px;
   height:420px;
   background:rgba(0,0,0,.10);
   border-radius:50%;
 }
 
-.brand-top{position:relative; z-index:1;}
+.brand-top{position:relative; z-index:1}
 
+/* ===== Badge ===== */
 .badge{
   display:inline-flex;
   align-items:center;
-  gap:10px;
-  padding:10px 14px;
-  border-radius:999px;
-  background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.22);
-  font-weight:700;
-  letter-spacing:.2px;
+  gap:18px;
+  padding:18px 20px;
+  border-radius:22px;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.25);
+  backdrop-filter: blur(10px);
+  box-shadow:0 14px 32px rgba(0,0,0,.28);
   width:fit-content;
 }
 
-.logo{
-  width:36px; height:36px;
-  border-radius:10px;
-  background:rgba(255,255,255,.22);
+/* BIG logo frame */
+.logo-wrap{
+  width:110px;                 /* BIGGER */
+  height:110px;                /* BIGGER */
+  border-radius:22px;
+  background:#fff;
+  overflow:hidden;
   display:grid;
   place-items:center;
+  border:1px solid rgba(0,0,0,.10);
+  box-shadow:
+    0 16px 34px rgba(0,0,0,.30),
+    0 0 0 6px rgba(255,255,255,.20);
+}
+
+/* Force logo to fill frame even if image has padding */
+.vu-logo{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  transform: scale(1.45);      /* STRONG zoom so you SEE it */
+}
+
+/* DEBUG (temporary): you will SEE this outline if CSS is working */
+.logo-wrap{ outline:3px solid rgba(255,255,255,.45); }
+
+.badge-text{line-height:1.1}
+.uni-name{
   font-weight:900;
+  font-size:1.35rem;
+  letter-spacing:.2px;
+}
+.uni-sub{
+  margin-top:4px;
+  font-size:1rem;
+  opacity:.92;
 }
 
 .brand h1{
-  margin:18px 0 10px;
+  margin:22px 0 10px;
   font-size:34px;
   line-height:1.1;
-  letter-spacing:.2px;
 }
 
 .brand p{
-  margin:0;
   max-width:46ch;
-  color:rgba(255,255,255,.88);
+  color:rgba(255,255,255,.9);
   line-height:1.55;
 }
 
@@ -112,15 +144,14 @@ body{
   z-index:1;
   margin-top:18px;
   padding-top:18px;
-  border-top:1px solid rgba(255,255,255,.22);
+  border-top:1px solid rgba(255,255,255,.25);
   display:flex;
   justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
-  color:rgba(255,255,255,.86);
   font-size:13px;
+  color:rgba(255,255,255,.85);
 }
 
+/* ===== Form area ===== */
 .form-area{
   padding:46px 42px;
   display:flex;
@@ -128,20 +159,10 @@ body{
   justify-content:center;
 }
 
-.card{width:min(460px, 100%);}
+.card{width:min(460px,100%)}
 
-.card h2{
-  margin:0 0 6px;
-  font-size:24px;
-  letter-spacing:.2px;
-}
-
-.sub{
-  margin:0 0 22px;
-  color:var(--muted);
-  line-height:1.45;
-  font-size:14px;
-}
+.card h2{margin:0 0 6px;font-size:24px}
+.sub{margin:0 0 22px;color:var(--muted);font-size:14px}
 
 .alert{
   background:#fff1f2;
@@ -149,7 +170,7 @@ body{
   color:#9f1239;
   padding:12px 14px;
   border-radius:12px;
-  margin:0 0 14px;
+  margin-bottom:14px;
   font-size:14px;
 }
 
@@ -159,58 +180,34 @@ label{
   display:block;
   font-weight:600;
   font-size:13px;
-  color:#374151;
-  margin:0 0 6px;
+  margin-bottom:6px;
 }
 
-input[type="text"], input[type="email"], input[type="password"], select, textarea{
+input{
   width:100%;
-  padding:12px 12px;
+  padding:12px;
   border-radius:12px;
   border:1px solid var(--border);
-  background:#fff;
-  outline:none;
   font-size:14px;
-  transition:border-color .15s, box-shadow .15s;
 }
 
-textarea{min-height:90px; resize:vertical;}
-
-input:focus, select:focus, textarea:focus{
-  border-color:rgba(179,0,0,.55);
+input:focus{
+  outline:none;
+  border-color:rgba(179,0,0,.6);
   box-shadow:0 0 0 4px rgba(179,0,0,.14);
 }
 
-.help{
-  margin-top:6px;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.35;
-}
-
-.error{
-  margin-top:6px;
-  color:#b91c1c;
-  font-size:12.5px;
-}
-
-.error ul{margin:6px 0 0 18px;}
-
 .btn{
   width:100%;
+  padding:12px;
   border:0;
-  cursor:pointer;
-  padding:12px 14px;
   border-radius:12px;
   font-weight:800;
-  letter-spacing:.2px;
   background:linear-gradient(180deg, var(--vu-red), var(--vu-red-dark));
   color:#fff;
-  box-shadow:0 10px 22px rgba(179,0,0,.22);
-  transition:transform .08s ease, filter .15s ease;
+  cursor:pointer;
+  box-shadow:0 10px 22px rgba(179,0,0,.25);
 }
-.btn:hover{filter:brightness(1.02)}
-.btn:active{transform:translateY(1px)}
 
 .links{
   margin-top:14px;
@@ -221,9 +218,10 @@ input:focus, select:focus, textarea:focus{
 
 a{
   color:var(--vu-red);
-  text-decoration:none;
   font-weight:700;
+  text-decoration:none;
 }
+
 a:hover{text-decoration:underline}
 
 .footer{
@@ -233,52 +231,181 @@ a:hover{text-decoration:underline}
   font-size:12px;
 }
 
-@media (max-width: 900px){
+/* ===== Mobile ===== */
+@media (max-width:900px){
   .shell{grid-template-columns:1fr}
   .brand{padding:34px 26px}
   .form-area{padding:34px 26px}
+
+  .logo-wrap{ width:92px; height:92px; }
+  .vu-logo{ transform: scale(1.35); }
+
+  .uni-name{font-size:1.2rem;}
+  .uni-sub{font-size:.95rem;}
 }
 
-.vu-logo{
-  height: 20px;   /* try 28–36px */
-  width: auto;
-  display: block;
-}
-.badge{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-/* --- Logo above login card --- */
-.form-wrap{
-  width: min(460px, 100%);
+/* small required star */
+.req{
+  color:#ffd3d3;
+  font-weight:900;
+  margin-left:4px;
 }
 
-.top-logo{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 14px;
+/* small helper chips on brand panel */
+.mini-points{
+  margin-top:16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
 }
 
-.top-logo img{
-  height: 54px;     /* adjust 44–64px */
-  width: auto;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.06);
-  padding: 6px;
+.chip{
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.22);
+  color:rgba(255,255,255,.92);
+}
+/* ===== Registration form upgrades ===== */
+
+/* required star */
+.req{
+  color:#ffd3d3;
+  font-weight:900;
+  margin-left:4px;
 }
 
-.top-logo-title{
-  font-weight: 900;
-  letter-spacing: .2px;
-  line-height: 1.1;
+/* brand chips */
+.mini-points{
+  margin-top:16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
 }
 
-.top-logo-sub{
-  font-size: 12px;
-  color: rgba(255,255,255,.65);
-  margin-top: 2px;
+.chip{
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.22);
+  color:rgba(255,255,255,.92);
+}
+
+/* 2-column layout */
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:14px 16px; /* row gap, column gap */
+  margin-bottom:14px;
+}
+
+/* Let button span full width */
+.btn{
+  grid-column: 1 / -1;
+}
+
+/* Make some fields full width if they appear (email often looks better wide) */
+.field:has(input[type="email"]),
+.field:has(textarea){
+  grid-column: 1 / -1;
+}
+
+/* Modern inline errors */
+.has-error input,
+.has-error select,
+.has-error textarea{
+  border-color: rgba(179,0,0,.55);
+  box-shadow: 0 0 0 3px rgba(179,0,0,.10);
+}
+
+.error-line{
+  height:2px;
+  width:100%;
+  background: rgba(179,0,0,.55);
+  border-radius:999px;
+  margin-top:8px;
+}
+
+.error-msg{
+  margin-top:6px;
+  color:#b91c1c;
+  font-size:12.5px;
+  line-height:1.35;
+}
+
+/* Password hint */
+.hint{
+  margin-top:8px;
+  color: var(--muted);
+  font-size:12.5px;
+  line-height:1.35;
+}
+
+/* Strength label styles */
+.strength{
+  font-weight:900;
+}
+.strength.weak{ color:#b91c1c; }
+.strength.fair{ color:#b45309; }
+.strength.good{ color:#0f766e; }
+.strength.strong{ color:#166534; }
+
+/* Mobile: back to one column */
+@media (max-width:900px){
+  .form-grid{
+    grid-template-columns: 1fr;
+  }
+  .field:has(input[type="email"]),
+  .field:has(textarea){
+    grid-column: auto;
+  }
+}
+/* ===== Fix grid + make selects look like inputs ===== */
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:14px 16px;
+  margin-bottom:14px;
+}
+
+/* allow grid items to shrink correctly */
+.field{ min-width:0; }
+
+/* Full-width helper */
+.span-2{ grid-column: 1 / -1; }
+
+/* Make ALL controls consistent */
+.field input,
+.field select,
+.field textarea{
+  width:100% !important;
+  display:block;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-size:14px;
+  outline:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+
+/* Focus like your inputs */
+.field input:focus,
+.field select:focus,
+.field textarea:focus{
+  border-color:rgba(179,0,0,.6);
+  box-shadow:0 0 0 4px rgba(179,0,0,.14);
+}
+
+/* Optional: slightly nicer select caret spacing */
+.field select{
+  appearance:auto;
+}
+
+/* Mobile: one column */
+@media (max-width:900px){
+  .form-grid{ grid-template-columns: 1fr; }
+  .span-2{ grid-column:auto; }
 }

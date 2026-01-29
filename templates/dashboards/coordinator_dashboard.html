@@ -1,368 +1,492 @@
 {% extends "base.html" %}
-
 {% block title %}Coordinator Dashboard — Victoria University{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <!-- MAIN -->
-  <div class="col-12 col-lg-8">
-    <div class="card">
-      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-        <div>
-          <div class="fw-bold">Coordinator Dashboard</div>
-          <div class="text-muted small">
-            Welcome, <span class="fw-semibold text-dark">{{ request.user.display_name }}</span>
-          </div>
-        </div>
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft:#fff5f5;
+  }
+  .vu-wrap{max-width:1200px;margin:0 auto;}
+  .vu-hero{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    border:0;color:#fff;border-radius: 1rem;overflow:hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  }
+  .vu-hero .chip{
+    display:inline-flex;align-items:center;gap:.5rem;
+    padding:.42rem .75rem;border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.20);
+    font-weight:700;font-size:.88rem;white-space:nowrap;
+  }
+  .vu-hero .sub{color:rgba(255,255,255,.88)}
+  .vu-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius: 1rem;
+    overflow:hidden;
+    background:#fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-card .head{padding:.9rem 1rem;border-bottom:1px solid rgba(0,0,0,.06);background:#fff;}
+  .vu-card .head .title{font-weight:900;display:flex;align-items:center;gap:.5rem;}
+  .vu-card .body{padding:1rem;}
+  .kpi{
+    background:#fff;border:1px solid rgba(179,0,0,.12);
+    border-radius: 1rem;padding: 1rem;height:100%;
+  }
+  .kpi .label{color:#6c757d;font-size:.82rem;}
+  .kpi .value{font-weight:900;font-size:1.25rem;line-height:1.1;}
+  .kpi .icon{
+    width:42px;height:42px;border-radius:14px;
+    display:grid;place-items:center;
+    background: var(--vu-soft);
+    border:1px solid rgba(179,0,0,.14);
+    color: var(--vu-red);
+    flex:0 0 auto;
+  }
+  .kpi:hover{box-shadow: 0 .35rem 1.2rem rgba(0,0,0,.06);transform: translateY(-1px);transition: .15s ease;}
+  .vu-badges .badge{font-weight:600}
+  .vu-table thead th{
+    font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;
+    color:#6c757d;background:#f8f9fa !important;
+  }
+  .vu-empty{
+    background:#f8f9fa;border:1px dashed rgba(0,0,0,.16);
+    border-radius:1rem;padding:1rem;
+  }
+  .sticky-side{position: sticky;top: 1rem;}
+</style>
 
-        <span class="badge text-bg-light border">
-          <i class="bi bi-diagram-3 me-1"></i> Coordinator
-        </span>
+<div class="vu-wrap">
+
+  <!-- HERO HEADER -->
+  <div class="vu-hero p-3 p-md-4 mb-4">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start">
+      <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="chip"><i class="bi bi-diagram-3"></i> Coordinator Dashboard</span>
+          <span class="chip">
+            <i class="bi bi-person-badge"></i>
+            {{ request.user.display_name|default:request.user.username }}
+          </span>
+        </div>
+        <div class="sub small">
+          Live overview of requests, placements, logs, evaluations — and site visits.
+        </div>
       </div>
 
-      <div class="card-body">
-        <!-- ✅ PROGRAM SUMMARY -->
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-graph-up-arrow text-danger fs-3"></i>
-
-            <div class="w-100">
-              <div class="fw-bold mb-1">Internship Program Summary</div>
-              <div class="text-muted small">
-                Live overview of placements, request pipeline, logs, and evaluations.
-              </div>
-
-              <!-- Stats -->
-              <div class="row g-3 mt-2">
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">Active Interns</div>
-                    <div class="fw-bold fs-5">{{ students_on_internship|default:0 }}</div>
-                  </div>
-                </div>
-
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">Completed</div>
-                    <div class="fw-bold fs-5">{{ students_completed|default:0 }}</div>
-                  </div>
-                </div>
-
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">Pending Ack</div>
-                    <div class="fw-bold fs-5">{{ pending_ack|default:0 }}</div>
-                  </div>
-                </div>
-
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">On Hold</div>
-                    <div class="fw-bold fs-5">{{ students_on_hold|default:0 }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <hr class="my-3"/>
-
-              <!-- Request pipeline quick badges -->
-              <div class="d-flex flex-wrap gap-2">
-                <span class="badge text-bg-dark">Requests: {{ total_requests|default:0 }}</span>
-                <span class="badge text-bg-secondary">Submitted: {{ submitted_requests|default:0 }}</span>
-                <span class="badge text-bg-warning">Under review: {{ under_review_requests|default:0 }}</span>
-                <span class="badge text-bg-success">Recommendation issued: {{ recommendation_issued|default:0 }}</span>
-                <span class="badge text-bg-primary">Acceptance uploaded: {{ acceptance_uploaded|default:0 }}</span>
-                <span class="badge text-bg-success">Acceptance verified: {{ acceptance_verified|default:0 }}</span>
-              </div>
-
-              <div class="small text-muted mt-2">
-                Logs Approved: <b>{{ logs_approved|default:0 }}</b> •
-                Industry Evals: <b>{{ industry_eval_submitted|default:0 }}</b> •
-                Academic Evals: <b>{{ academic_eval_submitted|default:0 }}</b> •
-                Student Evals: <b>{{ student_eval_submitted|default:0 }}</b>
-              </div>
-
-              <div class="small text-muted mt-2">
-                Ready for averaging (Industry + Academic submitted): <b>{{ ready_for_average|default:0 }}</b>
-              </div>
-
-              <!-- ✅ Supervisor allocation quick line -->
-              <div class="small text-muted mt-2">
-                University Supervisor allocation (active):
-                <b>{{ active_with_uni_supervisor|default:0 }}</b> assigned •
-                <b class="text-danger">{{ active_without_uni_supervisor|default:0 }}</b> unassigned
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <hr class="my-4"/>
-
-        <!-- ✅ COMPANIES HOSTING -->
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-buildings text-danger fs-3"></i>
-
-            <div class="w-100">
-              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  <div class="fw-bold mb-1">Companies Hosting Interns</div>
-                  <div class="text-muted small">
-                    Companies with active placements (and number of interns).
-                  </div>
-                </div>
-                <span class="badge text-bg-light border">
-                  {{ companies_hosting_count|default:0 }} companies
-                </span>
-              </div>
-
-              {% if companies_hosting %}
-                <div class="table-responsive mt-3">
-                  <table class="table table-sm table-hover align-middle mb-0">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Company</th>
-                        <th class="text-end">Active Interns</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for c in companies_hosting %}
-                        <tr>
-                          <td class="fw-semibold">{{ c.company__name }}</td>
-                          <td class="text-end">
-                            <span class="badge text-bg-primary">{{ c.interns }}</span>
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              {% else %}
-                <div class="text-center py-4">
-                  <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
-                  <div class="fw-bold mt-2">No active placements yet</div>
-                  <div class="text-muted small">Companies will appear here once students are placed and active.</div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <hr class="my-4"/>
-
-        <!-- ✅ UNIVERSITY SUPERVISOR ALLOCATION (NEW) -->
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-mortarboard text-danger fs-3"></i>
-
-            <div class="w-100">
-              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  <div class="fw-bold mb-1">University Supervisor Allocation</div>
-                  <div class="text-muted small">
-                    Shows supervisor workload for <b>active</b> placements (who is supervising how many interns).
-                  </div>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2">
-                  <span class="badge text-bg-light border">
-                    Total supervisors: {{ total_uni_supervisors|default:0 }}
-                  </span>
-                  <span class="badge text-bg-success">
-                    With interns: {{ uni_supervisors_with_load|default:0 }}
-                  </span>
-                  <span class="badge text-bg-secondary">
-                    Zero load: {{ uni_supervisors_zero_load|default:0 }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="row g-3 mt-2">
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">Assigned (active)</div>
-                    <div class="fw-bold fs-5">{{ active_with_uni_supervisor|default:0 }}</div>
-                  </div>
-                </div>
-
-                <div class="col-6 col-md-3">
-                  <div class="border rounded-4 p-2">
-                    <div class="text-muted small">Unassigned (active)</div>
-                    <div class="fw-bold fs-5 text-danger">{{ active_without_uni_supervisor|default:0 }}</div>
-                  </div>
-                </div>
-              </div>
-
-              {% if uni_supervisor_workload %}
-                <div class="table-responsive mt-3">
-                  <table class="table table-sm table-hover align-middle mb-0">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Supervisor</th>
-                        <th>Staff No</th>
-                        <th class="text-end">Active Interns</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for s in uni_supervisor_workload %}
-                        <tr>
-                          <td class="fw-semibold">
-                            {{ s.university_supervisor__user__first_name }} {{ s.university_supervisor__user__last_name }}
-                            <div class="small text-muted">{{ s.university_supervisor__user__email }}</div>
-                          </td>
-                          <td class="text-muted">{{ s.university_supervisor__staff_no|default:"—" }}</td>
-                          <td class="text-end">
-                            <span class="badge text-bg-primary">{{ s.interns }}</span>
-                          </td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              {% else %}
-                <div class="text-center py-4">
-                  <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
-                  <div class="fw-bold mt-2">No supervisor allocations found</div>
-                  <div class="text-muted small">Once you assign supervisors to active placements, they will appear here.</div>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <hr class="my-4"/>
-
-        <!-- Role summary -->
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-clipboard2-check text-danger fs-3"></i>
-            <div>
-              <div class="fw-bold mb-1">Your responsibilities</div>
-              <div class="text-muted">
-                Review student internship requests, issue recommendation letters, verify acceptance letters,
-                and activate placements (supervisor assignment).
-              </div>
-
-              <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
-                <a href="{% url 'coordinator_queue' %}" class="btn btn-danger px-3">
-                  <i class="bi bi-inbox me-1"></i> Request Queue
-                </a>
-
-                <a href="{% url 'coordinator_acceptance_queue' %}" class="btn btn-outline-secondary px-3">
-                  <i class="bi bi-patch-check me-1"></i> Acceptance Queue
-                </a>
-              </div>
-
-              <div class="small text-muted mt-3">
-                Tip: Verify acceptance letters quickly to allow students start weekly logs and avoid delays.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <hr class="my-4"/>
-
-        <!-- Action cards -->
-        <div class="row g-3">
-          <div class="col-12 col-md-6">
-            <a href="{% url 'coordinator_queue' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-inbox text-danger"></i>
-                  <div class="fw-bold">Pending Requests</div>
-                </div>
-                <div class="text-muted small">
-                  Review submitted student requests and approve for recommendation.
-                </div>
-              </div>
-            </a>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <a class="text-decoration-none" href="{% url 'coordinator_results_reports' %}">
-              <div class="p-3 border rounded-4 h-100 d-flex justify-content-between align-items-center">
-                <div>
-                  <div class="fw-bold">
-                    <i class="bi bi-table text-primary me-1"></i> Results Report
-                  </div>
-                  <div class="text-muted small">View submitted supervisor reports.</div>
-                </div>
-
-                {% if latest_report and latest_report.status == "submitted" %}
-                  <span class="badge text-bg-success">Submitted</span>
-                {% else %}
-                  <span class="badge text-bg-warning">Not Submitted</span>
-                {% endif %}
-              </div>
-            </a>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <a href="{% url 'coordinator_acceptance_queue' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-patch-check text-danger"></i>
-                  <div class="fw-bold">Verify Acceptance Letters</div>
-                </div>
-                <div class="text-muted small">
-                  Verify uploaded acceptance letters and activate placement.
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-
-        <div class="mt-4 p-3 rounded-4 border bg-light">
-          <div class="d-flex align-items-start gap-2">
-            <i class="bi bi-info-circle text-danger fs-5"></i>
-            <div class="small text-muted">
-              <div class="fw-semibold text-dark mb-1">Recommended workflow</div>
-              1) Review request in Queue → 2) Issue recommendation letter →
-              3) Student uploads acceptance letter → 4) Verify acceptance & assign supervisor →
-              5) Student starts weekly logs.
-            </div>
-          </div>
-        </div>
-
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'coordinator_queue' %}" class="btn btn-light btn-sm">
+          <i class="bi bi-inbox me-1"></i> Queue
+        </a>
+        <a href="{% url 'coordinator_acceptance_queue' %}" class="btn btn-light btn-sm">
+          <i class="bi bi-patch-check me-1"></i> Acceptance
+        </a>
+        <a href="{% url 'coordinator_student_performance' %}" class="btn btn-outline-light btn-sm">
+          <i class="bi bi-bar-chart-line me-1"></i> Performance
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- SIDEBAR -->
-  <div class="col-12 col-lg-4">
-    <div class="card mb-4">
-      <div class="card-header fw-bold">
-        <i class="bi bi-lightning-charge me-1"></i> Quick Actions
+  <div class="row g-4">
+
+    <!-- MAIN -->
+    <div class="col-12 col-lg-8">
+
+      <!-- KPI SUMMARY -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+          <div class="kpi">
+            <div class="d-flex justify-content-between gap-2">
+              <div>
+                <div class="label">Active Interns</div>
+                <div class="value">{{ students_on_internship|default:0 }}</div>
+              </div>
+              <div class="icon"><i class="bi bi-people"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="kpi">
+            <div class="d-flex justify-content-between gap-2">
+              <div>
+                <div class="label">Completed</div>
+                <div class="value">{{ students_completed|default:0 }}</div>
+              </div>
+              <div class="icon"><i class="bi bi-check2-circle"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="kpi">
+            <div class="d-flex justify-content-between gap-2">
+              <div>
+                <div class="label">Pending Ack</div>
+                <div class="value">{{ pending_ack|default:0 }}</div>
+              </div>
+              <div class="icon"><i class="bi bi-envelope-paper"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="kpi">
+            <div class="d-flex justify-content-between gap-2">
+              <div>
+                <div class="label">Unassigned Supervisors</div>
+                <div class="value text-danger">{{ active_without_uni_supervisor|default:0 }}</div>
+              </div>
+              <div class="icon"><i class="bi bi-mortarboard"></i></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-danger" href="{% url 'coordinator_queue' %}">
-          <i class="bi bi-inbox me-1"></i> View Request Queue
-        </a>
 
-        <a class="btn btn-outline-primary px-3" href="{% url 'coordinator_results_reports' %}">
-          <i class="bi bi-table me-1"></i> View Results Reports
-        </a>
+      <!-- ✅ NEW: SITE VISITS SUMMARY (non-breaking) -->
+      <div class="vu-card mb-4">
+        <div class="head d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div class="title">
+            <i class="bi bi-geo-alt" style="color:var(--vu-red)"></i>
+            Site Visits Monitoring
+          </div>
+          <span class="badge text-bg-light border">
+            {% if site_visits_total is not None %}Total: {{ site_visits_total }}{% else %}Coordinator View{% endif %}
+          </span>
+        </div>
 
-        <a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">
-          <i class="bi bi-patch-check me-1"></i> View Acceptance Queue
-        </a>
+        <div class="body">
+          <div class="small text-muted mb-2">
+            Track whether every active student has at least one site visit (physical or virtual) during the internship period.
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            {% if site_visits_scheduled is not None %}
+              <span class="badge text-bg-info">Scheduled: {{ site_visits_scheduled|default:0 }}</span>
+            {% endif %}
+            {% if site_visits_confirmed is not None %}
+              <span class="badge text-bg-primary">Confirmed: {{ site_visits_confirmed|default:0 }}</span>
+            {% endif %}
+            {% if site_visits_completed is not None %}
+              <span class="badge text-bg-success">Completed: {{ site_visits_completed|default:0 }}</span>
+            {% endif %}
+            {% if site_visits_overdue is not None %}
+              <span class="badge text-bg-danger">Overdue: {{ site_visits_overdue|default:0 }}</span>
+            {% endif %}
+          </div>
+
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            {# Replace with your real url if different #}
+            <a href="{% url 'coordinator_site_visits' %}" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-calendar2-check me-1"></i> View Site Visits
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROGRAM SUMMARY -->
+      <div class="vu-card mb-4">
+        <div class="head d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div class="title">
+            <i class="bi bi-graph-up-arrow" style="color:var(--vu-red)"></i>
+            Internship Program Summary
+          </div>
+          <span class="badge text-bg-light border">Requests: {{ total_requests|default:0 }}</span>
+        </div>
+
+        <div class="body">
+          <div class="small text-muted mb-2">
+            Quick pipeline view (review → recommendation → acceptance → activation).
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 vu-badges">
+            <span class="badge text-bg-secondary">Submitted: {{ submitted_requests|default:0 }}</span>
+            <span class="badge text-bg-warning">Under review: {{ under_review_requests|default:0 }}</span>
+
+            {% if recommendation_pending_requests is not None %}
+              <span class="badge text-bg-info">Pending approval: {{ recommendation_pending_requests|default:0 }}</span>
+            {% endif %}
+
+            <span class="badge text-bg-success">Recommendation issued: {{ recommendation_issued|default:0 }}</span>
+            <span class="badge text-bg-primary">Acceptance uploaded: {{ acceptance_uploaded|default:0 }}</span>
+            <span class="badge text-bg-success">Acceptance verified: {{ acceptance_verified|default:0 }}</span>
+          </div>
+
+          <div class="small text-muted mt-3">
+            Logs Approved: <b>{{ logs_approved|default:0 }}</b> •
+            Industry Evals: <b>{{ industry_eval_submitted|default:0 }}</b> •
+            Academic Evals: <b>{{ academic_eval_submitted|default:0 }}</b> •
+            Student Evals: <b>{{ student_eval_submitted|default:0 }}</b>
+          </div>
+
+          <div class="small text-muted mt-1">
+            Ready for averaging: <b>{{ ready_for_average|default:0 }}</b>
+          </div>
+
+          <div class="small text-muted mt-1">
+            University supervisor allocation (active):
+            <b>{{ active_with_uni_supervisor|default:0 }}</b> assigned •
+            <b class="text-danger">{{ active_without_uni_supervisor|default:0 }}</b> unassigned
+          </div>
+
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            <a href="{% url 'coordinator_queue' %}" class="btn btn-danger btn-sm">
+              <i class="bi bi-inbox me-1"></i> Open Request Queue
+            </a>
+            <a href="{% url 'coordinator_acceptance_queue' %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-patch-check me-1"></i> Verify Acceptance Letters
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECENT REQUESTS -->
+      <div class="vu-card mb-4">
+        <div class="head d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <div class="title">
+              <i class="bi bi-inbox" style="color:var(--vu-red)"></i>
+              Recent Submitted Requests
+            </div>
+            <div class="small text-muted">Latest requests that need action.</div>
+          </div>
+
+          <a href="{% url 'coordinator_queue' %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-arrow-right me-1"></i> View all
+          </a>
+        </div>
+
+        <div class="body">
+          {% if recent_requests %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0 vu-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Reg No</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                    <th class="text-end">Submitted</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in recent_requests %}
+                    <tr>
+                      <td class="fw-semibold">
+                        {{ r.student.user.get_full_name|default:r.student.user.email }}
+                        <div class="small text-muted">{{ r.student.user.email }}</div>
+                      </td>
+                      <td class="text-muted">{{ r.student.reg_no }}</td>
+                      <td>
+                        {% if r.preferred_company %}
+                          {{ r.preferred_company.name }}
+                          <div class="small text-muted">Selected</div>
+                        {% else %}
+                          {{ r.proposed_company_name|default:"—" }}
+                          <div class="small text-muted">Proposed</div>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if r.status == "submitted" %}
+                          <span class="badge text-bg-secondary">Submitted</span>
+                        {% elif r.status == "under_review" %}
+                          <span class="badge text-bg-warning">Under review</span>
+                        {% elif r.status == "recommendation_pending" %}
+                          <span class="badge text-bg-info">Pending approval</span>
+                        {% else %}
+                          <span class="badge text-bg-light border">{{ r.get_status_display }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end small text-muted">
+                        {{ r.submitted_at|date:"Y-m-d H:i"|default:"—" }}
+                      </td>
+                      <td class="text-end">
+                        <a href="{% url 'coordinator_review' r.id %}" class="btn btn-sm btn-danger">Review</a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="vu-empty text-center">
+              <i class="bi bi-inbox" style="font-size:2rem;color:var(--vu-red)"></i>
+              <div class="fw-bold mt-2">No pending requests right now</div>
+              <div class="text-muted small">Submitted requests will appear here once students submit.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- COMPANIES HOSTING -->
+      <div class="vu-card mb-4">
+        <div class="head d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <div class="title">
+              <i class="bi bi-buildings" style="color:var(--vu-red)"></i>
+              Companies Hosting Interns
+            </div>
+            <div class="small text-muted">Companies with active placements and number of interns.</div>
+          </div>
+
+          <span class="badge text-bg-light border">{{ companies_hosting_count|default:0 }} companies</span>
+        </div>
+
+        <div class="body">
+          {% if companies_hosting %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0 vu-table">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th class="text-end">Active Interns</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for c in companies_hosting %}
+                    <tr>
+                      <td class="fw-semibold">{{ c.company__name }}</td>
+                      <td class="text-end"><span class="badge text-bg-primary">{{ c.interns }}</span></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="vu-empty text-center">
+              <i class="bi bi-buildings" style="font-size:2rem;color:var(--vu-red)"></i>
+              <div class="fw-bold mt-2">No active placements yet</div>
+              <div class="text-muted small">Companies will appear once placements are active.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- SUPERVISOR WORKLOAD -->
+      <div class="vu-card">
+        <div class="head d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <div class="title">
+              <i class="bi bi-mortarboard" style="color:var(--vu-red)"></i>
+              University Supervisor Allocation
+            </div>
+            <div class="small text-muted">Workload for active placements.</div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge text-bg-light border">Total: {{ total_uni_supervisors|default:0 }}</span>
+            <span class="badge text-bg-success">With interns: {{ uni_supervisors_with_load|default:0 }}</span>
+            <span class="badge text-bg-secondary">Zero load: {{ uni_supervisors_zero_load|default:0 }}</span>
+          </div>
+        </div>
+
+        <div class="body">
+          {% if uni_supervisor_workload %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0 vu-table">
+                <thead>
+                  <tr>
+                    <th>Supervisor</th>
+                    <th>Staff No</th>
+                    <th class="text-end">Active Interns</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in uni_supervisor_workload %}
+                    <tr>
+                      <td class="fw-semibold">
+                        {{ s.university_supervisor__user__first_name }} {{ s.university_supervisor__user__last_name }}
+                        <div class="small text-muted">{{ s.university_supervisor__user__email }}</div>
+                      </td>
+                      <td class="text-muted">{{ s.university_supervisor__staff_no|default:"—" }}</td>
+                      <td class="text-end"><span class="badge text-bg-primary">{{ s.interns }}</span></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="vu-empty text-center">
+              <i class="bi bi-mortarboard" style="font-size:2rem;color:var(--vu-red)"></i>
+              <div class="fw-bold mt-2">No allocations yet</div>
+              <div class="text-muted small">Assign supervisors to active placements to see workload here.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- WORKFLOW TIP -->
+      <div class="mt-4 p-3 rounded-4 border bg-light">
+        <div class="d-flex align-items-start gap-2">
+          <i class="bi bi-info-circle text-danger fs-5"></i>
+          <div class="small text-muted">
+            <div class="fw-semibold text-dark mb-1">Recommended workflow</div>
+            1) Review request → 2) Issue recommendation → 3) Student uploads acceptance →
+            4) Verify acceptance & assign supervisor → 5) Student starts weekly logs → 6) Site visit (required).
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="col-12 col-lg-4">
+      <div class="sticky-side">
+
+        <div class="vu-card mb-4">
+          <div class="head">
+            <div class="title">
+              <i class="bi bi-lightning-charge" style="color:var(--vu-red)"></i>
+              Quick Actions
+            </div>
+          </div>
+          <div class="body d-grid gap-2">
+            <a class="btn btn-outline-danger" href="{% url 'coordinator_queue' %}">
+              <i class="bi bi-inbox me-1"></i> View Request Queue
+            </a>
+            <a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">
+              <i class="bi bi-patch-check me-1"></i> Acceptance Queue
+            </a>
+            <a class="btn btn-outline-dark" href="{% url 'coordinator_student_performance' %}">
+              <i class="bi bi-bar-chart-line me-1"></i> Student Performance
+            </a>
+            <a class="btn btn-outline-primary" href="{% url 'coordinator_results_reports' %}">
+              <i class="bi bi-table me-1"></i> Results Reports
+            </a>
+
+            {# Replace if your url differs #}
+            <a class="btn btn-outline-danger" href="{% url 'coordinator_site_visits' %}">
+              <i class="bi bi-geo-alt me-1"></i> Site Visits
+            </a>
+          </div>
+        </div>
+
+        <div class="vu-card">
+          <div class="head">
+            <div class="title">
+              <i class="bi bi-check2-square" style="color:var(--vu-red)"></i>
+              Coordinator Standards
+            </div>
+          </div>
+          <div class="body small text-muted">
+            <ul class="mb-0">
+              <li>Review only submitted requests (not drafts).</li>
+              <li>Verify acceptance before activation.</li>
+              <li>Assign supervisors fairly (balance workload).</li>
+              <li>Ensure every active placement has at least one site visit.</li>
+              <li>Keep audit trail: date + decision + notes.</li>
+            </ul>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header fw-bold">
-        <i class="bi bi-check2-square me-1"></i> Coordinator Standards
-      </div>
-      <div class="card-body small text-muted">
-        <ul class="mb-0">
-          <li>Review only submitted requests (not drafts).</li>
-          <li>Recommendation letters must be signed/stamped (official).</li>
-          <li>Verify acceptance letter authenticity before activation.</li>
-          <li>Assign supervisors fairly (balance workload).</li>
-          <li>Keep audit trail: date + decision + notes.</li>
-        </ul>
-      </div>
-    </div>
   </div>
 </div>
 {% endblock %}

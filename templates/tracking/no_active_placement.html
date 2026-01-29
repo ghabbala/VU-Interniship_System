@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}No Active Placement — Internship Portal{% endblock %}
+
+{% block content %}
+<div class="vu-page">
+
+  <div class="card shadow-sm border-0 overflow-hidden">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="fw-bold d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle text-danger"></i>
+        Weekly Logs
+      </div>
+      <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+      </a>
+    </div>
+
+    <div class="card-body p-4">
+      <div class="p-4 rounded-4 border bg-light">
+        <div class="d-flex align-items-start gap-3">
+          <div class="rounded-4 bg-white border d-grid place-items-center" style="width:54px;height:54px;">
+            <i class="bi bi-briefcase text-danger fs-4"></i>
+          </div>
+
+          <div class="w-100">
+            <div class="fw-bold fs-5">No active placement found</div>
+            <div class="text-muted mt-1">
+              You can only submit weekly logs when your internship placement is <b>active</b>.
+              This usually happens after your acceptance letter is verified and the placement is activated.
+            </div>
+
+            <hr class="my-3">
+
+            <div class="fw-semibold mb-2">What to do next</div>
+            <ol class="text-muted mb-0">
+              <li>Check if your request has a recommendation letter.</li>
+              <li>Upload your company acceptance letter (if not uploaded).</li>
+              <li>Wait for the coordinator to verify and activate the placement.</li>
+              <li>Then return here to start your weekly logs.</li>
+            </ol>
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+              <a href="{% url 'dashboard' %}" class="btn btn-danger">
+                <i class="bi bi-speedometer2 me-1"></i> Go to Dashboard
+              </a>
+
+             
+
+              {# <a href="{% url 'student_upload_acceptance' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-upload me-1"></i> Upload Acceptance Letter
+              </a> #}
+            </div>
+
+            <div class="small text-muted mt-3">
+              If you believe this is an error, contact the internship coordinator for support.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
