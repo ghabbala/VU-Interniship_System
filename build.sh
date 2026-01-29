@@ -11,11 +11,30 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 
 # 4️⃣ Create superuser from environment variables (if not exists)
-if [ -z "$ADMIN_USER" ] || [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASS" ]; then
-  echo "WARNING: ADMIN_USER, ADMIN_EMAIL, or ADMIN_PASS not set. Skipping superuser creation."
+# For your custom User model, use EMAIL as identifier.
+if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASS" ]; then
+  echo "WARNING: ADMIN_EMAIL or ADMIN_PASS not set. Skipping superuser creation."
 else
-  echo "from django.contrib.auth import get_user_model; User = get_user_model(); \
-if not User.objects.filter(username='$ADMIN_USER').exists(): \
-    User.objects.create_superuser('$ADMIN_USER','$ADMIN_EMAIL','$ADMIN_PASS')" | python manage.py shell
-  echo "✅ Superuser checked/created"
+  python manage.py shell <<'PY'
+import os
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+email = os.environ.get("ADMIN_EMAIL")
+password = os.environ.get("ADMIN_PASS")
+first_name = os.environ.get("ADMIN_FIRST_NAME", "Admin")
+last_name = os.environ.get("ADMIN_LAST_NAME", "User")
+
+if not User.objects.filter(email=email).exists():
+    User.objects.create_superuser(
+        email=email,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+    )
+    print("✅ Superuser created:", email)
+else:
+    print("ℹ️ Superuser already exists:", email)
+PY
 fi
