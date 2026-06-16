@@ -2,50 +2,308 @@
 {% block title %}Student Evaluations — University Supervisor{% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <span class="fw-bold"><i class="bi bi-chat-square-text me-1"></i> Student Evaluations</span>
-    <span class="badge text-bg-light border">{{ evaluations|length }} submitted</span>
-  </div>
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.10);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.86);
+    --vu-radius: 18px;
+  }
 
-  <div class="card-body">
-    {% if evaluations %}
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Reg No</th>
-              <th>Student</th>
-              <th>Company</th>
-              <th>Submitted</th>
-              <th class="text-end">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for e in evaluations %}
-              <tr>
-                <td class="fw-semibold">{{ e.placement.request.student.reg_no }}</td>
-                <td>{{ e.placement.request.student.user.display_name }}</td>
-                <td class="text-muted small">{{ e.placement.company.name }}</td>
-                <td class="small">{{ e.submitted_at|date:"Y-m-d H:i" }}</td>
-                <td class="text-end">
-                  <a class="btn btn-outline-primary btn-sm"
-                     href="{% url 'supervisor_student_evaluation_detail' e.id %}">
-                    <i class="bi bi-eye me-1"></i> View
-                  </a>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  .vu-shell{ max-width: 1200px; margin: 0 auto; }
+  html{ scroll-behavior: smooth; }
+
+  .vu-hero{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    background:
+      radial-gradient(900px 360px at 20% 0%, var(--vu-red-soft), rgba(255,255,255,0) 60%),
+      #fff;
+    padding: 16px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.06);
+  }
+  .vu-hero .title{ font-weight: 800; letter-spacing: .2px; color: var(--vu-dark); }
+  .vu-hero .subtitle{ color: var(--vu-muted); font-size: .9rem; }
+
+  .vu-chip{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .7rem; border-radius: 999px;
+    border: 1px solid var(--vu-border);
+    background: #fff; font-size: .85rem; color: var(--vu-dark);
+    white-space: nowrap;
+  }
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    overflow: hidden;
+    background:#fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+  }
+  .vu-card .card-header{
+    background:#fff;
+    border-bottom: 1px solid var(--vu-border);
+  }
+
+  /* ✅ Search */
+  .vu-search{
+    display:flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+  }
+  .vu-search .search-wrap{
+    position: relative;
+    flex: 1 1 360px;
+    min-width: 260px;
+  }
+  .vu-search .search-icon{
+    position:absolute;
+    left: .85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0,0,0,.55);
+    pointer-events:none;
+  }
+  .vu-search .form-control{
+    border-radius: 999px;
+    padding-left: 2.25rem;
+  }
+  .vu-search .btn{ border-radius: 999px; }
+
+  /* ✅ Table polish */
+  .vu-table thead th{
+    font-size: .82rem;
+    letter-spacing: .2px;
+    color: rgba(0,0,0,.72);
+    white-space: nowrap;
+  }
+  .vu-table tbody td{ vertical-align: middle; }
+
+  .student-name{
+    font-weight: 900;
+    color: var(--vu-dark);
+    letter-spacing: .15px;
+    line-height: 1.15;
+  }
+  .student-sub{
+    color: var(--vu-muted);
+    font-size: .88rem;
+  }
+  .reg-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    border: 1px solid rgba(179,0,0,.22);
+    background: rgba(179,0,0,.06);
+    color: #8f0000;
+    font-weight: 800;
+    font-size: .78rem;
+    white-space: nowrap;
+  }
+
+  .btn-pill{
+    border-radius: 999px;
+    padding: .34rem .75rem;
+  }
+
+  .vu-empty{
+    border: 1px dashed rgba(0,0,0,.2);
+    border-radius: 16px;
+    padding: 22px;
+    background: rgba(255,255,255,.65);
+  }
+</style>
+
+<div class="vu-shell">
+  <!-- HERO -->
+  <div class="vu-hero mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div>
+        <div class="title fs-5">
+          <i class="bi bi-chat-square-text text-danger me-1"></i>
+          Student Evaluations
+        </div>
+        <div class="subtitle">Evaluations submitted by students assigned to you.</div>
+
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          <span class="vu-chip">
+            <i class="bi bi-collection text-danger"></i>
+            {{ evaluations|length }} submitted
+          </span>
+          <span class="vu-chip">
+            <i class="bi bi-shield-check text-danger"></i>
+            University Supervisor
+          </span>
+        </div>
       </div>
-    {% else %}
-      <div class="text-center py-5">
-        <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
-        <div class="fw-bold mt-2">No student evaluations yet</div>
-        <div class="text-muted small">They will appear once students submit.</div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'supervisor_dashboard' %}" class="btn btn-danger btn-sm btn-pill">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+        <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary btn-sm btn-pill">
+          <i class="bi bi-people me-1"></i> My Students
+        </a>
+        <a href="{% url 'supervisor_student_evaluations' %}" class="btn btn-light border btn-sm btn-pill">
+          <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </a>
+      </div>
+    </div>
+
+    {% if evaluations %}
+      <div class="vu-search">
+        <div class="search-wrap">
+          <i class="bi bi-search search-icon"></i>
+          <input id="evalSearch" type="text" class="form-control form-control-sm"
+                 placeholder="Search by Reg No, student name, company…">
+        </div>
+        <button id="clearEvalSearch" class="btn btn-light border btn-sm" type="button">
+          <i class="bi bi-x-circle me-1"></i> Clear
+        </button>
       </div>
     {% endif %}
   </div>
+
+  <!-- LIST -->
+  <div class="vu-card">
+    <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+      <div class="fw-bold">
+        <i class="bi bi-list-check text-danger me-1"></i> Submitted Evaluations
+        <div class="text-muted small fw-normal">Open any evaluation to review details.</div>
+      </div>
+      <span class="badge text-bg-light border">
+        <i class="bi bi-collection me-1"></i> {{ evaluations|length }} total
+      </span>
+    </div>
+
+    <div class="card-body">
+      {% if evaluations %}
+        <div id="evalEmpty" class="vu-empty text-center d-none">
+          <i class="bi bi-search text-danger" style="font-size:1.8rem;"></i>
+          <div class="fw-bold mt-2">No matching evaluation</div>
+          <div class="text-muted small">Try searching using the student’s Reg No or name.</div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 vu-table">
+            <thead class="table-light">
+              <tr>
+                <th style="min-width:140px;">Reg No</th>
+                <th style="min-width:260px;">Student</th>
+                <th style="min-width:220px;">Company</th>
+                <th style="min-width:160px;">Submitted</th>
+                <th class="text-end" style="min-width:140px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in evaluations %}
+                <tr class="eval-row"
+                    data-search="
+                      {{ e.placement.request.student.reg_no }}
+                      {{ e.placement.request.student.user.get_full_name|default:e.placement.request.student.user.email }}
+                      {{ e.placement.company.name|default:'' }}
+                    ">
+                  <td>
+                    <span class="reg-pill"><i class="bi bi-hash"></i> {{ e.placement.request.student.reg_no|default:"—" }}</span>
+                  </td>
+
+                  <td>
+                    <div class="student-name">
+                      {{ e.placement.request.student.user.get_full_name|default:e.placement.request.student.user.email }}
+                    </div>
+                    <div class="student-sub">
+                      <i class="bi bi-person-circle me-1"></i>
+                      Student submission
+                    </div>
+                  </td>
+
+                  <td class="text-muted">
+                    <i class="bi bi-building me-1"></i>
+                    {{ e.placement.company.name|default:"—" }}
+                  </td>
+
+                  <td class="small text-muted">
+                    {% if e.submitted_at %}
+                      <i class="bi bi-clock me-1"></i>{{ e.submitted_at|date:"Y-m-d H:i" }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+
+                  <td class="text-end">
+                    <a class="btn btn-outline-danger btn-sm btn-pill"
+                       href="{% url 'supervisor_student_evaluation_detail' e.id %}">
+                      <i class="bi bi-eye me-1"></i> View
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+          <div class="fw-bold mt-2">No student evaluations yet</div>
+          <div class="text-muted small">They will appear once students submit.</div>
+
+          <div class="mt-3 d-flex justify-content-center gap-2 flex-wrap">
+            <a href="{% url 'supervisor_dashboard' %}" class="btn btn-danger btn-sm btn-pill">
+              <i class="bi bi-speedometer2 me-1"></i> Back to Dashboard
+            </a>
+            <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary btn-sm btn-pill">
+              <i class="bi bi-people me-1"></i> My Students
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+
+<script>
+  // ✅ Simple table search
+  (function(){
+    const input = document.getElementById("evalSearch");
+    const clearBtn = document.getElementById("clearEvalSearch");
+    const rows = Array.from(document.querySelectorAll(".eval-row"));
+    const empty = document.getElementById("evalEmpty");
+
+    if (!input) return;
+
+    const norm = (s) => (s || "").toString().toLowerCase().replace(/\s+/g, " ").trim();
+
+    const apply = () => {
+      const q = norm(input.value);
+      let visible = 0;
+
+      rows.forEach((r) => {
+        const hay = norm(r.getAttribute("data-search"));
+        const show = !q || hay.includes(q);
+        r.classList.toggle("d-none", !show);
+        if (show) visible++;
+      });
+
+      if (empty) empty.classList.toggle("d-none", visible !== 0);
+    };
+
+    input.addEventListener("input", apply, { passive: true });
+
+    if (clearBtn){
+      clearBtn.addEventListener("click", () => {
+        input.value = "";
+        apply();
+        input.focus();
+      });
+    }
+
+    apply();
+  })();
+</script>
 {% endblock %}

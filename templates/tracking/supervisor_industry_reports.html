@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Industry Reports - University Supervisor{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap bg-white">
+    <div>
+      <div class="fw-bold">
+        <i class="bi bi-inbox text-danger me-1"></i> Industry Reports Inbox
+      </div>
+      <div class="text-muted small">Reports submitted by Industry Supervisors for students assigned to you.</div>
+    </div>
+    <a href="{% url 'supervisor_dashboard' %}" class="btn btn-light border btn-sm rounded-pill">
+      <i class="bi bi-arrow-left me-1"></i> Dashboard
+    </a>
+  </div>
+
+  <div class="card-body">
+    {% if reports %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Company</th>
+              <th>Industry Supervisor</th>
+              <th>Students</th>
+              <th>Submitted</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in reports %}
+              <tr>
+                <td class="fw-semibold">{{ item.report.company.name }}</td>
+                <td>
+                  {{ item.report.supervisor_user.display_name|default:item.report.supervisor_user.username }}
+                  <div class="small text-muted">{{ item.report.supervisor_user.email }}</div>
+                </td>
+                <td>
+                  <span class="badge text-bg-light border rounded-pill">{{ item.student_count }}</span>
+                </td>
+                <td class="text-muted small">
+                  {{ item.report.submitted_at|date:"Y-m-d H:i" }}
+                </td>
+                <td class="text-end">
+                  <a href="{% url 'supervisor_industry_report_detail' item.report.id %}" class="btn btn-outline-danger btn-sm rounded-pill">
+                    <i class="bi bi-eye me-1"></i> View
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+        <div class="fw-bold mt-2">No industry reports submitted yet</div>
+        <div class="text-muted small">Once industry supervisors submit reports for your students, they will appear here.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

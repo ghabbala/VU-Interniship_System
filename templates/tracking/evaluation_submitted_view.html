@@ -1,28 +1,182 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}Evaluation Submitted — Industry Supervisor{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <div class="col-12 col-lg-9">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-start gap-2">
-        <div>
-          <div class="fw-bold">Submitted Evaluation (Read-only)</div>
-          <div class="text-muted small">
-            Student: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
-            — {{ placement.request.student.user.display_name }}
-          </div>
-          <div class="text-muted small">
-            Company: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
-          </div>
+<link rel="stylesheet" href="{% static 'tracking/css/vu-my-request.css' %}">
+<link rel="stylesheet" href="{% static 'tracking/css/vu-evaluation.css' %}">
+
+<style>
+  /* ===================== STICKY HEADER + PANELS ===================== */
+
+  .eval-hero-sticky{
+    position: sticky;
+    top: .75rem; /* if you have a fixed navbar, increase e.g. 4.25rem */
+    z-index: 30;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,.10);
+    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    border-radius: var(--vu-radius, 18px);
+    padding: 1rem 1.1rem;
+  }
+
+  .eval-hero-title{
+    display:flex; align-items:center; gap:.6rem;
+    font-weight: 900; letter-spacing:.2px;
+  }
+
+  .eval-meta{
+    display:flex; flex-wrap:wrap; gap:.5rem .75rem;
+    color: var(--vu-muted, rgba(0,0,0,.60));
+    font-size: .9rem;
+    margin-top: .35rem;
+  }
+
+  .eval-pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.85);
+    border: 1px solid rgba(0,0,0,.10);
+    color: var(--vu-dark, rgba(0,0,0,.85));
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .eval-pill i{ color: var(--vu-red-2, #b30000); }
+
+  /* sticky helpers (desktop) */
+  .about-sticky{
+    position: sticky;
+    top: calc(.75rem + 96px);
+    z-index: 15;
+  }
+  .side-sticky{
+    position: sticky;
+    top: calc(.75rem + 96px);
+    z-index: 15;
+  }
+
+  @media (max-width: 991.98px){
+    .about-sticky, .side-sticky{ position: static; top:auto; }
+  }
+
+  /* ===================== SCORE SUMMARY CARD ===================== */
+  .score-card{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius, 18px);
+    background: #fff;
+    overflow: hidden;
+  }
+  .score-head{
+    padding: .85rem 1rem;
+    background: rgba(179,0,0,.04);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  }
+  .score-title{
+    font-weight: 900;
+    display:flex; align-items:center; gap:.5rem;
+    color: var(--vu-dark, rgba(0,0,0,.85));
+  }
+  .score-body{ padding: 1rem; }
+  .score-metric{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: .55rem .75rem;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,.90);
+    margin-bottom: .6rem;
+  }
+  .score-metric .k{ color: var(--vu-muted, rgba(0,0,0,.60)); font-weight: 800; }
+  .score-metric .v{ font-weight: 900; color: var(--vu-dark, rgba(0,0,0,.85)); }
+
+  .score-progress{
+    height: 10px;
+    background: rgba(0,0,0,.08);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .score-progress > div{
+    height: 100%;
+    width: 0%;
+    background: rgba(179,0,0,.60);
+    border-radius: 999px;
+  }
+
+  /* ===================== TABLE POLISH ===================== */
+  .eval-left, .eval-left * { text-align:left !important; }
+  .ev-table thead th{
+    background: #f8f9fa;
+    position: sticky;
+    top: calc(.75rem + 96px + 160px); /* hero + about approx */
+    z-index: 9;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  @media (max-width: 991.98px){
+    .ev-table thead th{ position: static; top:auto; }
+  }
+
+  /* small clean boxes */
+  .soft-box{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius, 18px);
+    background: #fff;
+    padding: 1rem;
+  }
+</style>
+
+<div class="vu-page">
+
+  <!-- ===================== HERO HEADER (STICKY) ===================== -->
+  <div class="eval-hero-sticky mb-3">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+      <div>
+        <div class="eval-hero-title">
+          <span class="vu-dot"></span>
+          Submitted Evaluation (Read-only)
         </div>
 
-        <span class="badge text-bg-success">Submitted</span>
+        <div class="eval-meta">
+          <span class="eval-pill">
+            <i class="bi bi-person-badge"></i>
+            {{ placement.request.student.user.display_name }}
+          </span>
+          <span class="eval-pill">
+            <i class="bi bi-hash"></i>
+            {{ placement.request.student.reg_no }}
+          </span>
+          <span class="eval-pill">
+            <i class="bi bi-building"></i>
+            {{ placement.company.name }}
+          </span>
+        </div>
       </div>
 
-      <div class="card-body">
-        <div class="alert alert-light border small mb-3">
-          <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1"></i> Note</div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge text-bg-success px-3 py-2" style="border-radius:999px;">
+          <i class="bi bi-check2-circle me-1"></i> Submitted
+        </span>
+
+        <a class="btn btn-light border" href="{% url 'company_approved_evaluations' %}">
+          <i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ===================== MAIN (LEFT) ===================== -->
+    <div class="col-12 col-lg-9">
+
+      <!-- Sticky note (kept, as requested) -->
+      <div class="about-sticky mb-3">
+        <div class="alert alert-light border small mb-0">
+          <div class="fw-semibold mb-1">
+            <i class="bi bi-info-circle me-1"></i> About this evaluation
+          </div>
           <div class="text-muted" style="white-space: pre-line;">
 The purpose of this evaluation is to help students on internship to further develop their job performance.
 You are encouraged to discuss your responses with the student in a positive and objective manner, just as you would review job performance with your colleagues.
@@ -30,87 +184,169 @@ This evaluation will assist in determining the student’s grade.
 Your assessment of the student’s learning experience, the attainment of goals, and the professional development achieved over the service period is valued.
           </div>
         </div>
+      </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-3">
-          <span class="badge text-bg-light border">Total: {{ evaluation.total_marks }}/{{ evaluation.max_marks }}</span>
-          <span class="badge text-bg-success">{{ evaluation.score_out_of_10|floatformat:1 }}/10</span>
-          <span class="badge text-bg-primary">{{ evaluation.score_out_of_100|floatformat:0 }}/100</span>
+      <div class="card vu-section">
+        <div class="vu-section-head">
+          <div class="vu-section-title">
+            <i class="bi bi-clipboard-check me-1" style="color: var(--vu-red-2, #b30000);"></i>
+            Evaluation Details
+          </div>
+          <span class="vu-chip">
+            <i class="bi bi-lock-fill"></i> Read-only
+          </span>
         </div>
 
-        <div class="table-responsive mb-3 eval-left">
-          <table class="table table-bordered align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th style="width:45%;">Criteria</th>
-                <th style="width:90px;">Score</th>
-                <th>Comment</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td class="fw-semibold">1. Basic work expectations</td><td>{{ evaluation.basic_work_expectations }}</td><td style="white-space: pre-line;">{{ evaluation.basic_work_expectations_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">2. Knowledge and ability to learn</td><td>{{ evaluation.knowledge_and_learning }}</td><td style="white-space: pre-line;">{{ evaluation.knowledge_and_learning_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">3. Ethical awareness and conduct</td><td>{{ evaluation.ethical_awareness }}</td><td style="white-space: pre-line;">{{ evaluation.ethical_awareness_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">4. Interpersonal relations</td><td>{{ evaluation.interpersonal_relations }}</td><td style="white-space: pre-line;">{{ evaluation.interpersonal_relations_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">5. Communication skills</td><td>{{ evaluation.communication_skills }}</td><td style="white-space: pre-line;">{{ evaluation.communication_skills_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">6. Attendance</td><td>{{ evaluation.attendance }}</td><td style="white-space: pre-line;">{{ evaluation.attendance_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">7. Punctuality</td><td>{{ evaluation.punctuality }}</td><td style="white-space: pre-line;">{{ evaluation.punctuality_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">8. Flexibility</td><td>{{ evaluation.flexibility }}</td><td style="white-space: pre-line;">{{ evaluation.flexibility_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">9. Dependability</td><td>{{ evaluation.dependability }}</td><td style="white-space: pre-line;">{{ evaluation.dependability_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">10. Culture fit</td><td>{{ evaluation.culture_fit }}</td><td style="white-space: pre-line;">{{ evaluation.culture_fit_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">11. Dress code</td><td>{{ evaluation.dress_code }}</td><td style="white-space: pre-line;">{{ evaluation.dress_code_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">12. Behaviour</td><td>{{ evaluation.behaviour }}</td><td style="white-space: pre-line;">{{ evaluation.behaviour_comment|default:"—" }}</td></tr>
-              <tr><td class="fw-semibold">13. Work productivity</td><td>{{ evaluation.work_productivity }}</td><td style="white-space: pre-line;">{{ evaluation.work_productivity_comment|default:"—" }}</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="vu-section-body">
 
-        <div class="row g-3 eval-left">
-          <div class="col-12 col-lg-6">
-            <div class="fw-semibold mb-1">Recommend for employment?</div>
-            <div class="text-muted">{{ evaluation.recommend_employment|yesno:"YES,NO" }}</div>
+          <!-- Criteria table -->
+          <div class="table-responsive mb-3 eval-left">
+            <table class="table table-bordered align-middle mb-0 ev-table">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:45%;">Criteria</th>
+                  <th style="width:90px;">Score</th>
+                  <th>Comment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="fw-semibold">1. Basic work expectations</td><td>{{ evaluation.basic_work_expectations }}</td><td style="white-space: pre-line;">{{ evaluation.basic_work_expectations_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">2. Knowledge and ability to learn</td><td>{{ evaluation.knowledge_and_learning }}</td><td style="white-space: pre-line;">{{ evaluation.knowledge_and_learning_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">3. Ethical awareness and conduct</td><td>{{ evaluation.ethical_awareness }}</td><td style="white-space: pre-line;">{{ evaluation.ethical_awareness_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">4. Interpersonal relations</td><td>{{ evaluation.interpersonal_relations }}</td><td style="white-space: pre-line;">{{ evaluation.interpersonal_relations_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">5. Communication skills</td><td>{{ evaluation.communication_skills }}</td><td style="white-space: pre-line;">{{ evaluation.communication_skills_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">6. Attendance</td><td>{{ evaluation.attendance }}</td><td style="white-space: pre-line;">{{ evaluation.attendance_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">7. Punctuality</td><td>{{ evaluation.punctuality }}</td><td style="white-space: pre-line;">{{ evaluation.punctuality_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">8. Flexibility</td><td>{{ evaluation.flexibility }}</td><td style="white-space: pre-line;">{{ evaluation.flexibility_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">9. Dependability</td><td>{{ evaluation.dependability }}</td><td style="white-space: pre-line;">{{ evaluation.dependability_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">10. Culture fit</td><td>{{ evaluation.culture_fit }}</td><td style="white-space: pre-line;">{{ evaluation.culture_fit_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">11. Dress code</td><td>{{ evaluation.dress_code }}</td><td style="white-space: pre-line;">{{ evaluation.dress_code_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">12. Behaviour</td><td>{{ evaluation.behaviour }}</td><td style="white-space: pre-line;">{{ evaluation.behaviour_comment|default:"—" }}</td></tr>
+                <tr><td class="fw-semibold">13. Work productivity</td><td>{{ evaluation.work_productivity }}</td><td style="white-space: pre-line;">{{ evaluation.work_productivity_comment|default:"—" }}</td></tr>
+              </tbody>
+            </table>
+          </div>
 
-            <div class="fw-semibold mt-3 mb-1">Comment</div>
-            <div class="text-muted small" style="white-space: pre-line;">
-              {{ evaluation.recommend_comment|default:"—" }}
+          <!-- Recommendation + other comments -->
+          <div class="row g-3 eval-left mb-3">
+            <div class="col-12 col-lg-6">
+              <div class="soft-box h-100">
+                <div class="fw-semibold mb-1">
+                  <i class="bi bi-briefcase me-1 text-danger"></i> Recommend for employment?
+                </div>
+                <div class="text-muted">{{ evaluation.recommend_employment|yesno:"YES,NO" }}</div>
+
+                <div class="fw-semibold mt-3 mb-1">Comment</div>
+                <div class="text-muted small" style="white-space: pre-line;">
+                  {{ evaluation.recommend_comment|default:"—" }}
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-6">
+              <div class="soft-box h-100">
+                <div class="fw-semibold mb-1">
+                  <i class="bi bi-lightbulb me-1 text-danger"></i> Other comments / suggestions
+                </div>
+                <div class="text-muted small" style="white-space: pre-line;">
+                  {{ evaluation.other_comments|default:"—" }}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="col-12 col-lg-6">
-            <div class="fw-semibold mb-1">Other comments / suggestions</div>
-            <div class="text-muted small" style="white-space: pre-line;">
-              {{ evaluation.other_comments|default:"—" }}
+          <!-- Sign-off -->
+          <div class="soft-box eval-left">
+            <div class="fw-semibold mb-2">
+              <i class="bi bi-pen me-1 text-danger"></i> Supervisor sign-off
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <div class="fw-semibold">Supervisor Name</div>
+                <div class="text-muted small">{{ evaluation.supervisor_name|default:"—" }}</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <div class="fw-semibold">Supervisor Signature</div>
+                <div class="text-muted small">{{ evaluation.supervisor_signature|default:"—" }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+            <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+              <i class="bi bi-people me-1"></i> Back to Students
+            </a>
+            <a class="btn btn-outline-success" href="{% url 'company_approved_evaluations' %}">
+              <i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== RIGHT SIDE (SCORE SUMMARY + KEY) ===================== -->
+    <div class="col-12 col-lg-3">
+      <div class="side-sticky d-grid gap-3">
+
+        <!-- Score Summary (right side) -->
+        <div class="score-card">
+          <div class="score-head">
+            <div class="score-title">
+              <i class="bi bi-calculator" style="color: var(--vu-red-2, #b30000);"></i>
+              Score Summary
+            </div>
+            <span class="badge bg-light text-dark border" style="border-radius:999px;">
+              {{ evaluation.total_marks }}/{{ evaluation.max_marks }}
+            </span>
+          </div>
+          <div class="score-body">
+            <div class="score-metric">
+              <div class="k">Out of 10</div>
+              <div class="v">{{ evaluation.score_out_of_10|floatformat:1 }}/10</div>
+            </div>
+            <div class="score-metric">
+              <div class="k">Percent</div>
+              <div class="v">{{ evaluation.score_out_of_100|floatformat:0 }}%</div>
+            </div>
+
+            <div class="score-progress mt-2">
+              <div style="width: {{ evaluation.score_out_of_100|floatformat:0 }}%;"></div>
+            </div>
+
+            <div class="small text-muted mt-2">
+              Based on 13 criteria (1–5 each).
             </div>
           </div>
         </div>
 
-        <hr class="my-3"/>
-
-        <div class="row g-3 eval-left">
-          <div class="col-12 col-md-6">
-            <div class="fw-semibold">Supervisor Name</div>
-            <div class="text-muted small">{{ evaluation.supervisor_name|default:"—" }}</div>
+        <!-- Key (right side) -->
+        <div class="card vu-section">
+          <div class="vu-section-head">
+            <div class="vu-section-title">
+              <i class="bi bi-info-circle me-1" style="color: var(--vu-red-2, #b30000);"></i> Key
+            </div>
           </div>
-          <div class="col-12 col-md-6">
-            <div class="fw-semibold">Supervisor Signature</div>
-            <div class="text-muted small">{{ evaluation.supervisor_signature|default:"—" }}</div>
+          <div class="vu-section-body small text-muted">
+            <ul class="mb-0 key-list">
+              <li><b>1</b> = Unsatisfactory</li>
+              <li><b>2</b> = Below average</li>
+              <li><b>3</b> = Average / Good</li>
+              <li><b>4</b> = Very good</li>
+              <li><b>5</b> = Excellent</li>
+            </ul>
+            <hr class="my-3">
+            <div class="small">
+              <i class="bi bi-lightning-charge me-1" style="color: var(--vu-red-2, #b30000);"></i>
+              Tip: Comments explain strengths/concerns.
+            </div>
           </div>
-        </div>
-
-        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
-          <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
-            <i class="bi bi-people me-1"></i> Back to Students
-          </a>
-          <a class="btn btn-outline-success" href="{% url 'company_approved_evaluations' %}">
-            <i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations
-          </a>
         </div>
 
       </div>
     </div>
+
   </div>
 </div>
-
-<style>
-  .eval-left, .eval-left * { text-align:left !important; }
-</style>
 {% endblock %}

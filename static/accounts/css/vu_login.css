@@ -197,6 +197,82 @@ input:focus{
   box-shadow:0 0 0 4px rgba(179,0,0,.14);
 }
 
+.password-wrap{
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fff;
+  overflow:hidden;
+  transition:border-color .15s, box-shadow .15s;
+}
+
+.password-wrap:focus-within{
+  border-color:rgba(179,0,0,.6);
+  box-shadow:0 0 0 4px rgba(179,0,0,.14);
+}
+
+.password-wrap input{
+  flex:1 1 auto;
+  min-width:0;
+  width:auto !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  padding:12px !important;
+}
+
+.password-wrap input:focus{
+  box-shadow:none !important;
+}
+
+.password-toggle{
+  flex:0 0 46px;
+  display:grid;
+  place-items:center;
+  border:0;
+  border-left:1px solid var(--border);
+  background:#fff;
+  color:#6b7280;
+  cursor:pointer;
+  padding:0;
+  transition:background .15s, color .15s;
+}
+
+.password-toggle:hover,
+.password-toggle:focus{
+  background:#fff1f2;
+  color:var(--vu-red);
+  outline:none;
+}
+
+.password-toggle[aria-pressed="true"]{
+  color:var(--vu-red);
+}
+
+.eye-icon{
+  width:18px;
+  height:18px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.eye-closed{
+  display:none;
+}
+
+.password-toggle[aria-pressed="true"] .eye-open{
+  display:none;
+}
+
+.password-toggle[aria-pressed="true"] .eye-closed{
+  display:block;
+}
+
 .btn{
   width:100%;
   padding:12px;
@@ -207,6 +283,12 @@ input:focus{
   color:#fff;
   cursor:pointer;
   box-shadow:0 10px 22px rgba(179,0,0,.25);
+}
+
+.form-actions{
+  margin:12px 0 0;
+  text-align:center;
+  font-size:13px;
 }
 
 .links{
@@ -223,6 +305,11 @@ a{
 }
 
 a:hover{text-decoration:underline}
+
+.link-separator{
+  color:var(--muted);
+  margin:0 8px;
+}
 
 .footer{
   margin-top:20px;
@@ -316,6 +403,11 @@ a:hover{text-decoration:underline}
 .has-error input,
 .has-error select,
 .has-error textarea{
+  border-color: rgba(179,0,0,.55);
+  box-shadow: 0 0 0 3px rgba(179,0,0,.10);
+}
+
+.has-error .password-wrap{
   border-color: rgba(179,0,0,.55);
   box-shadow: 0 0 0 3px rgba(179,0,0,.10);
 }

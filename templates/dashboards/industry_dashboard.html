@@ -1,81 +1,208 @@
 {% extends "base.html" %}
-
 {% block title %}Industry Supervisor Dashboard — Victoria University{% endblock %}
 
 {% block content %}
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.08);
+    --vu-muted: rgba(0,0,0,.62);
+  }
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #fff;
+  }
+  .vu-card .card-header{
+    background: #fff;
+    border-bottom: 1px solid var(--vu-border);
+  }
+
+  .kpi{
+    border: 1px solid var(--vu-border);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 1rem;
+    height: 100%;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .kpi:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 .6rem 1.6rem rgba(0,0,0,.08);
+  }
+  .kpi .icon{
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vu-red-soft);
+    color: var(--vu-red);
+    font-size: 1.2rem;
+  }
+  .kpi .label{ color: var(--vu-muted); font-size: .88rem; }
+  .kpi .value{ font-weight: 900; letter-spacing: .2px; }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.12);
+    background:#fff;
+    font-size:.85rem;
+    white-space:nowrap;
+  }
+
+  .soft-panel{
+    border: 1px dashed rgba(179,0,0,.22);
+    background: linear-gradient(135deg, rgba(179,0,0,.06), rgba(179,0,0,0));
+    border-radius: 1rem;
+  }
+
+  .notif{
+    border: 1px solid rgba(179,0,0,.15);
+    background: rgba(179,0,0,.04);
+    border-radius: 1rem;
+    padding: .85rem;
+  }
+</style>
+
 <div class="row g-4">
+
   <!-- MAIN -->
   <div class="col-12 col-lg-8">
-    <div class="card">
+    <div class="card vu-card">
+
+      <!-- Header -->
       <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
         <div>
-          <div class="fw-bold">Industry Supervisor Dashboard</div>
+          <div class="fw-bold fs-5">
+            <i class="bi bi-speedometer2 text-danger me-1"></i> Industry Supervisor Dashboard
+          </div>
           <div class="text-muted small">
             Welcome, <span class="fw-semibold text-dark">{{ request.user.display_name }}</span>
+            {% if contact %}
+              <span class="text-muted">•</span>
+              <span class="text-muted">Company:</span>
+              <span class="fw-semibold">{{ contact.company.name }}</span>
+            {% endif %}
           </div>
         </div>
-        <span class="badge text-bg-light border">
-          <i class="bi bi-shield-check me-1"></i> Supervisor
-        </span>
+
+        <div class="d-flex flex-wrap gap-2">
+          <span class="pill">
+            <i class="bi bi-shield-check text-danger"></i> Supervisor
+          </span>
+          <span class="pill">
+            <i class="bi bi-bell text-danger"></i>
+            Notifications
+            <span class="badge text-bg-danger">{{ unread_notifications|default:0 }}</span>
+          </span>
+        </div>
       </div>
 
       <div class="card-body">
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-clipboard-check text-danger fs-3"></i>
-            <div>
-              <div class="fw-bold mb-1">What you do here</div>
-              <div class="text-muted">
-                Review student weekly logs and either <b>Approve</b> or <b>Return</b> them with a clear reason.
-              </div>
 
-              <div class="d-flex flex-column flex-sm-row flex-wrap gap-2 mt-3">
-                <a href="{% url 'company_pending_logs' %}" class="btn btn-danger px-3">
-                  <i class="bi bi-hourglass-split me-1"></i> Pending Logs
-                </a>
-
-                <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success px-3">
-                  <i class="bi bi-journal-check me-1"></i> Approved Logs
-                </a>
-
-                <!-- ✅ NEW: Submitted Evaluations -->
-                <a href="{% url 'company_approved_evaluations' %}" class="btn btn-outline-primary px-3">
-                  <i class="bi bi-clipboard-data me-1"></i> Submitted Evaluations
-                </a>
-
-                <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary px-3">
-                  <i class="bi bi-people me-1"></i> Assigned Students
-                </a>
-              </div>
-
-              <div class="small text-muted mt-3">
-                Tip: If you return a log, explain what the student should correct (dates, missing tasks, evidence, etc.).
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <hr class="my-4"/>
-
+        <!-- KPI ROW -->
         <div class="row g-3">
-          <div class="col-12 col-md-6">
-            <div class="p-3 border rounded-4 h-100">
-              <div class="fw-bold mb-1">
-                <i class="bi bi-check2-circle text-success me-1"></i> Approve
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Pending Logs</div>
+                  <div class="value fs-2 text-danger">{{ pending_logs|default:0 }}</div>
+                  <div class="small text-muted">Submitted &amp; waiting</div>
+                </div>
+                <div class="icon"><i class="bi bi-hourglass-split"></i></div>
               </div>
-              <div class="text-muted small">
-                Approve when the log clearly explains work done, learning outcomes, and professionalism.
-              </div>
+              <a href="{% url 'company_pending_logs' %}" class="btn btn-danger btn-sm w-100 mt-3">
+                Review Now
+              </a>
             </div>
           </div>
 
-          <div class="col-12 col-md-6">
-            <div class="p-3 border rounded-4 h-100">
-              <div class="fw-bold mb-1">
-                <i class="bi bi-arrow-return-left text-warning me-1"></i> Return
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Approved Logs</div>
+                  <div class="value fs-2">{{ approved_logs|default:0 }}</div>
+                  <div class="small text-muted">Already cleared</div>
+                </div>
+                <div class="icon"><i class="bi bi-journal-check"></i></div>
               </div>
-              <div class="text-muted small">
-                Return when the log is incomplete/incorrect. Provide a reason so they can fix and resubmit.
+              <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success btn-sm w-100 mt-3">
+                View Approved
+              </a>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Returned Logs</div>
+                  <div class="value fs-2 text-warning">{{ returned_logs|default:0 }}</div>
+                  <div class="small text-muted">Needs edits</div>
+                </div>
+                <div class="icon"><i class="bi bi-arrow-return-left"></i></div>
+              </div>
+              <a href="{% url 'company_pending_logs' %}" class="btn btn-outline-warning btn-sm w-100 mt-3">
+                Track Follow-ups
+              </a>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Assigned Students</div>
+                  <div class="value fs-2">{{ assigned_students|default:0 }}</div>
+                  <div class="small text-muted">Under your care</div>
+                </div>
+                <div class="icon"><i class="bi bi-people"></i></div>
+              </div>
+              <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary btn-sm w-100 mt-3">
+                View Students
+              </a>
+            </div>
+          </div>
+
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Submitted Evaluations</div>
+                  <div class="value fs-2 text-primary">{{ submitted_evaluations|default:0 }}</div>
+                  <div class="small text-muted">Company assessments</div>
+                </div>
+                <div class="icon"><i class="bi bi-clipboard-data"></i></div>
+              </div>
+              <a href="{% url 'company_approved_evaluations' %}" class="btn btn-outline-primary btn-sm w-100 mt-3">
+                View Evaluations
+              </a>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Today</div>
+                  <div class="value fs-5">{% now "D, d M Y" %}</div>
+                  <div class="small text-muted">Keep logs moving</div>
+                </div>
+                <div class="icon"><i class="bi bi-calendar2-week"></i></div>
+              </div>
+              <div class="soft-panel p-3 mt-3 small">
+                <div class="fw-semibold mb-1">
+                  <i class="bi bi-lightbulb text-danger me-1"></i> Tip
+                </div>
+                If you return a log, mention what to fix: dates, missing tasks, evidence, and learning outcomes.
               </div>
             </div>
           </div>
@@ -87,44 +214,54 @@
 
   <!-- SIDEBAR -->
   <div class="col-12 col-lg-4">
-    <div class="card mb-4">
+
+    {% include "dashboards/_notifications_panel.html" %}
+
+    <!-- Quick Actions -->
+    <div class="card vu-card mb-4">
       <div class="card-header fw-bold">
-        <i class="bi bi-lightning-charge me-1"></i> Quick Actions
+        <i class="bi bi-lightning-charge text-danger me-1"></i> Quick Actions
       </div>
       <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
+        <a class="btn btn-danger" href="{% url 'company_pending_logs' %}">
           <i class="bi bi-hourglass-split me-1"></i> Review Pending Logs
+          <span class="badge text-bg-light text-danger ms-2">{{ pending_logs|default:0 }}</span>
         </a>
 
         <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
           <i class="bi bi-journal-check me-1"></i> View Approved Logs
         </a>
 
-        <!-- ✅ NEW: Submitted Evaluations -->
         <a class="btn btn-outline-primary" href="{% url 'company_approved_evaluations' %}">
           <i class="bi bi-clipboard-data me-1"></i> View Submitted Evaluations
         </a>
 
+        <a class="btn btn-outline-danger" href="{% url 'industry_results_report' %}">
+          <i class="bi bi-file-earmark-bar-graph me-1"></i> Generate Industry Report
+        </a>
+
         <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
-          <i class="bi bi-people me-1"></i> View Assigned Students
+          <i class="bi bi-people me-1"></i> Assigned Students
         </a>
       </div>
     </div>
 
-    <div class="card">
+    <!-- Standards -->
+    <div class="card vu-card">
       <div class="card-header fw-bold">
-        <i class="bi bi-journal-check me-1"></i> Approval Standards (Recommended)
+        <i class="bi bi-check2-square text-danger me-1"></i> Approval Standards
       </div>
       <div class="card-body small text-muted">
         <ul class="mb-0">
           <li>Dates are correct (From → To) and match the week number.</li>
-          <li>Activities are specific (not vague).</li>
+          <li>Activities are specific (avoid vague words).</li>
           <li>Skills / learning outcomes are mentioned.</li>
           <li>Professional language is used.</li>
-          <li>Evidence attachment is added where possible (optional).</li>
+          <li>Evidence attachment is added (optional).</li>
         </ul>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}

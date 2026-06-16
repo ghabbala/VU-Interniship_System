@@ -70,6 +70,22 @@ class WeeklyLog(models.Model):
         return f"{self.placement} - Week {self.week_no} ({self.status})"
 
 
+class WeeklyLogAttachment(models.Model):
+    weekly_log = models.ForeignKey(
+        WeeklyLog,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    file = models.FileField(upload_to="tracking/weekly_logs/attachments/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "id"]
+
+    def __str__(self):
+        return f"Attachment for {self.weekly_log}"
+
+
 class WeeklyLogEntry(models.Model):
     DAYS = [
         ("mon", "Monday"),
@@ -318,6 +334,7 @@ class IndustryEvaluation(models.Model):
             return 0.0
         return (self.total_marks / self.max_marks) * 10
     
+    
 class AcademicEvaluation(models.Model):
     STATUS_CHOICES = [("draft", "Draft"), ("submitted", "Submitted")]
 
@@ -386,25 +403,151 @@ class AcademicEvaluation(models.Model):
         self.save()
 
 
+
 class SupervisorResultsReport(models.Model):
+    """
+    University Supervisor -> Coordinator results report lifecycle.
+
+    draft         : editable, not yet sent
+    submitted     : sent, under review (locked for supervisor)
+    needs_changes : coordinator requested edits (editable again)
+    resubmitted   : supervisor edited + sent again (under review)
+    approved      : coordinator accepted (locked)
+    rejected      : optional final rejection (locked unless you reopen)
+    """
     STATUS_CHOICES = (
         ("draft", "Draft"),
         ("submitted", "Submitted"),
+        ("needs_changes", "Needs Changes"),
+        ("resubmitted", "Resubmitted"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
     )
 
-    supervisor_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    supervisor_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="results_reports",
+    )
+
+    # Snapshot of what was reported at that time (NOT live recalculation)
     rows = models.JSONField(default=list, blank=True)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+
+    # Revision control / audit
+    revision = models.PositiveIntegerField(default=1)
+
+    # Coordinator feedback (optional but very useful for update workflow)
+    coordinator_comment = models.TextField(blank=True, default="")
+
     submitted_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # -------------------------
+    # Workflow helpers
+    # -------------------------
+    def can_edit(self) -> bool:
+        """
+        Supervisor can edit only if report is draft or needs_changes.
+        """
+        return self.status in ("draft", "needs_changes")
+
+    def mark_needs_changes(self, comment: str = ""):
+        """
+        Coordinator uses this to reopen the report for supervisor edits.
+        """
+        self.status = "needs_changes"
+        if comment is not None:
+            self.coordinator_comment = comment
+        self.save(update_fields=["status", "coordinator_comment", "updated_at"])
+
+    def approve(self):
+        """
+        Coordinator approves. Locks supervisor edits.
+        """
+        self.status = "approved"
+        self.save(update_fields=["status", "updated_at"])
+
+    def reject(self, comment: str = ""):
+        """
+        Optional coordinator rejection.
+        """
+        self.status = "rejected"
+        if comment is not None:
+            self.coordinator_comment = comment
+        self.save(update_fields=["status", "coordinator_comment", "updated_at"])
+
     def submit(self):
+        """
+        Supervisor submits or resubmits.
+        - draft -> submitted
+        - needs_changes -> resubmitted (+ revision)
+        """
+        now = timezone.now()
+
+        if self.status == "draft":
+            self.status = "submitted"
+            self.submitted_at = now
+            self.save(update_fields=["status", "submitted_at", "updated_at"])
+            return
+
+        if self.status == "needs_changes":
+            self.status = "resubmitted"
+            self.revision += 1
+            self.submitted_at = now
+            self.save(update_fields=["status", "revision", "submitted_at", "updated_at"])
+            return
+
+        # Any other status shouldn't be submitted again unless coordinator reopens it.
+        # (Don't silently change state; raise to catch bugs)
+        raise ValueError(f"Cannot submit report in status '{self.status}'. Reopen it first.")
+
+
+class IndustrySupervisorResultsReport(models.Model):
+    """
+    Industry Supervisor -> University Supervisor report lifecycle.
+
+    The report is a snapshot of company assessment rows at submission time.
+    """
+    STATUS_CHOICES = (
+        ("draft", "Draft"),
+        ("submitted", "Submitted"),
+    )
+
+    supervisor_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="industry_results_reports",
+    )
+    company = models.ForeignKey(
+        "companies.Company",
+        on_delete=models.CASCADE,
+        related_name="industry_results_reports",
+    )
+    rows = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-created_at"]
+
+    def can_edit(self):
+        return self.status == "draft"
+
+    def submit(self):
+        if self.status != "draft":
+            raise ValueError(f"Cannot submit report in status '{self.status}'.")
         self.status = "submitted"
         self.submitted_at = timezone.now()
         self.save(update_fields=["status", "submitted_at", "updated_at"])
+
+    def __str__(self):
+        return f"Industry report: {self.company} by {self.supervisor_user} ({self.status})"
 
 
 
@@ -453,3 +596,37 @@ class StudentEvaluation(models.Model):
 
     def __str__(self):
         return f"StudentEvaluation({self.placement_id}, {self.student_user})"
+
+
+
+class Notification(models.Model):
+    LEVELS = [
+        ("info", "Info"),
+        ("warning", "Warning"),
+        ("danger", "Danger"),
+        ("secondary", "Secondary"),
+        ("success", "Success"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+
+    level = models.CharField(max_length=20, choices=LEVELS, default="info")
+    key = models.CharField(max_length=120, blank=True, default="", db_index=True)
+
+    action_url = models.CharField(max_length=400, blank=True, default="")
+    action_text = models.CharField(max_length=50, blank=True, default="Open")
+
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} - {self.title}"

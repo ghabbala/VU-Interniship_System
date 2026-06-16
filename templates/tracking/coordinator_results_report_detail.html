@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Submitted Results Report — Coordinator{% endblock %}
+{% block title %}Results Report — Coordinator{% endblock %}
 
 {% block content %}
 <div class="row g-4">
@@ -9,7 +9,7 @@
       <div>
         <div class="fw-bold fs-5">
           <i class="bi bi-file-earmark-text me-1 text-danger"></i>
-          Submitted Results Report
+          Results Report Review
         </div>
         <div class="text-muted small">
           Snapshot report submitted by a University Supervisor.
@@ -21,27 +21,22 @@
           <i class="bi bi-arrow-left me-1"></i> Back to Reports
         </a>
 
-        {# If you later create a coordinator PDF view for a single report, enable this #}
-        {# <a href="{% url 'coordinator_results_report_pdf' report.id %}" class="btn btn-outline-danger btn-sm">
+        <a href="{% url 'coordinator_results_report_pdf' report.id %}" class="btn btn-outline-danger btn-sm">
           <i class="bi bi-filetype-pdf me-1"></i> Download PDF
-        </a> #}
-
-        {% if report.status != "received" %}
-          <form method="post" action="{% url 'coordinator_mark_report_received' report.id %}" class="m-0">
-            {% csrf_token %}
-            <button class="btn btn-success btn-sm" type="submit">
-              <i class="bi bi-check2-circle me-1"></i> Mark as Received
-            </button>
-          </form>
-        {% else %}
-          <span class="badge text-bg-success align-self-center">
-            <i class="bi bi-check2-circle me-1"></i> Received
-          </span>
-        {% endif %}
+        </a>
       </div>
     </div>
 
-    <div class="card mt-3">
+    {% if report.status == "needs_changes" or report.status == "rejected" %}
+      {% if report.coordinator_comment %}
+        <div class="alert alert-warning border-0 mt-3 mb-0">
+          <div class="fw-semibold"><i class="bi bi-chat-left-text me-1"></i> Feedback Sent to Supervisor</div>
+          <div class="small text-muted mt-1">{{ report.coordinator_comment }}</div>
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <div class="card mt-3 shadow-sm">
       <div class="card-header d-flex flex-column flex-md-row justify-content-between gap-2 align-items-start align-items-md-center">
         <div class="fw-bold">
           <i class="bi bi-person-badge me-1 text-danger"></i>
@@ -49,18 +44,20 @@
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
+          <span class="badge text-bg-light border">Rev {{ report.revision|default:1 }}</span>
+
           {% if report.status == "submitted" %}
-            <span class="badge text-bg-primary">
-              <i class="bi bi-send-check me-1"></i> Submitted
-            </span>
-          {% elif report.status == "received" %}
-            <span class="badge text-bg-success">
-              <i class="bi bi-check2-circle me-1"></i> Received
-            </span>
+            <span class="badge text-bg-info"><i class="bi bi-hourglass-split me-1"></i> Submitted</span>
+          {% elif report.status == "resubmitted" %}
+            <span class="badge text-bg-info"><i class="bi bi-hourglass-split me-1"></i> Resubmitted</span>
+          {% elif report.status == "needs_changes" %}
+            <span class="badge text-bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i> Needs Changes</span>
+          {% elif report.status == "approved" %}
+            <span class="badge text-bg-success"><i class="bi bi-patch-check me-1"></i> Approved</span>
+          {% elif report.status == "rejected" %}
+            <span class="badge text-bg-danger"><i class="bi bi-x-octagon me-1"></i> Rejected</span>
           {% else %}
-            <span class="badge text-bg-warning">
-              <i class="bi bi-pencil-square me-1"></i> {{ report.status|title }}
-            </span>
+            <span class="badge text-bg-secondary">{{ report.status }}</span>
           {% endif %}
 
           {% if report.submitted_at %}
@@ -72,8 +69,83 @@
       </div>
 
       <div class="card-body">
+
+        <!-- Action bar -->
+        {% if report.status in "submitted resubmitted" %}
+          <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center justify-content-between mb-3">
+            <div class="text-muted small">
+              Choose an action: approve the report, or request changes (adds comment and unlocks supervisor edits).
+            </div>
+            <div class="d-flex gap-2 flex-wrap justify-content-md-end">
+              <form method="post" action="{% url 'coordinator_approve_report' report.id %}" class="m-0">
+                {% csrf_token %}
+                <button class="btn btn-success btn-sm" type="submit">
+                  <i class="bi bi-patch-check me-1"></i> Approve
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card border-0 bg-light">
+            <div class="card-body">
+              <div class="fw-semibold mb-2"><i class="bi bi-pencil-square me-1"></i> Request Changes / Comment</div>
+              <form method="post" action="{% url 'coordinator_request_changes_report' report.id %}" class="m-0">
+                {% csrf_token %}
+                <textarea name="comment" class="form-control" rows="3"
+                          placeholder="Write what the supervisor should correct (e.g. missing academic marks, wrong student name, etc)."></textarea>
+                <div class="d-flex gap-2 flex-wrap mt-2 justify-content-end">
+                  <button class="btn btn-warning btn-sm text-dark" type="submit">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Send Back (Needs Changes)
+                  </button>
+                </div>
+              </form>
+
+              <hr class="my-3">
+
+              <div class="fw-semibold mb-2 text-danger"><i class="bi bi-x-octagon me-1"></i> Reject (Optional)</div>
+              <form method="post" action="{% url 'coordinator_reject_report' report.id %}" class="m-0">
+                {% csrf_token %}
+                <textarea name="comment" class="form-control" rows="2"
+                          placeholder="Reason for rejection (optional)."></textarea>
+                <div class="d-flex gap-2 flex-wrap mt-2 justify-content-end">
+                  <button class="btn btn-outline-danger btn-sm" type="submit">
+                    Reject
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% elif report.status == "approved" %}
+          <div class="alert alert-success border-0">
+            <div class="fw-semibold"><i class="bi bi-patch-check me-1"></i> Approved</div>
+            <div class="small text-muted mt-1">This report is approved and locked unless you request changes again.</div>
+          </div>
+
+          <div class="card border-0 bg-light">
+            <div class="card-body">
+              <div class="fw-semibold mb-2"><i class="bi bi-arrow-counterclockwise me-1"></i> Reopen (Request Changes)</div>
+              <form method="post" action="{% url 'coordinator_request_changes_report' report.id %}" class="m-0">
+                {% csrf_token %}
+                <textarea name="comment" class="form-control" rows="2"
+                          placeholder="Reason for reopening / changes required."></textarea>
+                <div class="d-flex gap-2 flex-wrap mt-2 justify-content-end">
+                  <button class="btn btn-warning btn-sm text-dark" type="submit">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Reopen as Needs Changes
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <div class="alert alert-secondary border-0">
+            <div class="fw-semibold">Status: {{ report.status|title }}</div>
+            <div class="small text-muted mt-1">No coordinator action is required at this stage.</div>
+          </div>
+        {% endif %}
+
+        <!-- Table -->
         {% if rows %}
-          <div class="table-responsive">
+          <div class="table-responsive mt-3">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
@@ -122,11 +194,10 @@
           <div class="text-center py-5">
             <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
             <div class="fw-bold mt-2">No rows found in this report</div>
-            <div class="text-muted small">
-              This submitted report has no saved snapshot rows.
-            </div>
+            <div class="text-muted small">This report has no saved snapshot rows.</div>
           </div>
         {% endif %}
+
       </div>
     </div>
 

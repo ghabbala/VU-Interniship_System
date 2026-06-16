@@ -2,211 +2,494 @@
 {% block title %}Site Visits Oversight — Coordinator{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <div class="col-12">
-    <div class="card shadow-sm border-0 overflow-hidden">
-      <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <div>
-          <div class="fw-bold">
-            <i class="bi bi-clipboard-data me-1 text-danger"></i> Site Visits Oversight
-          </div>
-          <div class="text-muted small">
-            View site visits and reports grouped per student (latest visit + latest report).
-          </div>
-        </div>
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft:#fff5f5;
+    --vu-border: rgba(0,0,0,.10);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.88);
+    --vu-radius: 18px;
+  }
 
-        <a href="{% url 'coordinator_dashboard' %}" class="btn btn-light border btn-sm">
-          <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
-        </a>
+  .vu-wrap{max-width:1200px;margin:0 auto;}
+
+  /* HERO */
+  .vu-hero{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    color:#fff;
+    border-radius: var(--vu-radius);
+    box-shadow: 0 12px 28px rgba(0,0,0,.12);
+    overflow:hidden;
+  }
+  .vu-chip{
+    display:inline-flex;align-items:center;gap:.5rem;
+    padding:.42rem .75rem;border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.20);
+    font-weight:850;font-size:.88rem;white-space:nowrap;
+  }
+  .vu-sub{color:rgba(255,255,255,.88)}
+  .btn-pill{border-radius:999px;}
+  .badge-pill{border-radius:999px;}
+
+  /* Card */
+  .vu-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius);
+    overflow:hidden;
+    background:#fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-card .head{
+    padding:.9rem 1rem;
+    border-bottom:1px solid rgba(0,0,0,.06);
+    background:#fff;
+    display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+    flex-wrap:wrap;
+  }
+  .vu-title{
+    font-weight:950;color:var(--vu-dark);
+    display:flex;align-items:center;gap:.55rem;
+  }
+
+  /* Filters */
+  .filters{
+    display:grid;
+    grid-template-columns: 1fr 220px 220px;
+    gap:.6rem;
+    align-items:center;
+  }
+  @media (max-width: 991.98px){
+    .filters{grid-template-columns:1fr;}
+  }
+  .vu-search{
+    border-radius: 999px !important;
+    padding-left: 2.2rem;
+  }
+  .search-ico{
+    position:absolute;left:.85rem;top:50%;transform:translateY(-50%);
+    color: rgba(0,0,0,.45);
+  }
+
+  /* Table */
+  .vu-table thead th{
+    position: sticky; top: 0; z-index: 2;
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:#6c757d;
+    background:#f8f9fa !important;
+    white-space:nowrap;
+  }
+  .muted{color: var(--vu-muted);}
+  .nowrap{white-space:nowrap;}
+
+  /* ✅ Student cell (more visible name) */
+  .stu{
+    display:flex;align-items:flex-start;gap:.75rem;
+  }
+  .avatar{
+    width:44px;height:44px;border-radius:16px;
+    display:grid;place-items:center;
+    background: var(--vu-soft);
+    border:1px solid rgba(179,0,0,.14);
+    color: var(--vu-red);
+    flex:0 0 auto;
+  }
+  .stu .name{
+    font-weight:950;
+    font-size:1.02rem;          /* ✅ bigger */
+    letter-spacing:.01em;
+    line-height:1.15;
+    color: var(--vu-dark);
+    display:flex;
+    align-items:center;
+    gap:.5rem;
+    flex-wrap:wrap;
+  }
+  .stu .reg{
+    font-weight:900;
+    font-size:.78rem;
+    padding:.18rem .5rem;
+    border-radius:999px;
+    background: rgba(179,0,0,.08);
+    border: 1px solid rgba(179,0,0,.18);
+    color: var(--vu-red);
+  }
+  .stu .email{
+    font-size:.82rem;
+    color:#6c757d;
+    margin-top:.18rem;
+  }
+
+  /* Compact report button */
+  .act{
+    display:inline-flex;
+    gap:.45rem;
+    align-items:center;
+    border-radius:999px;
+  }
+
+  /* Accordion / history panel */
+  .history-wrap{
+    background: #fbfbfb;
+    border-top: 1px solid rgba(0,0,0,.06);
+  }
+  .history-card{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    background:#fff;
+    padding:.85rem;
+  }
+  .history-top{
+    display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;
+  }
+
+  /* Empty */
+  .vu-empty{
+    background:#f8f9fa;border:1px dashed rgba(0,0,0,.16);
+    border-radius: var(--vu-radius);padding:1.2rem;
+  }
+</style>
+
+<div class="vu-wrap">
+
+  <!-- HERO -->
+  <div class="vu-hero p-3 p-md-4 mb-4">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start">
+      <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="vu-chip"><i class="bi bi-geo-alt"></i> Site Visits Oversight</span>
+          <span class="vu-chip"><i class="bi bi-collection"></i> {{ student_rows|length|default:0 }} student{{ student_rows|length|pluralize }}</span>
+        </div>
+        <div class="vu-sub small">
+          Oversight per student: latest visit + report, with expandable visit history.
+        </div>
       </div>
 
-      <div class="card-body">
-        {% if student_rows %}
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Student</th>
-                  <th>Company</th>
-                  <th>Supervisor</th>
-                  <th>Latest Visit</th>
-                  <th>Status</th>
-                  <th class="text-end">Scheduled</th>
-                  <th class="text-end">Report</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {% for r in student_rows %}
-                  <tr>
-                    <!-- Student -->
-                    <td class="fw-semibold">
-                      {{ r.student.reg_no }}
-                      <div class="small text-muted">{{ r.student.user.email }}</div>
-                    </td>
-
-                    <!-- Company -->
-                    <td>
-                      <div class="fw-semibold">{{ r.company_name|default:"—" }}</div>
-                      <div class="small text-muted">Placement</div>
-                    </td>
-
-                    <!-- Supervisor (StaffProfile -> user) -->
-                    <td>
-                      {% if r.supervisor %}
-                        <div class="fw-semibold">
-                          {{ r.supervisor.user.get_full_name|default:r.supervisor.user.email }}
-                        </div>
-                        <div class="small text-muted">{{ r.supervisor.user.email }}</div>
-                      {% else %}
-                        <span class="text-muted">—</span>
-                      {% endif %}
-                    </td>
-
-                    <!-- Latest Visit Type -->
-                    <td>
-                      {% if r.visit %}
-                        <span class="badge text-bg-light border">{{ r.visit.get_visit_type_display }}</span>
-                      {% else %}
-                        <span class="text-muted">—</span>
-                      {% endif %}
-                    </td>
-
-                    <!-- Status -->
-                    <td>
-                      {% if r.visit %}
-                        {% if r.visit.status == "scheduled" %}
-                          <span class="badge text-bg-secondary">Scheduled</span>
-                        {% elif r.visit.status == "confirmed" %}
-                          <span class="badge text-bg-info">Confirmed</span>
-                        {% elif r.visit.status == "completed" %}
-                          <span class="badge text-bg-success">Completed</span>
-                        {% elif r.visit.status == "cancelled" %}
-                          <span class="badge text-bg-dark">Cancelled</span>
-                        {% else %}
-                          <span class="badge text-bg-light border">{{ r.visit.status }}</span>
-                        {% endif %}
-                      {% else %}
-                        <span class="text-muted">—</span>
-                      {% endif %}
-                    </td>
-
-                    <!-- Scheduled -->
-                    <td class="text-end small text-muted">
-                      {% if r.visit %}
-                        {{ r.visit.scheduled_at|date:"Y-m-d H:i" }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </td>
-
-                    <!-- Report -->
-                    <td class="text-end">
-                      {% if r.visit and r.report %}
-                        <a href="{% url 'coordinator_site_visit_report_detail' r.visit.id %}"
-                           class="btn btn-sm btn-outline-danger">
-                          <i class="bi bi-eye me-1"></i> View Report
-                        </a>
-                      {% elif r.visit %}
-                        <span class="badge text-bg-warning">No</span>
-                      {% else %}
-                        <span class="text-muted">—</span>
-                      {% endif %}
-                    </td>
-                  </tr>
-
-                  <!-- Visit History Accordion -->
-                  <tr class="table-light">
-                    <td colspan="7" class="p-0">
-                      <div class="accordion accordion-flush" id="accStudent{{ forloop.counter }}">
-                        <div class="accordion-item">
-                          <h2 class="accordion-header" id="heading{{ forloop.counter }}">
-                            <button class="accordion-button collapsed py-2 px-3" type="button"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#collapse{{ forloop.counter }}"
-                                    aria-expanded="false"
-                                    aria-controls="collapse{{ forloop.counter }}">
-                              <span class="fw-semibold me-2">Visit History</span>
-                              <span class="text-muted small">
-                                ({{ r.all_visits|length|default:0 }} visits)
-                              </span>
-                            </button>
-                          </h2>
-
-                          <div id="collapse{{ forloop.counter }}"
-                               class="accordion-collapse collapse"
-                               aria-labelledby="heading{{ forloop.counter }}"
-                               data-bs-parent="#accStudent{{ forloop.counter }}">
-                            <div class="accordion-body">
-                              {% if r.all_visits %}
-                                <div class="row g-2">
-                                  {% for v in r.all_visits %}
-                                    <div class="col-12">
-                                      <div class="border rounded-3 p-3 bg-white">
-                                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                          <div>
-                                            <span class="badge text-bg-light border">{{ v.get_visit_type_display }}</span>
-
-                                            {% if v.status == "scheduled" %}
-                                              <span class="badge text-bg-secondary ms-2">Scheduled</span>
-                                            {% elif v.status == "confirmed" %}
-                                              <span class="badge text-bg-info ms-2">Confirmed</span>
-                                            {% elif v.status == "completed" %}
-                                              <span class="badge text-bg-success ms-2">Completed</span>
-                                            {% elif v.status == "cancelled" %}
-                                              <span class="badge text-bg-dark ms-2">Cancelled</span>
-                                            {% else %}
-                                              <span class="badge text-bg-light border ms-2">{{ v.status }}</span>
-                                            {% endif %}
-                                          </div>
-
-                                          <div class="text-muted small">
-                                            {{ v.scheduled_at|date:"Y-m-d H:i" }}
-                                          </div>
-                                        </div>
-
-                                        <div class="mt-2">
-                                          {% if v.report %}
-                                            <a href="{% url 'coordinator_site_visit_report_detail' v.id %}"
-                                               class="btn btn-sm btn-outline-danger">
-                                              <i class="bi bi-eye me-1"></i> View Report
-                                            </a>
-                                          {% else %}
-                                            <span class="badge text-bg-warning">No report</span>
-                                          {% endif %}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  {% endfor %}
-                                </div>
-                              {% else %}
-                                <div class="text-muted small">No visit history for this student yet.</div>
-                              {% endif %}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <div class="small text-muted mt-3">
-            Tip: Ensure each active placement has at least one completed site visit before academic evaluation.
-          </div>
-
-        {% else %}
-          <div class="text-center py-5">
-            <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
-            <div class="fw-bold mt-2">No site visits found</div>
-            <div class="text-muted small">Scheduled visits will appear here for oversight.</div>
-          </div>
-        {% endif %}
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-light btn-sm btn-pill" href="{% url 'coordinator_dashboard' %}">
+          <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
       </div>
     </div>
   </div>
+
+  <!-- MAIN CARD -->
+  <div class="vu-card">
+    <div class="head">
+      <div class="vu-title">
+        <i class="bi bi-clipboard-data" style="color:var(--vu-red)"></i>
+        Visits & Reports
+      </div>
+
+      <span class="badge text-bg-light border badge-pill">
+        Showing {{ student_rows|length|default:0 }} row{{ student_rows|length|pluralize }}
+      </span>
+    </div>
+
+    <div class="p-3 p-md-3">
+
+      <!-- Client-side filters -->
+      <div class="filters mb-3">
+        <div class="position-relative">
+          <i class="bi bi-search search-ico"></i>
+          <input id="qSearch" type="text" class="form-control vu-search"
+                 placeholder="Search reg no, student email, company, supervisor…">
+        </div>
+
+        <select id="qStatus" class="form-select btn-pill">
+          <option value="">All visit statuses</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="none">No visit yet</option>
+        </select>
+
+        <select id="qReport" class="form-select btn-pill">
+          <option value="">All report states</option>
+          <option value="has">Has report</option>
+          <option value="no">No report</option>
+          <option value="na">No visit yet</option>
+        </select>
+      </div>
+
+      {% if student_rows %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 vu-table" id="visitsTable">
+            <thead>
+              <tr>
+                <th style="min-width:300px;">Student</th>
+                <th style="min-width:220px;">Company</th>
+                <th style="min-width:240px;">Supervisor</th>
+                <th class="nowrap" style="min-width:140px;">Latest Visit</th>
+                <th class="nowrap" style="min-width:140px;">Status</th>
+                <th class="text-end nowrap" style="min-width:160px;">Scheduled</th>
+                <th class="text-end nowrap" style="min-width:160px;">Report</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for r in student_rows %}
+                <tr class="v-row"
+                    data-status="{% if r.visit %}{{ r.visit.status|default:'' }}{% else %}none{% endif %}"
+                    data-report="{% if r.visit %}{% if r.report %}has{% else %}no{% endif %}{% else %}na{% endif %}"
+                    data-search="{{ r.student.reg_no }} {{ r.student.user.email }} {{ r.company_name|default:'' }} {% if r.supervisor %}{{ r.supervisor.user.get_full_name|default:r.supervisor.user.email }} {{ r.supervisor.user.email }}{% endif %}">
+
+                  <!-- ✅ Student (name prominent, reg as pill) -->
+                  <td>
+                    <div class="stu">
+                      <div class="avatar"><i class="bi bi-person-badge"></i></div>
+                      <div>
+                        <div class="name">
+                          {{ r.student.user.get_full_name|default:r.student.user.email }}
+                          <span class="reg">{{ r.student.reg_no }}</span>
+                        </div>
+                        <div class="email">{{ r.student.user.email }}</div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Company -->
+                  <td>
+                    <div class="fw-semibold">{{ r.company_name|default:"—" }}</div>
+                    <div class="small muted">Placement</div>
+                  </td>
+
+                  <!-- Supervisor -->
+                  <td>
+                    {% if r.supervisor %}
+                      <div class="fw-semibold">
+                        {{ r.supervisor.user.get_full_name|default:r.supervisor.user.email }}
+                      </div>
+                      <div class="small muted">{{ r.supervisor.user.email }}</div>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Latest Visit Type -->
+                  <td class="nowrap">
+                    {% if r.visit %}
+                      <span class="badge text-bg-light border badge-pill">{{ r.visit.get_visit_type_display }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Status -->
+                  <td class="nowrap">
+                    {% if r.visit %}
+                      {% if r.visit.status == "scheduled" %}
+                        <span class="badge text-bg-secondary badge-pill">Scheduled</span>
+                      {% elif r.visit.status == "confirmed" %}
+                        <span class="badge text-bg-info badge-pill">Confirmed</span>
+                      {% elif r.visit.status == "completed" %}
+                        <span class="badge text-bg-success badge-pill">Completed</span>
+                      {% elif r.visit.status == "cancelled" %}
+                        <span class="badge text-bg-dark badge-pill">Cancelled</span>
+                      {% else %}
+                        <span class="badge text-bg-light border badge-pill">{{ r.visit.status }}</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="badge text-bg-light border text-muted badge-pill">No visit</span>
+                    {% endif %}
+                  </td>
+
+                  <!-- Scheduled -->
+                  <td class="text-end small muted nowrap">
+                    {% if r.visit %}
+                      {{ r.visit.scheduled_at|date:"Y-m-d H:i" }}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+
+                  <!-- Report -->
+                  <td class="text-end nowrap">
+                    {% if r.visit and r.report %}
+                      <a href="{% url 'coordinator_site_visit_report_detail' r.visit.id %}"
+                         class="btn btn-sm btn-outline-danger act">
+                        <i class="bi bi-eye"></i> View Report
+                      </a>
+                    {% elif r.visit %}
+                      <span class="badge text-bg-warning badge-pill">No report</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+
+                <!-- History toggle row -->
+                <tr class="history-wrap">
+                  <td colspan="7" class="p-0">
+                    <div class="accordion accordion-flush" id="accStudent{{ forloop.counter }}">
+                      <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                          <button class="accordion-button collapsed py-2 px-3" type="button"
+                                  data-bs-toggle="collapse"
+                                  data-bs-target="#collapse{{ forloop.counter }}"
+                                  aria-expanded="false"
+                                  aria-controls="collapse{{ forloop.counter }}">
+                            <span class="fw-semibold me-2">Visit History</span>
+                            <span class="text-muted small">({{ r.all_visits|length|default:0 }} visits)</span>
+                          </button>
+                        </h2>
+
+                        <div id="collapse{{ forloop.counter }}"
+                             class="accordion-collapse collapse"
+                             aria-labelledby="heading{{ forloop.counter }}"
+                             data-bs-parent="#accStudent{{ forloop.counter }}">
+                          <div class="accordion-body">
+                            {% if r.all_visits %}
+                              <div class="row g-2">
+                                {% for v in r.all_visits %}
+                                  <div class="col-12">
+                                    <div class="history-card">
+                                      <div class="history-top">
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                          <span class="badge text-bg-light border badge-pill">{{ v.get_visit_type_display }}</span>
+
+                                          {% if v.status == "scheduled" %}
+                                            <span class="badge text-bg-secondary badge-pill">Scheduled</span>
+                                          {% elif v.status == "confirmed" %}
+                                            <span class="badge text-bg-info badge-pill">Confirmed</span>
+                                          {% elif v.status == "completed" %}
+                                            <span class="badge text-bg-success badge-pill">Completed</span>
+                                          {% elif v.status == "cancelled" %}
+                                            <span class="badge text-bg-dark badge-pill">Cancelled</span>
+                                          {% else %}
+                                            <span class="badge text-bg-light border badge-pill">{{ v.status }}</span>
+                                          {% endif %}
+                                        </div>
+
+                                        <div class="small muted">
+                                          <i class="bi bi-clock me-1"></i>{{ v.scheduled_at|date:"Y-m-d H:i" }}
+                                        </div>
+                                      </div>
+
+                                      <div class="mt-2">
+                                        {% if v.report %}
+                                          <a href="{% url 'coordinator_site_visit_report_detail' v.id %}"
+                                             class="btn btn-sm btn-outline-danger act">
+                                            <i class="bi bi-eye"></i> View Report
+                                          </a>
+                                        {% else %}
+                                          <span class="badge text-bg-warning badge-pill">No report</span>
+                                        {% endif %}
+                                      </div>
+                                    </div>
+                                  </div>
+                                {% endfor %}
+                              </div>
+                            {% else %}
+                              <div class="text-muted small">No visit history for this student yet.</div>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+          <div class="small muted">
+            Tip: Ensure each active placement has at least one completed site visit before academic evaluation.
+          </div>
+
+          <button class="btn btn-light border btn-sm btn-pill" type="button" id="clearFilters">
+            <i class="bi bi-x-circle me-1"></i> Clear filters
+          </button>
+        </div>
+
+      {% else %}
+        <div class="vu-empty text-center py-5">
+          <div class="mb-2">
+            <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+          </div>
+          <div class="fw-bold">No site visits found</div>
+          <div class="text-muted small">Scheduled visits will appear here for oversight.</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+
+<script>
+  (function(){
+    const qSearch = document.getElementById("qSearch");
+    const qStatus = document.getElementById("qStatus");
+    const qReport = document.getElementById("qReport");
+    const clearBtn = document.getElementById("clearFilters");
+    const rows = Array.from(document.querySelectorAll(".v-row"));
+
+    function norm(s){ return (s || "").toString().toLowerCase().trim(); }
+
+    function apply(){
+      const term = norm(qSearch && qSearch.value);
+      const st = norm(qStatus && qStatus.value);
+      const rp = norm(qReport && qReport.value);
+
+      let visible = 0;
+
+      rows.forEach(tr => {
+        const hay = norm(tr.getAttribute("data-search"));
+        const rStatus = norm(tr.getAttribute("data-status"));
+        const rReport = norm(tr.getAttribute("data-report"));
+
+        const okTerm = !term || hay.includes(term);
+        const okStatus = !st || rStatus === st;
+        const okReport = !rp || rReport === rp;
+
+        const show = okTerm && okStatus && okReport;
+        tr.style.display = show ? "" : "none";
+
+        const historyRow = tr.nextElementSibling;
+        if (historyRow) historyRow.style.display = show ? "" : "none";
+
+        if (show) visible++;
+      });
+
+      const table = document.getElementById("visitsTable");
+      if (table){
+        let hint = document.getElementById("noMatchesHint");
+        if (!hint){
+          hint = document.createElement("div");
+          hint.id = "noMatchesHint";
+          hint.className = "vu-empty text-center mt-3";
+          hint.innerHTML = `
+            <i class="bi bi-filter-circle text-danger" style="font-size:1.8rem;"></i>
+            <div class="fw-bold mt-2">No matches</div>
+            <div class="text-muted small">Try clearing filters or adjusting your search.</div>
+          `;
+          table.parentElement.appendChild(hint);
+        }
+        hint.style.display = (rows.length && visible === 0) ? "" : "none";
+      }
+    }
+
+    if (qSearch) qSearch.addEventListener("input", apply);
+    if (qStatus) qStatus.addEventListener("change", apply);
+    if (qReport) qReport.addEventListener("change", apply);
+
+    if (clearBtn){
+      clearBtn.addEventListener("click", () => {
+        if (qSearch) qSearch.value = "";
+        if (qStatus) qStatus.value = "";
+        if (qReport) qReport.value = "";
+        apply();
+      });
+    }
+
+    apply();
+  })();
+</script>
 {% endblock %}

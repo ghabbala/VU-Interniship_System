@@ -1,5 +1,7 @@
 from django.db import models
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
@@ -83,5 +85,47 @@ class IndustrySupervisorProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="industry_profile")
     company = models.ForeignKey("companies.Company", on_delete=models.PROTECT)
 
+    def has_current_placement_access(self):
+        from placements.models import Placement
+
+        today = timezone.localdate()
+        return Placement.objects.filter(
+            company=self.company,
+            status__in=["pending_student_ack", "active", "on_hold"],
+            end_date__gte=today,
+        ).exists()
+
     def __str__(self):
         return f"{self.user.email} - {self.company.name}"
+
+
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_otps")
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @classmethod
+    def create_for_user(cls, user, code, expires_at):
+        cls.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+        return cls.objects.create(
+            user=user,
+            code_hash=make_password(code),
+            expires_at=expires_at,
+        )
+
+    @property
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def check_code(self, code):
+        return check_password(code, self.code_hash)
+
+    def mark_used(self):
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])

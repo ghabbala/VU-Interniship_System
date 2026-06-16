@@ -10,7 +10,21 @@ from django.utils import timezone
 from .models import SiteVisit, SiteVisitReport
 
 
-MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_WEEKLY_LOG_ATTACHMENTS = 5
+MAX_TOTAL_ATTACHMENT_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        if not isinstance(data, (list, tuple)):
+            data = [data]
+        return [super(MultipleFileField, self).clean(item, initial) for item in data]
 
 
 class WeeklyLogForm(forms.ModelForm):
@@ -20,10 +34,24 @@ class WeeklyLogForm(forms.ModelForm):
         help_text="Week number (1–60).",
         widget=forms.NumberInput(attrs={"class": "a4-input", "placeholder": "e.g. 1"}),
     )
+    attachments = MultipleFileField(
+        required=False,
+        widget=MultipleFileInput(attrs={"class": "a4-file", "multiple": True}),
+        help_text="Upload up to 5 files. Combined size must be 20MB or smaller.",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        existing_count = self._existing_attachment_count()
+        existing_size = self._existing_attachment_size()
+        self.fields["attachments"].widget.attrs.update({
+            "data-existing-count": existing_count,
+            "data-existing-size": existing_size,
+        })
 
     class Meta:
         model = WeeklyLog
-        fields = ["week_no", "from_date", "to_date", "challenges", "lessons", "attachment"]
+        fields = ["week_no", "from_date", "to_date", "challenges", "lessons"]
         widgets = {
             "from_date": forms.DateInput(attrs={"type": "date", "class": "a4-input"}),
             "to_date": forms.DateInput(attrs={"type": "date", "class": "a4-input"}),
@@ -38,7 +66,6 @@ class WeeklyLogForm(forms.ModelForm):
                 "class": "a4-textarea",
                 "placeholder": "Lessons learnt / key takeaways (optional)...",
             }),
-            "attachment": forms.ClearableFileInput(attrs={"class": "a4-file"}),
         }
 
     def clean_week_no(self):
@@ -49,15 +76,55 @@ class WeeklyLogForm(forms.ModelForm):
             raise forms.ValidationError("Week number must be between 1 and 60.")
         return w
 
-    def clean_attachment(self):
-        f = self.cleaned_data.get("attachment")
-        if not f:
-            return f
+    def clean_attachments(self):
+        files = self.cleaned_data.get("attachments") or []
+        existing_count = self._existing_attachment_count()
+        existing_size = self._existing_attachment_size()
+        total_count = existing_count + len(files)
+        uploaded_size = sum(f.size for f in files)
+        total_size = existing_size + uploaded_size
 
-        if f.size > MAX_ATTACHMENT_SIZE:
-            raise ValidationError("Attachment is too large. Maximum allowed size is 5MB.")
+        if total_count > MAX_WEEKLY_LOG_ATTACHMENTS:
+            remaining = max(MAX_WEEKLY_LOG_ATTACHMENTS - existing_count, 0)
+            raise ValidationError(
+                f"You can attach a maximum of {MAX_WEEKLY_LOG_ATTACHMENTS} files per weekly log. "
+                f"You can add {remaining} more file(s)."
+            )
 
-        return f
+        if total_size > MAX_TOTAL_ATTACHMENT_SIZE:
+            remaining_mb = max((MAX_TOTAL_ATTACHMENT_SIZE - existing_size) / (1024 * 1024), 0)
+            raise ValidationError(
+                "The total size of all attachments must be 20MB or smaller. "
+                f"You have {remaining_mb:.1f}MB remaining for this log."
+            )
+
+        return files
+
+    def _existing_attachment_count(self):
+        if not self.instance or not self.instance.pk:
+            return 0
+        count = 1 if getattr(self.instance, "attachment", None) else 0
+        return count + self.instance.attachments.count()
+
+    def _existing_attachment_size(self):
+        if not self.instance or not self.instance.pk:
+            return 0
+
+        total = 0
+        legacy_attachment = getattr(self.instance, "attachment", None)
+        if legacy_attachment:
+            try:
+                total += legacy_attachment.size
+            except (OSError, ValueError):
+                pass
+
+        for item in self.instance.attachments.all():
+            try:
+                total += item.file.size
+            except (OSError, ValueError):
+                pass
+
+        return total
 
 
 class WeeklyLogEntryForm(forms.ModelForm):
@@ -87,9 +154,6 @@ WeeklyLogEntryFormSet = inlineformset_factory(
     extra=0,
     can_delete=False,
 )
-
-
-from .models import IndustryEvaluation
 
 RATING_CHOICES = [(1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5")]
 
@@ -136,6 +200,7 @@ class IndustryEvaluationForm(forms.ModelForm):
             "supervisor_name",
             "supervisor_signature",
         ]
+
         widgets = {
             # ratings as radio
             "basic_work_expectations": forms.RadioSelect(choices=RATING_CHOICES),
@@ -182,10 +247,37 @@ class IndustryEvaluationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Add Bootstrap styling to radio groups
-        for k, f in self.fields.items():
+        # ✅ make ALL fields required by default...
+        for name, field in self.fields.items():
+            field.required = True
+
+        # ✅ ...but keep comments optional (recommended UX)
+        optional_fields = [
+            "basic_work_expectations_comment",
+            "knowledge_and_learning_comment",
+            "ethical_awareness_comment",
+            "interpersonal_relations_comment",
+            "communication_skills_comment",
+            "attendance_comment",
+            "punctuality_comment",
+            "flexibility_comment",
+            "dependability_comment",
+            "culture_fit_comment",
+            "dress_code_comment",
+            "behaviour_comment",
+            "work_productivity_comment",
+            "recommend_comment",
+            "other_comments",
+        ]
+        for f in optional_fields:
+            if f in self.fields:
+                self.fields[f].required = False
+
+        # ✅ ensure radios have consistent class
+        for name, f in self.fields.items():
             if isinstance(f.widget, forms.RadioSelect):
                 f.widget.attrs.update({"class": "form-check-input"})
+
 
 
 
@@ -257,11 +349,6 @@ class StudentEvaluationForm(forms.ModelForm):
             "q10": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
-
-# --- SITE VISITS (NEW STRUCTURE) ---
-from django import forms
-from django.utils import timezone
-from .models import SiteVisit, SiteVisitReport
 
 
 class SiteVisitScheduleForm(forms.ModelForm):

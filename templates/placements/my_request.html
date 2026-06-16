@@ -1,214 +1,529 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Internship Request — Victoria University{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <!-- MAIN -->
-  <div class="col-12 col-lg-8">
-    <div class="card">
-      <div class="card-header d-flex align-items-start justify-content-between">
-        <div>
-          <div class="fw-bold">Internship Request</div>
-          <div class="text-muted small">Period: {{ period.name }}</div>
-        </div>
+<link rel="stylesheet" href="{% static 'placements/css/vu-my-request.css' %}">
 
-        {# Status badge (color based on status) #}
-        {% if req.status == "draft" %}
-          <span class="badge text-bg-secondary">Draft</span>
-        {% elif req.status == "submitted" %}
-          <span class="badge text-bg-primary">Submitted</span>
-        {% elif req.status == "recommended" %}
-          <span class="badge text-bg-warning">Recommended</span>
-        {% elif req.status == "acceptance_uploaded" %}
-          <span class="badge text-bg-info">Acceptance Uploaded</span>
-        {% elif req.status == "acceptance_verified" %}
-          <span class="badge text-bg-success">Acceptance Verified</span>
-        {% else %}
-          <span class="badge text-bg-dark">{{ req.status }}</span>
-        {% endif %}
+<div class="vu-page">
+
+  <!-- ===================== PAGE HEADER ===================== -->
+  <div class="vu-pagehead mb-3">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+      <div>
+        <div class="vu-pagehead-title">
+          <span class="vu-dot"></span>
+          Internship Request
+        </div>
+        <div class="vu-pagehead-sub">
+          <i class="bi bi-calendar2-week me-1"></i> Period: <b>{{ period.name }}</b>
+        </div>
       </div>
 
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <div>
+          {% if req.status == "draft" %}
+            <span class="badge text-bg-secondary vu-status"><i class="bi bi-pencil-square me-1"></i>Draft</span>
+          {% elif req.status == "submitted" %}
+            <span class="badge text-bg-primary vu-status"><i class="bi bi-send me-1"></i>Submitted</span>
+          {% elif req.status == "recommended" %}
+            <span class="badge text-bg-warning vu-status"><i class="bi bi-patch-check me-1"></i>Recommended</span>
+          {% elif req.status == "returned_for_acceptance" %}
+            <span class="badge text-bg-danger vu-status"><i class="bi bi-arrow-return-left me-1"></i>Action needed</span>
+          {% elif req.status == "acceptance_uploaded" %}
+            <span class="badge text-bg-info vu-status"><i class="bi bi-cloud-upload me-1"></i>Acceptance uploaded</span>
+          {% elif req.status == "acceptance_verified" %}
+            <span class="badge text-bg-success vu-status"><i class="bi bi-check-circle me-1"></i>Verified</span>
+          {% else %}
+            <span class="badge text-bg-dark vu-status">{{ req.status }}</span>
+          {% endif %}
+        </div>
+
+        <a class="btn btn-light border" href="{% url 'student_dashboard' %}">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+
+        <a class="btn btn-light border" href="{% url 'student_logs' %}">
+          <i class="bi bi-journal-text me-1"></i> Weekly Logs
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ===================== MAIN ===================== -->
+    <div class="col-12 col-lg-8">
+
+      {# Coordinator comment / action needed #}
       {% if req.status == "returned_for_acceptance" and req.coordinator_comment %}
-        <div class="alert alert-danger d-flex align-items-start justify-content-between gap-3">
+        <div class="alert alert-danger vu-alert d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
           <div>
-            <div class="fw-semibold"><i class="bi bi-chat-left-text me-1"></i> Coordinator comment</div>
+            <div class="fw-semibold">
+              <i class="bi bi-chat-left-text me-1"></i> Coordinator comment
+            </div>
             <div class="small mb-0">{{ req.coordinator_comment }}</div>
+
             {% if req.coordinator_commented_at %}
-              <div class="small text-muted mt-1">Sent: {{ req.coordinator_commented_at|date:"Y-m-d H:i" }}</div>
+              <div class="small text-muted mt-1">
+                <i class="bi bi-clock me-1"></i>
+                Sent: {{ req.coordinator_commented_at|date:"Y-m-d H:i" }}
+              </div>
             {% endif %}
           </div>
+
           <a class="btn btn-danger btn-sm" href="{% url 'student_upload_acceptance' %}">
             <i class="bi bi-cloud-upload me-1"></i> Upload Acceptance
           </a>
         </div>
       {% endif %}
 
-
-      <div class="card-body">
-        <!-- STATUS MESSAGES -->
-        {% if req.recommendation_letter %}
-          <div class="alert alert-success d-flex align-items-start justify-content-between gap-3">
-            <div>
-              <div class="fw-semibold"><i class="bi bi-patch-check me-1"></i> Recommendation letter issued</div>
-              <div class="small mb-0">Download and present it to the company to obtain an acceptance letter.</div>
-            </div>
-
-            {# ✅ SECURE DOWNLOAD (student only) #}
-            <a href="{% url 'download_recommendation_letter' req.id %}" class="btn btn-success btn-sm">
-              <i class="bi bi-download me-1"></i> Download
-            </a>
+      <!-- ===================== UPDATES ===================== -->
+      <div class="card vu-section mb-4">
+        <div class="vu-section-head">
+          <div class="vu-section-title">
+            <i class="bi bi-bell me-1" style="color: var(--vu-red-2);"></i>
+            Updates
           </div>
-        {% endif %}
-
-        {% if req.status == "recommended" %}
-          <div class="alert alert-warning d-flex align-items-start justify-content-between gap-3">
-            <div>
-              <div class="fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i> Next step: Upload acceptance letter</div>
-              <div class="small mb-0">Once the company issues your acceptance letter, upload it here.</div>
-            </div>
-            <a class="btn btn-warning btn-sm" href="{% url 'student_upload_acceptance' %}">
-              <i class="bi bi-cloud-upload me-1"></i> Upload
-            </a>
-          </div>
-        {% endif %}
-
-        {% if req.status == "acceptance_uploaded" %}
-          <div class="alert alert-info">
-            <div class="fw-semibold"><i class="bi bi-hourglass-split me-1"></i> Acceptance uploaded</div>
-            <div class="small mb-0">Waiting for coordinator verification and supervisor assignment.</div>
-          </div>
-        {% endif %}
-
-        {% if req.status == "acceptance_verified" %}
-          <div class="alert alert-success d-flex align-items-start justify-content-between gap-3">
-            <div>
-              <div class="fw-semibold"><i class="bi bi-check-circle me-1"></i> Acceptance verified</div>
-              <div class="small mb-0">Your placement is active. Proceed to weekly logs.</div>
-            </div>
-            <a class="btn btn-success btn-sm" href="{% url 'student_logs' %}">
-              <i class="bi bi-journal-check me-1"></i> Weekly Logs
-            </a>
-          </div>
-        {% endif %}
-
-        <hr class="my-4">
-
-        <!-- REQUEST FORM -->
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h6 class="mb-0 fw-bold">Request Details</h6>
-          <span class="text-muted small">Fill accurately to avoid delays.</span>
+          <div class="small text-muted">Important messages and next steps</div>
         </div>
 
-        {% if form.errors %}
-          <div class="alert alert-danger">
-            <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix the errors below</div>
-            <div class="small">Some fields are missing or invalid.</div>
-          </div>
-        {% endif %}
+        <div class="vu-section-body">
 
-        <form method="post" enctype="multipart/form-data" novalidate>
-          {% csrf_token %}
-
-          {% if form.non_field_errors %}
-            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% if req.recommendation_letter %}
+            <div class="alert alert-success vu-alert d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">
+                  <i class="bi bi-patch-check me-1"></i> Recommendation letter issued
+                </div>
+                <div class="small mb-0">Download and present it to the company to obtain an acceptance letter.</div>
+              </div>
+              <a href="{% url 'download_recommendation_letter' req.id %}" class="btn btn-success btn-sm">
+                <i class="bi bi-download me-1"></i> Download
+              </a>
+            </div>
           {% endif %}
 
-          <div class="row g-3">
-            {% for field in form %}
-              <div class="col-12">
-                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">
-                  {{ field.label }}
-                </label>
+          {% if req.status == "submitted" %}
+            <div class="alert alert-primary vu-alert mb-0">
+              <div class="fw-semibold"><i class="bi bi-hourglass-split me-1"></i> Request submitted</div>
+              <div class="small mb-0">Waiting for coordinator review. You’ll be notified once it is recommended.</div>
+            </div>
+          {% endif %}
 
-                {{ field }}
+          {% if req.status == "recommended" %}
+            <div class="alert alert-warning vu-alert d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">
+                  <i class="bi bi-exclamation-triangle me-1"></i> Next step: Upload acceptance letter
+                </div>
+                <div class="small mb-0">Once the company issues your acceptance letter, upload it here.</div>
+              </div>
+              <a class="btn btn-warning btn-sm" href="{% url 'student_upload_acceptance' %}">
+                <i class="bi bi-cloud-upload me-1"></i> Upload
+              </a>
+            </div>
+          {% endif %}
 
-                {% if field.help_text %}
-                  <div class="form-text">{{ field.help_text|safe }}</div>
-                {% endif %}
+          {% if req.status == "acceptance_uploaded" %}
+            <div class="alert alert-info vu-alert mb-0">
+              <div class="fw-semibold"><i class="bi bi-hourglass-split me-1"></i> Acceptance uploaded</div>
+              <div class="small mb-0">Waiting for coordinator verification and supervisor assignment.</div>
+            </div>
+          {% endif %}
 
-                {% if field.errors %}
-                  <div class="text-danger small mt-1">{{ field.errors }}</div>
+          {% if req.status == "acceptance_verified" %}
+            <div class="alert alert-success vu-alert d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-0">
+              <div>
+                <div class="fw-semibold"><i class="bi bi-check-circle me-1"></i> Acceptance verified</div>
+                <div class="small mb-0">Your placement is active. Proceed to weekly logs.</div>
+              </div>
+              <a class="btn btn-success btn-sm" href="{% url 'student_logs' %}">
+                <i class="bi bi-journal-check me-1"></i> Weekly Logs
+              </a>
+            </div>
+          {% endif %}
+
+          {# If nothing matched, show a soft helper #}
+          {% if not req.recommendation_letter and req.status == "draft" %}
+            <div class="alert alert-light border vu-alert mb-0">
+              <div class="fw-semibold"><i class="bi bi-info-circle me-1"></i> Draft in progress</div>
+              <div class="small mb-0">Complete the form below, save as draft, or submit when ready.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ===================== FORM (ONE MODERN MAIN CARD) ===================== -->
+      <div class="card vu-request-card">
+        <div class="vu-request-head">
+          <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+            <div>
+              <div class="vu-title">
+                <span class="vu-dot"></span>
+                <span>Application Form</span>
+              </div>
+              <div class="vu-sub">
+                Complete the steps below. You can save as draft anytime.
+                {% if req.status != "draft" %}
+                  <span class="badge bg-light text-dark border ms-2"><i class="bi bi-lock me-1"></i>Read-only after submission</span>
                 {% endif %}
               </div>
-            {% endfor %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+              <span class="vu-chip"><i class="bi bi-shield-check"></i> Select one company option</span>
+              <span class="vu-chip"><i class="bi bi-file-earmark-pdf"></i> PDF preferred</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data" novalidate class="vu-form">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger vu-alert">
+                <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix this</div>
+                <div class="small">{{ form.non_field_errors }}</div>
+              </div>
+            {% endif %}
+
+            <!-- STEP 1 -->
+            <div class="vu-formcard mb-3">
+              <div class="vu-formcard-head d-flex align-items-start justify-content-between gap-2">
+                <div>
+                  <div class="fw-bold"><span class="vu-stepbadge">1</span> Company Selection</div>
+                  <div class="small text-muted">Choose an approved company OR propose a new one.</div>
+                </div>
+                <span class="vu-chip"><i class="bi bi-info-circle"></i> One option only</span>
+              </div>
+
+              <div class="vu-formcard-body">
+                <div class="vu-optioncard" id="optionApproved">
+                  <div class="d-flex align-items-start gap-2">
+                    <div class="vu-optionicon"><i class="bi bi-buildings"></i></div>
+                    <div class="flex-grow-1">
+                      <div class="fw-semibold">Option A: Approved company</div>
+                      <div class="small text-muted">Pick from the university-approved list.</div>
+
+                      <div class="mt-2">
+                        <label class="form-label" for="{{ form.preferred_company.id_for_label }}">
+                          {{ form.preferred_company.label }}
+                        </label>
+                        <div class="vu-control">{{ form.preferred_company }}</div>
+                        {% if form.preferred_company.errors %}
+                          <div class="text-danger small mt-1">{{ form.preferred_company.errors }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="vu-or my-3"><span>OR</span></div>
+
+                <div class="vu-optioncard" id="optionProposed">
+                  <div class="d-flex align-items-start gap-2">
+                    <div class="vu-optionicon"><i class="bi bi-building-add"></i></div>
+                    <div class="flex-grow-1">
+                      <div class="fw-semibold">Option B: Propose a new company</div>
+                      <div class="small text-muted">Fill details if the company is not on the list.</div>
+
+                      <div class="row g-3 mt-2">
+                        <div class="col-12 col-lg-6">
+                          <label class="form-label" for="{{ form.proposed_company_name.id_for_label }}">
+                            {{ form.proposed_company_name.label }}
+                          </label>
+                          <div class="vu-control">{{ form.proposed_company_name }}</div>
+                          {% if form.proposed_company_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.proposed_company_name.errors }}</div>
+                          {% endif %}
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                          <label class="form-label" for="{{ form.proposed_company_district.id_for_label }}">
+                            {{ form.proposed_company_district.label }}
+                          </label>
+                          <div class="vu-control">{{ form.proposed_company_district }}</div>
+                          {% if form.proposed_company_district.errors %}
+                            <div class="text-danger small mt-1">{{ form.proposed_company_district.errors }}</div>
+                          {% endif %}
+                        </div>
+
+                        <div class="col-12">
+                          <label class="form-label" for="{{ form.proposed_company_address.id_for_label }}">
+                            {{ form.proposed_company_address.label }}
+                          </label>
+                          <div class="vu-control">{{ form.proposed_company_address }}</div>
+                          {% if form.proposed_company_address.errors %}
+                            <div class="text-danger small mt-1">{{ form.proposed_company_address.errors }}</div>
+                          {% endif %}
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                          <label class="form-label" for="{{ form.proposed_company_contact.id_for_label }}">
+                            {{ form.proposed_company_contact.label }}
+                          </label>
+                          <div class="vu-control">{{ form.proposed_company_contact }}</div>
+                          {% if form.proposed_company_contact.errors %}
+                            <div class="text-danger small mt-1">{{ form.proposed_company_contact.errors }}</div>
+                          {% endif %}
+                        </div>
+                      </div>
+
+                      <div class="soft-panel p-3 mt-3 small">
+                        <div class="fw-semibold mb-1">
+                          <i class="bi bi-lightbulb text-danger me-1"></i> Tip
+                        </div>
+                        Add a clear contact (name/phone/email) so the coordinator can verify faster.
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="vu-formcard mb-3">
+              <div class="vu-formcard-head">
+                <div class="fw-bold"><span class="vu-stepbadge">2</span> Internship Details</div>
+                <div class="small text-muted">Tell us your preferred field and any notes.</div>
+              </div>
+
+              <div class="vu-formcard-body">
+                <div class="row g-3">
+                  <div class="col-12 col-lg-6">
+                    <label class="form-label" for="{{ form.preferred_field.id_for_label }}">
+                      {{ form.preferred_field.label }}
+                    </label>
+                    <div class="vu-control">{{ form.preferred_field }}</div>
+                    {% if form.preferred_field.errors %}
+                      <div class="text-danger small mt-1">{{ form.preferred_field.errors }}</div>
+                    {% endif %}
+                  </div>
+
+                  {% if form.notes %}
+                    <div class="col-12">
+                      <label class="form-label" for="{{ form.notes.id_for_label }}">
+                        {{ form.notes.label|default:"Notes" }}
+                      </label>
+                      <div class="vu-control">{{ form.notes }}</div>
+                      {% if form.notes.errors %}
+                        <div class="text-danger small mt-1">{{ form.notes.errors }}</div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 3 -->
+            <div class="vu-formcard mb-3">
+              <div class="vu-formcard-head">
+                <div class="fw-bold"><span class="vu-stepbadge">3</span> Attachments</div>
+                <div class="small text-muted">Upload your CV and request letter (PDF preferred).</div>
+              </div>
+
+              <div class="vu-formcard-body">
+                <div class="row g-3">
+                  {% if form.cv %}
+                    <div class="col-12">
+                      <div class="vu-upload">
+                        <div class="vu-upload-icon"><i class="bi bi-file-earmark-person"></i></div>
+                        <div class="flex-grow-1">
+                          <div class="fw-semibold">CV</div>
+                          <div class="small text-muted">PDF preferred • max 5MB</div>
+                        </div>
+                        <div class="vu-control vu-upload-control">{{ form.cv }}</div>
+                      </div>
+                      {% if form.cv.errors %}
+                        <div class="text-danger small mt-2">{{ form.cv.errors }}</div>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+
+                  <div class="col-12">
+                    <div class="vu-upload">
+                      <div class="vu-upload-icon"><i class="bi bi-envelope-paper"></i></div>
+                      <div class="flex-grow-1">
+                        <div class="fw-semibold">Request Letter</div>
+                        <div class="small text-muted">PDF preferred • max 5MB</div>
+                      </div>
+                      <div class="vu-control vu-upload-control">{{ form.request_letter }}</div>
+                    </div>
+                    {% if form.request_letter.errors %}
+                      <div class="text-danger small mt-2">{{ form.request_letter.errors }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="small text-muted mt-3">
+                  <i class="bi bi-shield-lock me-1"></i>
+                  Your documents are visible to the coordinator for verification only.
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTION BAR -->
+            <div class="vu-formbar mt-3">
+              <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2">
+                <button class="btn btn-outline-secondary" type="submit" name="action" value="save"
+                  {% if req.status != "draft" %}disabled{% endif %}>
+                  <i class="bi bi-save me-1"></i> Save Draft
+                </button>
+
+                <button class="btn btn-danger" type="submit" name="action" value="submit"
+                  {% if req.status != "draft" %}disabled{% endif %}>
+                  <i class="bi bi-send me-1"></i> Submit Request
+                </button>
+
+                <div class="ms-md-auto d-flex align-items-center gap-2">
+                  <a class="btn btn-light border" href="{% url 'student_dashboard' %}">
+                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                  </a>
+                  <a class="btn btn-light border" href="{% url 'student_logs' %}">
+                    <i class="bi bi-journal-text me-1"></i> Weekly Logs
+                  </a>
+                </div>
+              </div>
+
+              <div class="small text-muted mt-2">
+                <i class="bi bi-info-circle me-1"></i>
+                Submitting sends your request to the coordinator for review.
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <!-- UI-only: enforce ONE option visually + file size check -->
+      <script>
+        (function () {
+          const approved = document.getElementById("{{ form.preferred_company.id_for_label }}");
+
+          const proposedIds = [
+            "{{ form.proposed_company_name.id_for_label }}",
+            "{{ form.proposed_company_district.id_for_label }}",
+            "{{ form.proposed_company_address.id_for_label }}",
+            "{{ form.proposed_company_contact.id_for_label }}"
+          ];
+
+          const proposedInputs = proposedIds.map(id => document.getElementById(id)).filter(Boolean);
+          const optionApproved = document.getElementById("optionApproved");
+          const optionProposed = document.getElementById("optionProposed");
+
+          function hasProposed() {
+            return proposedInputs.some(i => (i.value || "").trim() !== "");
+          }
+
+          function setState() {
+            const hasApproved = approved && approved.value && approved.value !== "";
+            const proposedFilled = hasProposed();
+
+            // If approved chosen, lock proposed inputs
+            proposedInputs.forEach(i => i.toggleAttribute("disabled", hasApproved));
+            optionProposed.classList.toggle("is-muted", hasApproved);
+
+            // If proposed has content, lock approved dropdown
+            if (approved) approved.toggleAttribute("disabled", proposedFilled);
+            optionApproved.classList.toggle("is-muted", proposedFilled);
+          }
+
+          if (approved) approved.addEventListener("change", setState);
+          proposedInputs.forEach(i => i.addEventListener("input", setState));
+          setState();
+        })();
+
+        (function () {
+          const MAX = 5 * 1024 * 1024; // 5MB
+          const inputs = document.querySelectorAll('input[type="file"]');
+
+          function human(bytes){
+            return (bytes / (1024 * 1024)).toFixed(1) + "MB";
+          }
+
+          inputs.forEach(input => {
+            input.addEventListener("change", () => {
+              const f = input.files && input.files[0];
+              if (!f) return;
+
+              if (f.size > MAX) {
+                alert(`"${f.name}" is ${human(f.size)}. Max allowed is 5.0MB. Please choose a smaller file.`);
+                input.value = "";
+              }
+            });
+          });
+        })();
+      </script>
+
+    </div><!-- ✅ END MAIN col-lg-8 -->
+
+    <!-- ===================== RIGHT SIDEBAR ===================== -->
+    <div class="col-12 col-lg-4">
+      <div class="vu-sticky">
+
+        <!-- Progress -->
+        <div class="card mb-4">
+          <div class="card-header fw-bold">
+            <i class="bi bi-signpost-2 me-1" style="color: var(--vu-red-2);"></i> Progress
           </div>
 
-          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
-            <button class="btn btn-outline-secondary" type="submit" name="action" value="save"
-              {% if req.status != "draft" %}disabled{% endif %}>
-              <i class="bi bi-save me-1"></i> Save Draft
-            </button>
+          <div class="card-body small">
+            <div class="vu-step"><i class="bi bi-1-circle"></i><div>Submit internship request to the coordinator.</div></div>
+            <div class="vu-step"><i class="bi bi-2-circle"></i><div>Coordinator issues recommendation letter.</div></div>
+            <div class="vu-step"><i class="bi bi-3-circle"></i><div>Present recommendation to the company.</div></div>
+            <div class="vu-step"><i class="bi bi-4-circle"></i><div>Upload acceptance letter for verification.</div></div>
+            <div class="vu-step"><i class="bi bi-5-circle"></i><div>Placement activated → start weekly logs.</div></div>
 
-            <button class="btn btn-danger" type="submit" name="action" value="submit"
-              {% if req.status != "draft" %}disabled{% endif %}>
-              <i class="bi bi-send me-1"></i> Submit Request
-            </button>
+            <hr class="my-3"/>
 
-            <a class="btn btn-light border ms-md-auto" href="{% url 'student_logs' %}">
-              <i class="bi bi-journal-text me-1"></i> View Weekly Logs
+            <div class="soft-panel p-3 small">
+              <div class="fw-semibold mb-1">
+                <i class="bi bi-exclamation-triangle text-danger me-1"></i> Common mistakes
+              </div>
+              <ul class="mb-0 ps-3">
+                <li>Selecting an approved company and also typing a proposed company.</li>
+                <li>Missing contact details for proposed companies.</li>
+                <li>Uploading very large scanned PDFs (compress first).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+          <div class="card-header fw-bold">
+            <i class="bi bi-lightning-charge me-1" style="color: var(--vu-red-2);"></i> Quick Actions
+          </div>
+          <div class="card-body d-grid gap-2">
+            <a class="btn btn-outline-secondary" href="{% url 'student_dashboard' %}">
+              <i class="bi bi-speedometer2 me-1"></i> Dashboard
             </a>
+
+            <a class="btn btn-outline-secondary" href="{% url 'student_logs' %}">
+              <i class="bi bi-journal-check me-1"></i> Weekly Logs
+            </a>
+
+            {% if req.status == "recommended" or req.status == "returned_for_acceptance" %}
+              <a class="btn btn-outline-secondary" href="{% url 'student_upload_acceptance' %}">
+                <i class="bi bi-cloud-upload me-1"></i> Upload Acceptance
+              </a>
+            {% endif %}
+
+            {% if req.recommendation_letter %}
+              <a href="{% url 'download_recommendation_letter' req.id %}" class="btn btn-outline-success">
+                <i class="bi bi-download me-1"></i> Download Recommendation
+              </a>
+            {% endif %}
           </div>
-
-          <div class="small text-muted mt-2">
-            Submitting sends your request to the coordinator for review.
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT SIDEBAR -->
-  <div class="col-12 col-lg-4">
-    <div class="card mb-4">
-      <div class="card-header fw-bold">
-        <i class="bi bi-list-check me-1"></i> Process Checklist
-      </div>
-      <div class="card-body small">
-        <div class="d-flex align-items-start gap-2 mb-2">
-          <i class="bi bi-1-circle text-danger"></i>
-          <div>Submit internship request to the coordinator.</div>
         </div>
-        <div class="d-flex align-items-start gap-2 mb-2">
-          <i class="bi bi-2-circle text-danger"></i>
-          <div>Collect recommendation letter from the university.</div>
-        </div>
-        <div class="d-flex align-items-start gap-2 mb-2">
-          <i class="bi bi-3-circle text-danger"></i>
-          <div>Present it to the company and obtain acceptance letter.</div>
-        </div>
-        <div class="d-flex align-items-start gap-2 mb-2">
-          <i class="bi bi-4-circle text-danger"></i>
-          <div>Upload acceptance letter for verification.</div>
-        </div>
-        <div class="d-flex align-items-start gap-2">
-          <i class="bi bi-5-circle text-danger"></i>
-          <div>Start weekly logs and submit for approval.</div>
-        </div>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header fw-bold">
-        <i class="bi bi-link-45deg me-1"></i> Quick Links
       </div>
-      <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-secondary" href="{% url 'student_logs' %}">
-          <i class="bi bi-journal-check me-1"></i> Weekly Logs
-        </a>
+    </div><!-- ✅ END SIDEBAR col-lg-4 -->
 
-        {# Only show acceptance upload link when allowed #}
-        {% if req.status == "recommended" %}
-          <a class="btn btn-outline-secondary" href="{% url 'student_upload_acceptance' %}">
-            <i class="bi bi-cloud-upload me-1"></i> Upload Acceptance
-          </a>
-        {% endif %}
-
-        <a class="btn btn-outline-secondary" href="/dashboard/">
-          <i class="bi bi-speedometer2 me-1"></i> Dashboard
-        </a>
-      </div>
-    </div>
   </div>
 </div>
 {% endblock %}

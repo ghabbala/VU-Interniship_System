@@ -68,6 +68,10 @@ from django.utils import timezone
 
 from .models import Placement, SiteVisit, SiteVisitReport, SiteVisitAcknowledgement
 from .forms import SiteVisitScheduleForm, SiteVisitReportForm
+from .models import WeeklyLog, Placement
+from companies.models import CompanyContact
+from django.urls import reverse
+from django.db import transaction
 
 
 
@@ -642,8 +646,9 @@ def week_bounds(today):
 
 @login_required
 def coordinator_missing_logs(request):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     today = timezone.localdate()
     wk_start, wk_end = week_bounds(today)
@@ -678,7 +683,6 @@ def coordinator_missing_logs(request):
 # INDUSTRY SUPERVISOR: EVALUATIONS
 # -------------------------------------------------------------------
 EVALUATION_WINDOW_DAYS = 234  # adjust as needed
-
 
 @login_required
 def company_evaluate_student(request, placement_id):
@@ -737,11 +741,30 @@ def company_evaluate_student(request, placement_id):
     else:
         form = IndustryEvaluationForm(instance=evaluation)
 
+    # ✅ THIS IS THE MISSING PART: build criteria list for template loop
+    criteria = [
+        (form["basic_work_expectations"], "Basic work expectations", form["basic_work_expectations_comment"]),
+        (form["knowledge_and_learning"], "Knowledge and ability to learn", form["knowledge_and_learning_comment"]),
+        (form["ethical_awareness"], "Ethical awareness and conduct", form["ethical_awareness_comment"]),
+        (form["interpersonal_relations"], "Interpersonal relations", form["interpersonal_relations_comment"]),
+        (form["communication_skills"], "Communication skills", form["communication_skills_comment"]),
+        (form["attendance"], "Attendance", form["attendance_comment"]),
+        (form["punctuality"], "Punctuality", form["punctuality_comment"]),
+        (form["flexibility"], "Flexibility", form["flexibility_comment"]),
+        (form["dependability"], "Dependability", form["dependability_comment"]),
+        (form["culture_fit"], "Culture fit", form["culture_fit_comment"]),
+        (form["dress_code"], "Dress code", form["dress_code_comment"]),
+        (form["behaviour"], "Behaviour", form["behaviour_comment"]),
+        (form["work_productivity"], "Work productivity", form["work_productivity_comment"]),
+    ]
+
     return render(request, "tracking/company_evaluation_form.html", {
         "placement": placement,
         "company": company,
         "form": form,
         "evaluation": evaluation,
+        "criteria": criteria,  # ✅ now the 13 rating sections will show
+        "today": today,        # optional: for showing Date in template
     })
 
 
@@ -897,19 +920,7 @@ def supervisor_submitted_academic_evaluations(request):
         "evaluations": evaluations,
     })
 
-
-# -------------------------------------------------------------------
-# UNIVERSITY SUPERVISOR: RESULTS REPORT (avg = industry + academic)
-# -------------------------------------------------------------------
-@login_required
-def supervisor_results_report(request):
-    if not is_university_supervisor(request.user):
-        return HttpResponseForbidden("University Supervisors only.")
-
-    staff = getattr(request.user, "staff_profile", None)
-    if not staff:
-        return HttpResponseForbidden("Staff profile not set.")
-
+def build_results_rows(supervisor_user, staff):
     placements = (
         Placement.objects
         .filter(university_supervisor=staff)
@@ -924,7 +935,11 @@ def supervisor_results_report(request):
     }
     ac_map = {
         e.placement_id: e
-        for e in AcademicEvaluation.objects.filter(placement__in=placements, status="submitted", supervisor_user=request.user)
+        for e in AcademicEvaluation.objects.filter(
+            placement__in=placements,
+            status="submitted",
+            supervisor_user=supervisor_user
+        )
     }
 
     rows = []
@@ -946,10 +961,78 @@ def supervisor_results_report(request):
             "average_100": avg100,
         })
 
+    return rows
+
+
+# -------------------------------------------------------------------
+# UNIVERSITY SUPERVISOR: RESULTS REPORT (avg = industry + academic)
+# -------------------------------------------------------------------
+
+@login_required
+def supervisor_results_report(request):
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = getattr(request.user, "staff_profile", None)
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set.")
+
+    # Latest report for this supervisor (most recent revision)
+    latest_report = (
+        SupervisorResultsReport.objects
+        .filter(supervisor_user=request.user)
+        .order_by("-created_at")
+        .first()
+    )
+
+    # Decide what rows to display:
+    # - If there is a report, show its stored rows
+    # - Otherwise generate preview rows (not saved)
+    if latest_report:
+        rows = latest_report.rows or []
+    else:
+        rows = build_results_rows(request.user, staff)
+
     return render(request, "tracking/supervisor_results_report.html", {
         "rows": rows,
         "count": len(rows),
+        "latest_report": latest_report,
     })
+
+@login_required
+@transaction.atomic
+def supervisor_refresh_results_report(request):
+    if request.method != "POST":
+        return HttpResponseForbidden("POST only.")
+    if not is_university_supervisor(request.user):
+        return HttpResponseForbidden("University Supervisors only.")
+
+    staff = getattr(request.user, "staff_profile", None)
+    if not staff:
+        return HttpResponseForbidden("Staff profile not set.")
+
+    rows = build_results_rows(request.user, staff)
+
+    # Open editable report: draft OR needs_changes
+    report = (
+        SupervisorResultsReport.objects
+        .select_for_update()
+        .filter(supervisor_user=request.user, status__in=["draft", "needs_changes"])
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not report:
+        report = SupervisorResultsReport.objects.create(
+            supervisor_user=request.user,
+            status="draft",
+            rows=rows
+        )
+    else:
+        report.rows = rows
+        report.save(update_fields=["rows", "last_updated_at"])
+
+    return redirect("supervisor_results_report")
 
 
 @login_required
@@ -1031,10 +1114,10 @@ def supervisor_results_report_pdf(request):
 
 
 @login_required
+@transaction.atomic
 def supervisor_submit_results_report(request):
     if request.method != "POST":
         return HttpResponseForbidden("POST only.")
-
     if not is_university_supervisor(request.user):
         return HttpResponseForbidden("University Supervisors only.")
 
@@ -1042,67 +1125,28 @@ def supervisor_submit_results_report(request):
     if not staff:
         return HttpResponseForbidden("Staff profile not set.")
 
-    placements = (
-        Placement.objects
-        .filter(university_supervisor=staff)
-        .exclude(status__in=["completed", "terminated"])
-        .select_related("company", "request", "request__student", "request__student__user")
-        .order_by("request__student__reg_no")
-    )
-
-    ind_map = {
-        e.placement_id: e
-        for e in IndustryEvaluation.objects.filter(placement__in=placements, status="submitted")
-    }
-    ac_map = {
-        e.placement_id: e
-        for e in AcademicEvaluation.objects.filter(
-            placement__in=placements,
-            status="submitted",
-            supervisor_user=request.user
-        )
-    }
-
-    rows = []
-    for p in placements:
-        ind = ind_map.get(p.id)
-        ac = ac_map.get(p.id)
-
-        ind100 = float(ind.score_out_of_100) if ind else None
-        ac100 = float(ac.score_out_of_100) if ac else None
-        avg100 = (ind100 + ac100) / 2.0 if (ind100 is not None and ac100 is not None) else None
-
-        rows.append({
-            "placement_id": p.id,
-            "reg_no": p.request.student.reg_no,
-            "name": p.request.student.user.display_name,
-            "company": p.company.name,
-            "industry_100": ind100,
-            "academic_100": ac100,
-            "average_100": avg100,
-        })
-
-    # ✅ Update latest draft report if exists, else create new
+    # Find editable report
     report = (
         SupervisorResultsReport.objects
-        .filter(supervisor_user=request.user)
-        .exclude(status="submitted")  # only drafts/others
+        .select_for_update()
+        .filter(supervisor_user=request.user, status__in=["draft", "needs_changes"])
         .order_by("-created_at")
         .first()
     )
 
-    if report:
-        report.rows = rows
-        report.submit()   # sets status=submitted + submitted_at
-    else:
+    # If none, create a fresh draft from current evaluations
+    if not report:
+        rows = build_results_rows(request.user, staff)
         report = SupervisorResultsReport.objects.create(
             supervisor_user=request.user,
-            rows=rows,
             status="draft",
+            rows=rows
         )
-        report.submit()
 
+    report.submit()
     return redirect("supervisor_results_report")
+
+
 
 def _get_latest_report(user):
     return (
@@ -1111,6 +1155,49 @@ def _get_latest_report(user):
         .order_by("-submitted_at", "-created_at")
         .first()
     )
+
+from .models import Notification
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+
+def notify(user, title, message, level="info", action_url="", action_text="Open"):
+    # Adjust import path to your real Notification model
+    from .models import Notification
+
+    return Notification.objects.create(
+        user=user,
+        title=title,
+        message=message,
+        level=level,
+        action_url=action_url,
+        action_text=action_text,
+        is_read=False,
+        created_at=timezone.now(),
+    )
+
+def notify_coordinators(title, message, level="info", action_url=None, action_text="Open"):
+    User = get_user_model()
+
+    # users who have coordinator permission either directly OR via group
+    qs = User.objects.filter(is_active=True).filter(
+        is_superuser=True
+    ) | User.objects.filter(is_active=True, user_permissions__codename="role_coordinator", user_permissions__content_type__app_label="accounts") \
+      | User.objects.filter(is_active=True, groups__permissions__codename="role_coordinator", groups__permissions__content_type__app_label="accounts")
+
+    qs = qs.distinct()
+
+    Notification.objects.bulk_create([
+        Notification(
+            user=u,
+            title=title,
+            message=message,
+            level=level,
+            action_url=action_url,
+            action_text=action_text,
+            is_read=False,
+        )
+        for u in qs
+    ])
 
 @login_required
 def supervisor_dashboard(request):
@@ -1121,6 +1208,24 @@ def supervisor_dashboard(request):
     if not staff:
         return HttpResponseForbidden("Staff profile not set. Admin must create StaffProfile for this user.")
 
+    now = timezone.now()
+
+    # ------------------------------------------------------------------
+    # ✅ DB Notifications (this is what will show "Needs changes" messages)
+    # ------------------------------------------------------------------
+    notifications_qs = (
+        Notification.objects
+        .filter(user=request.user)
+        .order_by("-created_at")
+    )
+    unread_notifications = notifications_qs.filter(is_read=False).count()
+
+    # show recent 8 (you can increase)
+    notifications = list(notifications_qs[:8])
+
+    # ------------------------------------------------------------------
+    # Latest report + KPI counts
+    # ------------------------------------------------------------------
     latest_report = _get_latest_report(request.user)
 
     assigned_count = (
@@ -1154,6 +1259,43 @@ def supervisor_dashboard(request):
         .count()
     )
 
+    # ------------------------------------------------------------------
+    # Site visits: counts + latest
+    # ------------------------------------------------------------------
+    site_visits_qs = (
+        SiteVisit.objects
+        .filter(placement__university_supervisor=staff)
+        .select_related(
+            "placement",
+            "placement__company",
+            "placement__request__student",
+            "placement__request__student__user",
+        )
+        .order_by("scheduled_at")
+    )
+
+    site_visits_scheduled = site_visits_qs.filter(status="scheduled").count()
+    site_visits_confirmed = site_visits_qs.filter(status="confirmed").count()
+    site_visits_completed = site_visits_qs.filter(status="completed").count()
+
+    site_visits_pending_count = (
+        site_visits_qs
+        .filter(status__in=["scheduled", "confirmed"], scheduled_at__gte=now)
+        .count()
+    )
+
+    latest_site_visits = list(site_visits_qs.order_by("-scheduled_at")[:5])
+
+    next_visit = (
+        site_visits_qs
+        .filter(status__in=["scheduled", "confirmed"], scheduled_at__gte=now)
+        .order_by("scheduled_at")
+        .first()
+    )
+
+    # ------------------------------------------------------------------
+    # Student evaluation forms (student feedback)
+    # ------------------------------------------------------------------
     student_eval_qs = (
         StudentEvaluation.objects
         .filter(status="submitted", placement__university_supervisor=staff)
@@ -1169,16 +1311,122 @@ def supervisor_dashboard(request):
     student_eval_count = student_eval_qs.count()
     latest_student_evals = list(student_eval_qs[:5])
 
+    # ------------------------------------------------------------------
+    # ✅ Add "system hints" into DB notifications ONLY IF not already present
+    # (This avoids double-counting unread_notifications)
+    # ------------------------------------------------------------------
+    def _maybe_add_hint(key: str, title: str, message: str, level="info", action_url="", action_text="Open"):
+        """
+        Create a lightweight hint notification once per day per key.
+        Requires Notification to have 'key' (optional). If you don't have it, remove this helper.
+        """
+        try:
+            # If your model doesn't have "key", this will fail and we just skip.
+            exists = Notification.objects.filter(user=request.user, key=key, created_at__date=now.date()).exists()
+            if not exists:
+                Notification.objects.create(
+                    user=request.user,
+                    key=key,
+                    title=title,
+                    message=message,
+                    level=level,
+                    action_url=action_url,
+                    action_text=action_text,
+                    is_read=False,
+                )
+        except Exception:
+            # If your Notification model doesn't have 'key', ignore hints
+            pass
+
+    # Results report hints
+    if ready_for_average_count and (not latest_report or latest_report.status not in ["submitted", "resubmitted", "approved"]):
+        _maybe_add_hint(
+            key="results_ready",
+            title="Results report ready to submit",
+            message=f"{ready_for_average_count} placement(s) have both evaluations submitted. Generate/refresh and submit your results report.",
+            level="info",
+            action_url=reverse("supervisor_results_report"),
+            action_text="Open Results Report",
+        )
+
+    # Site visit hints
+    if next_visit and next_visit.status == "scheduled":
+        _maybe_add_hint(
+            key="visit_scheduled",
+            title="Upcoming site visit (awaiting confirmation)",
+            message=(
+                f"{next_visit.placement.request.student.user.display_name} — "
+                f"{next_visit.placement.company.name} on {next_visit.scheduled_at.strftime('%d %b %Y %H:%M')}."
+            ),
+            level="warning",
+            action_url=reverse("supervisor_site_visits"),
+            action_text="View Site Visits",
+        )
+
+    if next_visit and next_visit.status == "confirmed":
+        _maybe_add_hint(
+            key="visit_confirmed",
+            title="Upcoming site visit (confirmed)",
+            message=(
+                f"{next_visit.placement.request.student.user.display_name} — "
+                f"{next_visit.placement.company.name} on {next_visit.scheduled_at.strftime('%d %b %Y %H:%M')}."
+            ),
+            level="info",
+            action_url=reverse("submit_site_visit_report", args=[next_visit.id]),
+            action_text="Open Visit",
+        )
+
+    completed_no_report_qs = site_visits_qs.filter(status="completed", report__isnull=True)
+    completed_no_report_count = completed_no_report_qs.count()
+    if completed_no_report_count:
+        any_v = completed_no_report_qs.order_by("-scheduled_at").first()
+        _maybe_add_hint(
+            key="visit_report_pending",
+            title="Site visit report pending",
+            message=f"{completed_no_report_count} completed visit(s) need a report. Please submit the visit report(s).",
+            level="danger",
+            action_url=reverse("submit_site_visit_report", args=[any_v.id]) if any_v else reverse("supervisor_site_visits"),
+            action_text="Submit Report",
+        )
+
+    if student_eval_count:
+        _maybe_add_hint(
+            key="student_feedback",
+            title="New student feedback available",
+            message=f"{student_eval_count} student evaluation form(s) submitted.",
+            level="secondary",
+            action_url=reverse("supervisor_student_evaluations"),
+            action_text="Open Feedback",
+        )
+
+    # ------------------------------------------------------------------
+    # Refresh notification list after adding hints (optional)
+    # ------------------------------------------------------------------
+    notifications_qs = Notification.objects.filter(user=request.user).order_by("-created_at")
+    unread_notifications = notifications_qs.filter(is_read=False).count()
+    notifications = list(notifications_qs[:8])
+
     return render(request, "dashboards/supervisor_dashboard.html", {
         "latest_report": latest_report,
         "assigned_count": assigned_count,
         "industry_submitted_count": industry_submitted_count,
         "academic_submitted_count": academic_submitted_count,
         "ready_for_average_count": ready_for_average_count,
+
         "student_eval_count": student_eval_count,
         "latest_student_evals": latest_student_evals,
-    })
 
+        # site visit context
+        "latest_site_visits": latest_site_visits,
+        "site_visits_scheduled": site_visits_scheduled,
+        "site_visits_confirmed": site_visits_confirmed,
+        "site_visits_completed": site_visits_completed,
+        "site_visits_pending_count": site_visits_pending_count,
+
+        # ✅ DB notifications (will include "Needs changes" sent by coordinator)
+        "notifications": notifications,
+        "unread_notifications": unread_notifications,
+    })
 """""
 @login_required
 def coordinator_results_report(request):
@@ -1199,39 +1447,56 @@ def coordinator_results_report(request):
 
 
 
+
+from django.views.decorators.http import require_POST
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+# Make sure SupervisorResultsReport has these statuses:
+# draft, submitted, needs_changes, resubmitted, approved, rejected
+
+
 @login_required
 def coordinator_results_reports(request):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators Only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     reports = (
         SupervisorResultsReport.objects
-        .filter(status__in=["submitted", "received"])
+        .exclude(status="draft")  # coordinator sees only sent/reviewed reports
         .select_related("supervisor_user")
-        .order_by("-submitted_at", "-created_at")
+        .order_by("-submitted_at", "-updated_at", "-created_at")
     )
 
-    pending_count = reports.filter(status="submitted").count()
-    received_count = reports.filter(status="received").count()
-    latest_report = reports.first()
+    pending_count = reports.filter(status__in=["submitted", "resubmitted"]).count()
+    needs_changes_count = reports.filter(status="needs_changes").count()
+    approved_count = reports.filter(status="approved").count()
+    rejected_count = reports.filter(status="rejected").count()
 
     return render(request, "tracking/coordinator_results_reports.html", {
         "reports": reports,
         "pending_count": pending_count,
-        "received_count": received_count,
-        "latest_report": latest_report,
+        "needs_changes_count": needs_changes_count,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count,
     })
+
 
 @login_required
 def coordinator_results_report_detail(request, report_id):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     report = get_object_or_404(
         SupervisorResultsReport,
-        id=report_id,
-        status__in=["submitted", "received"]
+        id=report_id
     )
+
+    # Coordinator should not open drafts (they're not sent)
+    if report.status == "draft":
+        return HttpResponseForbidden("This report is still in draft and not submitted.")
 
     return render(request, "tracking/coordinator_results_report_detail.html", {
         "report": report,
@@ -1241,14 +1506,14 @@ def coordinator_results_report_detail(request, report_id):
 
 @login_required
 def coordinator_results_report_pdf(request, report_id):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
 
-    report = get_object_or_404(
-        SupervisorResultsReport,
-        id=report_id,
-        status__in=["submitted", "received"]
-    )
+
+    report = get_object_or_404(SupervisorResultsReport, id=report_id)
+
+    if report.status == "draft":
+        return HttpResponseForbidden("Draft report cannot be exported by coordinator.")
 
     rows = report.rows or []
 
@@ -1258,17 +1523,18 @@ def coordinator_results_report_pdf(request, report_id):
 
     y = height - 50
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(50, y, "Internship Results Report (Submitted by University Supervisor)")
+    c.drawString(50, y, "Internship Results Report (Coordinator Copy)")
     y -= 18
 
     sup_name = getattr(report.supervisor_user, "display_name", "") or report.supervisor_user.get_username()
     c.setFont("Helvetica", 10)
     c.drawString(50, y, f"Supervisor: {sup_name}")
     y -= 14
+    c.drawString(50, y, f"Status: {report.status.upper()}   •   Revision: {getattr(report, 'revision', 1)}")
+    y -= 14
     c.drawString(50, y, f"Submitted: {report.submitted_at.strftime('%Y-%m-%d %H:%M') if report.submitted_at else '-'}")
     y -= 20
 
-    # headers
     c.setFont("Helvetica-Bold", 10)
     c.drawString(50, y, "Reg No")
     c.drawString(140, y, "Student")
@@ -1300,28 +1566,108 @@ def coordinator_results_report_pdf(request, report_id):
     c.save()
     buffer.seek(0)
 
-    filename = f"submitted_report_{report.id}.pdf"
+    filename = f"results_report_{report.id}_rev{getattr(report, 'revision', 1)}.pdf"
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
+
+@require_POST
 @login_required
-def coordinator_mark_report_received(request, report_id):
-    if request.method != "POST":
-        return HttpResponseForbidden("POST only.")
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+def coordinator_approve_report(request, report_id):
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
 
-    report = get_object_or_404(SupervisorResultsReport, id=report_id, status="submitted")
-    report.status = "received"
-    report.save(update_fields=["status"])
-    return redirect("coordinator_results_reports")
 
+    report = get_object_or_404(SupervisorResultsReport, id=report_id)
+
+    # Only approve reports that are currently under review
+    if report.status not in ["submitted", "resubmitted"]:
+        return HttpResponseForbidden("Only submitted reports can be approved.")
+
+    report.approve()
+    return redirect("coordinator_results_report_detail", report_id=report.id)
+
+
+@require_POST
+@login_required
+def coordinator_request_changes_report(request, report_id):
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
+
+    report = get_object_or_404(SupervisorResultsReport, id=report_id)
+
+    if report.status not in ["submitted", "resubmitted", "approved"]:
+        return HttpResponseForbidden("This report cannot be reopened now.")
+
+    comment = (request.POST.get("comment") or "").strip()
+    if not comment:
+        comment = "Please review and correct the report, then resubmit."
+
+    # ✅ Change status and store comment
+    report.mark_needs_changes(comment=comment)
+
+    # ✅ Send notification to that supervisor
+    action_url = reverse("supervisor_results_report")
+    notify(
+        user=report.supervisor_user,
+        title="Results Report: Changes Requested",
+        message=f"Coordinator requested changes on your results report (Rev {getattr(report, 'revision', 1)}). "
+                f"Comment: {comment}",
+        level="warning",
+        action_url=action_url,
+        action_text="Open Results Report",
+    )
+
+    return redirect("coordinator_results_report_detail", report_id=report.id)
+
+@require_POST
+@login_required
+def coordinator_reject_report(request, report_id):
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
+
+    report = get_object_or_404(SupervisorResultsReport, id=report_id)
+
+    if report.status not in ["submitted", "resubmitted"]:
+        return HttpResponseForbidden("Only submitted reports can be rejected.")
+
+    comment = (request.POST.get("comment") or "").strip()
+    if not comment:
+        comment = "Report rejected. Please contact the coordinator for details."
+
+    report.reject(comment=comment)
+    return redirect("coordinator_results_report_detail", report_id=report.id)
+
+
+
+def _ensure_notification(user, *, title, message, level="info", action_url="", action_text="Open"):
+    """
+    Create a notification only if a similar unread one doesn't already exist.
+    Prevents duplicates on each dashboard refresh.
+    """
+    qs = Notification.objects.filter(
+        user=user,
+        title=title,
+        action_url=action_url,
+        is_read=False,
+    )
+    if not qs.exists():
+        Notification.objects.create(
+            user=user,
+            title=title,
+            message=message,
+            level=level,
+            action_url=action_url,
+            action_text=action_text,
+            is_read=False,
+        )
 
 
 @login_required
 def coordinator_dashboard(request):
-    # ✅ Permission-based access (works even if group names are VU_Coordinator, etc.)
     if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
         return HttpResponseForbidden("VU_Coordinators only.")
 
@@ -1381,9 +1727,8 @@ def coordinator_dashboard(request):
     )
 
     # =========================
-    # ✅ UNIVERSITY SUPERVISOR ALLOCATION (permission-based)
+    # UNIVERSITY SUPERVISOR ALLOCATION
     # =========================
-    # Works whether the permission is assigned directly OR via any group name (e.g., VU_UniversitySupervisor)
     total_uni_supervisors = (
         StaffProfile.objects.filter(user__is_active=True)
         .filter(
@@ -1438,6 +1783,56 @@ def coordinator_dashboard(request):
         academic_evaluation__status="submitted",
     ).distinct().count()
 
+    # =========================
+    # ✅ AUTO-GENERATE DASHBOARD ALERTS (THIS FIXES YOUR ISSUE)
+    # =========================
+    # These create actual Notification rows so your UI can show them.
+    if acceptance_uploaded > 0:
+        _ensure_notification(
+            request.user,
+            title="Acceptance letters waiting verification",
+            message=f"There are {acceptance_uploaded} acceptance letter(s) uploaded and waiting for verification.",
+            level="warning",
+            action_url="/placements/coordinator/acceptance-queue/",  # ✅ or reverse("coordinator_acceptance_queue")
+            action_text="Open Acceptance Queue",
+        )
+
+    if recommendation_pending_requests > 0:
+        _ensure_notification(
+            request.user,
+            title="Requests pending approval",
+            message=f"There are {recommendation_pending_requests} request(s) pending approval.",
+            level="info",
+            action_url="/placements/coordinator/queue/",  # ✅ or reverse("coordinator_queue")
+            action_text="Open Request Queue",
+        )
+
+    if pending_reports > 0:
+        _ensure_notification(
+            request.user,
+            title="Results reports pending review",
+            message=f"There are {pending_reports} results report(s) submitted and waiting for coordinator action.",
+            level="danger",
+            action_url="/tracking/coordinator/results-reports/",  # ✅ or reverse("coordinator_results_reports")
+            action_text="Open Results Reports",
+        )
+
+    if active_without_uni_supervisor > 0:
+        _ensure_notification(
+            request.user,
+            title="Active placements missing University Supervisor",
+            message=f"{active_without_uni_supervisor} active placement(s) have no University Supervisor assigned.",
+            level="warning",
+            action_url="/placements/coordinator/acceptance-queue/",
+            action_text="Assign Supervisors",
+        )
+
+    # =========================
+    # NOTIFICATIONS (latest)
+    # =========================
+    notifications = Notification.objects.filter(user=request.user).order_by("-created_at")[:8]
+    unread_notifications = Notification.objects.filter(user=request.user, is_read=False).count()
+
     return render(request, "dashboards/coordinator_dashboard.html", {
         "today": today,
 
@@ -1477,8 +1872,32 @@ def coordinator_dashboard(request):
         "uni_supervisors_with_load": uni_supervisors_with_load,
         "uni_supervisors_zero_load": uni_supervisors_zero_load,
         "uni_supervisor_workload": uni_supervisor_workload,
+
+        "notifications": notifications,
+        "unread_notifications": unread_notifications,
     })
 
+@require_POST
+@login_required
+def coordinator_notifications_mark_read(request, pk):
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
+    n = get_object_or_404(Notification, pk=pk, user=request.user)
+    if not n.is_read:
+        n.is_read = True
+        n.save(update_fields=["is_read"])
+    return redirect("coordinator_dashboard")
+
+
+@require_POST
+@login_required
+def coordinator_notifications_mark_all(request):
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return redirect("coordinator_dashboard")
 
 @login_required
 def student_evaluation_form(request):
@@ -1606,8 +2025,9 @@ def coordinator_student_evaluations(request):
 
 @login_required
 def coordinator_student_evaluation_detail(request, evaluation_id):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     evaluation = get_object_or_404(StudentEvaluation, id=evaluation_id, status="submitted")
 
@@ -1620,8 +2040,8 @@ def coordinator_student_evaluation_detail(request, evaluation_id):
 
 @login_required
 def coordinator_student_performance(request):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
 
     placements = (
         Placement.objects
@@ -1737,10 +2157,12 @@ def coordinator_student_performance(request):
         "q": q,
         "count": placements.count(),
     })
+
 @login_required
 def coordinator_student_performance_detail(request, placement_id):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     placement = get_object_or_404(
         Placement.objects.select_related(
@@ -1821,19 +2243,131 @@ def student_dashboard(request):
         return HttpResponseForbidden("Students only.")
 
     placement = _get_student_active_placement(request.user)
-    # (optional) fallback to latest placement if you want:
-    # placement = _get_student_active_placement(request.user) or _get_student_latest_placement(request.user)
+
+    notifications = []
+    now = timezone.now()
+
+    # If no active placement
+    if not placement:
+        notifications.append({
+            "level": "warning",
+            "title": "No active placement",
+            "message": "Submit your internship request and upload an acceptance letter once you get it.",
+            "created_at": now,
+            "action_text": "Submit Request",
+            "action_url": reverse("submit_request"),
+        })
+        return render(request, "dashboards/student_dashboard.html", {
+            "placement": None,
+            "notifications": notifications,
+            "unread_notifications": len(notifications),
+            "site_visit_next": None,
+            "site_visit_last_completed": None,
+        })
+
+    # ---------------------------
+    # Weekly Logs status (optional)
+    # ---------------------------
+    student_log_qs = WeeklyLog.objects.filter(placement=placement)
+
+    pending_company = student_log_qs.filter(status="submitted").count()
+    returned_for_edit = student_log_qs.filter(status="returned_for_edit").count()
+    approved_by_company = student_log_qs.filter(status="approved_by_company").count()
+
+    if returned_for_edit:
+        notifications.append({
+            "level": "danger",
+            "title": "Weekly log returned",
+            "message": f"{returned_for_edit} log(s) were returned for edit. Please correct and resubmit.",
+            "created_at": now,
+            "action_text": "Open Logs",
+            "action_url": reverse("student_logs"),
+        })
+
+    if pending_company:
+        notifications.append({
+            "level": "info",
+            "title": "Logs awaiting approval",
+            "message": f"{pending_company} submitted log(s) are waiting for your industry supervisor to approve.",
+            "created_at": now,
+            "action_text": "View Logs",
+            "action_url": reverse("student_logs"),
+        })
+
+    # ---------------------------
+    # Site Visits (scheduled/confirmed notifications only)
+    # ---------------------------
+    site_visits_qs = (
+        SiteVisit.objects
+        .filter(placement=placement)  # ✅ ONLY this student's placement
+        .order_by("scheduled_at")
+    )
+
+    # next visit: upcoming scheduled/confirmed
+    site_visit_next = (
+        site_visits_qs
+        .filter(status__in=["scheduled", "confirmed"], scheduled_at__gte=now)
+        .order_by("scheduled_at")
+        .first()
+    )
+
+    # ✅ Notification for scheduled visit (needs confirmation)
+    if site_visit_next and site_visit_next.status == "scheduled":
+        notifications.append({
+            "level": "warning",
+            "title": "Site visit needs confirmation",
+            "message": f"A site visit is scheduled for {site_visit_next.scheduled_at.strftime('%d %b %Y %H:%M')}. Please confirm attendance.",
+            "created_at": now,
+            "action_text": "Confirm Visit",
+            "action_url": reverse("student_confirm_site_visit", args=[site_visit_next.id]),
+        })
+
+    # ✅ Optional: reminder for confirmed upcoming visit (no action needed)
+    if site_visit_next and site_visit_next.status == "confirmed":
+        notifications.append({
+            "level": "info",
+            "title": "Upcoming site visit",
+            "message": f"You have a confirmed site visit on {site_visit_next.scheduled_at.strftime('%d %b %Y %H:%M')}. Be ready.",
+            "created_at": now,
+            "action_text": "View Visits",
+            "action_url": reverse("student_site_visits"),
+        })
+
+    # ✅ Keep this for display in the template (NOT a notification)
+    site_visit_last_completed = (
+        site_visits_qs
+        .filter(status="completed")
+        .order_by("-actual_at", "-scheduled_at")
+        .first()
+    )
+
+    # ---------------------------
+    # Student Evaluation availability reminder (optional)
+    # ---------------------------
+    if placement.status == "active":
+        ev = StudentEvaluation.objects.filter(placement=placement, student_user=request.user).first()
+        if not ev:
+            notifications.append({
+                "level": "secondary",
+                "title": "Student evaluation",
+                "message": "Remember to fill the student evaluation form at the end of internship.",
+                "created_at": now,
+                "action_text": "Open Form",
+                "action_url": reverse("student_evaluation_form"),
+            })
 
     return render(request, "dashboards/student_dashboard.html", {
         "placement": placement,
+        "notifications": notifications,
+        "unread_notifications": len(notifications),
+        "site_visit_next": site_visit_next,
+        "site_visit_last_completed": site_visit_last_completed,
+
+        # optional counts
+        "pending_company_logs": pending_company,
+        "returned_logs": returned_for_edit,
+        "approved_logs": approved_by_company,
     })
-
-
-@login_required
-def industry_dashboard(request):
-    return render(request, "dashboards/industry_dashboard.html")
-
-
 
 # you already have role helpers like is_industry_supervisor(...)
 # assume you have: is_university_supervisor(user), is_student(user), is_coordinator(user)
@@ -2072,8 +2606,9 @@ def schedule_site_visit(request, placement_id):
 # COORDINATOR: SITE VISITS
 @login_required
 def coordinator_site_visits(request):
-    if not request.user.is_superuser and not request.user.groups.filter(name__iexact="Coordinator").exists():
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     qs = (
         SiteVisit.objects.select_related(
@@ -2115,8 +2650,9 @@ def is_coordinator(user):
 
 @login_required
 def coordinator_site_visit_report_detail(request, visit_id):
-    if not is_coordinator(request.user):
-        return HttpResponseForbidden("Coordinators only.")
+    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+        return HttpResponseForbidden("VU_Coordinators only.")
+
 
     visit = get_object_or_404(
         SiteVisit.objects.select_related(
@@ -2139,3 +2675,133 @@ def coordinator_site_visit_report_detail(request, visit_id):
         "report": report,
     })
 
+@login_required
+def industry_dashboard(request):
+    if not is_industry_supervisor(request.user):
+        return HttpResponseForbidden("Industry Supervisors only.")
+
+    user_email = (request.user.email or "").strip()
+    contact = CompanyContact.objects.filter(email__iexact=user_email).select_related("company").first()
+
+    # Prefer company from industry_profile (same as other company views)
+    company = None
+    if hasattr(request.user, "industry_profile") and request.user.industry_profile and request.user.industry_profile.company:
+        company = request.user.industry_profile.company
+    elif contact:
+        company = contact.company
+
+    if not company:
+        empty_stats = {
+            "pending_logs": 0,
+            "approved_logs": 0,
+            "returned_logs": 0,
+            "assigned_students": 0,
+            "submitted_evaluations": 0,
+            "unread_notifications": 1,
+        }
+        notifications = [{
+            "title": "Profile not linked",
+            "message": "No company linked to your account. Ask the coordinator to link your Industry Profile / Company Contact.",
+            "created_at": timezone.now(),
+        }]
+        return render(request, "dashboards/industry_dashboard.html", {
+            "pending_logs": 0,
+            "approved_logs": 0,
+            "returned_logs": 0,
+            "assigned_students": 0,
+            "submitted_evaluations": 0,
+            "unread_notifications": 1,
+            "notifications": notifications,
+            "recent_logs": [],
+            "contact": contact,
+            "stats": empty_stats,
+        })
+
+    # ✅ COUNT BY COMPANY (not by CompanyContact)
+    log_qs = WeeklyLog.objects.filter(placement__company=company).select_related(
+        "placement", "placement__company", "placement__request__student__user"
+    )
+
+    pending_logs = log_qs.filter(status="submitted").count()
+    approved_logs = log_qs.filter(status="approved_by_company").count()
+    returned_logs = log_qs.filter(status="returned_for_edit").count()
+
+    assigned_students = (
+        Placement.objects.filter(company=company)
+        .values("request__student").distinct().count()
+    )
+
+    # ✅ If you have IndustryEvaluation model, count them properly
+    submitted_evaluations = IndustryEvaluation.objects.filter(company=company, status="submitted").count()
+
+    notifications = []
+    now = timezone.now()
+    if pending_logs:
+        notifications.append({
+            "title": "Pending logs need review",
+            "message": f"You have {pending_logs} submitted weekly log(s) waiting for approval.",
+            "created_at": now,
+        })
+    if returned_logs:
+        notifications.append({
+            "title": "Returned logs",
+            "message": f"{returned_logs} log(s) were returned for edit. Students may resubmit anytime.",
+            "created_at": now,
+        })
+
+    pending_ack = Placement.objects.filter(company=company, status="pending_student_ack").count()
+    if pending_ack:
+        notifications.append({
+            "title": "Placements pending acknowledgement",
+            "message": f"{pending_ack} placement(s) are pending student acknowledgement.",
+            "created_at": now,
+        })
+
+    recent_qs = log_qs.order_by("-company_action_at", "-submitted_at", "-created_at")[:8]
+    recent_logs = []
+    for log in recent_qs:
+        stu_user = getattr(log.placement.request.student, "user", None)
+        student_name = (stu_user.get_full_name() if stu_user else "") or log.placement.request.student.reg_no
+
+        summary = (log.activities or "").strip()
+        if len(summary) > 90:
+            summary = summary[:90] + "…"
+
+        recent_logs.append({
+            "student_name": student_name,
+            "week_no": log.week_no,
+            "summary": summary or "Weekly log updated.",
+            "status": log.status,
+            "updated_at": log.company_action_at or log.submitted_at or log.created_at,
+        })
+
+    stats = {
+        "pending_logs": pending_logs,
+        "approved_logs": approved_logs,
+        "returned_logs": returned_logs,
+        "submitted_evaluations": submitted_evaluations,
+        "assigned_students": assigned_students,
+        "unread_notifications": len(notifications),
+    }
+
+    return render(request, "dashboards/industry_dashboard.html", {
+        "pending_logs": pending_logs,
+        "approved_logs": approved_logs,
+        "returned_logs": returned_logs,
+        "assigned_students": assigned_students,
+        "submitted_evaluations": submitted_evaluations,
+        "unread_notifications": len(notifications),
+
+        "notifications": notifications,
+        "recent_logs": recent_logs,
+        "contact": contact,
+        "stats": stats,
+    })
+
+
+@login_required
+def mark_notification_read(request, notif_id):
+    n = get_object_or_404(Notification, id=notif_id, user=request.user)
+    n.is_read = True
+    n.save(update_fields=["is_read"])
+    return redirect(n.action_url or "supervisor_dashboard")

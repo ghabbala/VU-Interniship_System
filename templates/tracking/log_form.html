@@ -165,27 +165,40 @@
       </div>
     </div>
 
-    <!-- Attachment -->
+    <!-- Attachments -->
     <div class="a4-card mt-3">
       <div class="a4-card-title">
-        <i class="bi bi-paperclip me-1"></i> Attachment (Optional)
+        <i class="bi bi-paperclip me-1"></i> Attachments (Optional)
       </div>
 
       <div class="mt-2">
-        {{ form.attachment }}
-        <div class="small text-muted mt-1">Max file size: <b>5MB</b></div>
+        {{ form.attachments }}
+        <div class="small text-muted mt-1">Upload up to <b>5 files</b>. Combined size: <b>20MB maximum</b>.</div>
 
         <div id="fileSizeError" class="alert alert-danger py-2 mt-2 d-none">
           <i class="bi bi-exclamation-triangle me-1"></i>
-          Attachment is too large. Maximum allowed size is <b>5MB</b>.
+          You can upload a maximum of <b>5 files</b>, and their combined size must be <b>20MB</b> or smaller.
         </div>
 
-        {% if form.attachment.errors %}<div class="err">{{ form.attachment.errors }}</div>{% endif %}
+        {% if form.attachments.errors %}<div class="err">{{ form.attachments.errors }}</div>{% endif %}
 
         {% if log.attachment %}
           <div class="small mt-2">
             Current file:
             <a href="{{ log.attachment.url }}" target="_blank" rel="noopener">Open attachment</a>
+          </div>
+        {% endif %}
+
+        {% if log.attachments.all %}
+          <div class="small mt-2">
+            <div class="fw-semibold">Current uploaded files:</div>
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              {% for item in log.attachments.all %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ item.file.url }}" target="_blank" rel="noopener">
+                  <i class="bi bi-paperclip me-1"></i> File {{ forloop.counter }}
+                </a>
+              {% endfor %}
+            </div>
           </div>
         {% endif %}
       </div>
@@ -211,9 +224,10 @@
 
 <script>
   (function () {
-    const MAX = 5 * 1024 * 1024; // 5MB
+    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_FILES = 5;
     const form = document.getElementById('weeklyLogForm');
-    const input = form ? form.querySelector('input[type="file"]') : null;
+    const input = form ? form.querySelector('input[name="attachments"]') : null;
     const errorBox = document.getElementById('fileSizeError');
 
     if (!form || !input || !errorBox) return;
@@ -222,14 +236,20 @@
       errorBox.classList.toggle('d-none', !show);
     }
 
+    function hasInvalidFiles() {
+      const files = Array.from(input.files || []);
+      const existingCount = Number(input.dataset.existingCount || 0);
+      const existingSize = Number(input.dataset.existingSize || 0);
+      const selectedSize = files.reduce((total, file) => total + file.size, 0);
+      return (existingCount + files.length) > MAX_FILES || (existingSize + selectedSize) > MAX_TOTAL_SIZE;
+    }
+
     input.addEventListener('change', function () {
-      const file = input.files && input.files[0];
-      toggleError(!!file && file.size > MAX);
+      toggleError(hasInvalidFiles());
     });
 
     form.addEventListener('submit', function (e) {
-      const file = input.files && input.files[0];
-      if (file && file.size > MAX) {
+      if (hasInvalidFiles()) {
         e.preventDefault();
         toggleError(true);
         input.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -3,183 +3,358 @@
 {% block title %}Pending Logs — Industry Supervisor{% endblock %}
 
 {% block content %}
+<style>
+  /* ======= Scoped UI polish (VU style) ======= */
+  .pl-pagehead{
+    background: linear-gradient(135deg, rgba(179,0,0,.10), rgba(255,255,255,.75));
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+    padding: 1rem 1.1rem;
+  }
+  .pl-title{
+    display:flex; align-items:center; gap:.65rem;
+    font-weight: 950;
+    letter-spacing:.2px;
+    margin:0;
+  }
+  .pl-dot{
+    width: 10px; height: 10px; border-radius: 50%;
+    background:#b30000;
+    box-shadow: 0 0 0 .28rem rgba(179,0,0,.14);
+    flex:0 0 auto;
+  }
+  .pl-sub{ color: rgba(0,0,0,.62); font-size:.92rem; margin-top:.25rem; }
+
+  .pl-card{
+    border: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .pl-cardhead{
+    background:#fff;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    padding: .95rem 1rem;
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  }
+
+  /* Per-log item card */
+  .log-card{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 18px;
+    background:#fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.05);
+    overflow:hidden;
+  }
+  .log-head{
+    padding: .95rem 1rem;
+    background: rgba(179,0,0,.04);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
+  }
+
+  /* ✅ Make student name pop */
+  .stud-line{
+    display:flex; flex-wrap:wrap;
+    align-items:center;
+    gap:.6rem;
+  }
+  .stud-name{
+    font-weight: 950;
+    color: rgba(0,0,0,.88);
+    letter-spacing: .2px;
+    font-size: 1.02rem;
+  }
+  .stud-reg{
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(255,255,255,.90);
+    font-weight: 900;
+    color: rgba(0,0,0,.70);
+    font-size: .86rem;
+    white-space: nowrap;
+  }
+  .stud-reg i{ color:#b30000; }
+  .wk-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    padding:.25rem .6rem;
+    border-radius: 999px;
+    background: rgba(179,0,0,.10);
+    border: 1px solid rgba(179,0,0,.18);
+    color:#b30000;
+    font-weight: 900;
+    font-size: .86rem;
+    white-space: nowrap;
+  }
+
+  .meta-row{
+    margin-top:.35rem;
+    display:flex; flex-wrap:wrap;
+    gap:.55rem;
+    align-items:center;
+    color: rgba(0,0,0,.60);
+    font-size: .88rem;
+  }
+  .meta-chip{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.25rem .55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(255,255,255,.90);
+    white-space: nowrap;
+  }
+
+  /* Table polish */
+  .pl-table thead th{
+    background:#f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .pl-table tbody tr:hover{
+    background: rgba(179,0,0,.02);
+  }
+
+  /* Sticky sidebar */
+  .pl-sticky{ position: sticky; top: 1rem; }
+
+  /* Return box */
+  .return-box{
+    border-radius: 16px !important;
+    border: 1px solid rgba(0,0,0,.10) !important;
+    background: rgba(0,0,0,.03) !important;
+  }
+
+  /* Keep left aligned */
+  .company-remarks, .company-remarks * { text-align: left !important; }
+  .company-remarks .remarks-text { width:100% !important; display:block !important; margin:0 !important; }
+
+  @media (max-width: 576px){
+    .log-head{ flex-direction: column; }
+  }
+</style>
+
 <div class="row g-4">
+
   <!-- MAIN -->
   <div class="col-12 col-lg-9">
-    <div class="card">
-      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+
+    <!-- Page header -->
+    <div class="pl-pagehead mb-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
         <div>
-          <div class="fw-bold">Company Pending Logs</div>
-          <div class="text-muted small">
+          <h4 class="pl-title">
+            <span class="pl-dot"></span>
+            Company Pending Logs
+          </h4>
+          <div class="pl-sub">
             Company: <span class="fw-semibold text-dark">{{ company.name }}</span>
           </div>
         </div>
 
         <div class="d-flex gap-2 flex-wrap">
-          <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success btn-sm">
+          <a href="{% url 'company_approved_logs' %}" class="btn btn-outline-success">
             <i class="bi bi-check2-circle me-1"></i> Approved Logs
           </a>
-
-          <a href="{% url 'company_pending_logs' %}" class="btn btn-light border btn-sm">
+          <a href="{% url 'company_pending_logs' %}" class="btn btn-light border">
             <i class="bi bi-arrow-clockwise me-1"></i> Refresh
           </a>
         </div>
+      </div>
+    </div>
+
+    <div class="card pl-card">
+      <div class="pl-cardhead">
+        <div class="fw-bold d-flex align-items-center gap-2">
+          <i class="bi bi-hourglass-split text-danger"></i>
+          Pending Review
+        </div>
+        <span class="badge text-bg-light border">{{ logs|length }} total</span>
       </div>
 
       <div class="card-body">
         {% if logs %}
           <div class="d-flex flex-column gap-3">
+
             {% for log in logs %}
-              <div class="border rounded-4 p-3 p-md-4 bg-white">
+              <div class="log-card">
 
                 <!-- Header -->
-                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+                <div class="log-head">
                   <div>
-                    <div class="fw-bold">
-                      <i class="bi bi-person-badge me-1 text-danger"></i>
-                      {{ log.placement.request.student.reg_no }}
-                      <span class="text-muted fw-normal">— Week {{ log.week_no }}</span>
+                    <!-- ✅ Student name now very visible -->
+                    <div class="stud-line">
+                      <span class="stud-name">
+                        <i class="bi bi-person-badge me-1 text-danger"></i>
+                        {{ log.placement.request.student.user.display_name }}
+                      </span>
+
+                      <span class="stud-reg">
+                        <i class="bi bi-hash"></i> {{ log.placement.request.student.reg_no }}
+                      </span>
+
+                      <span class="wk-pill">
+                        <i class="bi bi-calendar-week"></i> Week {{ log.week_no }}
+                      </span>
                     </div>
 
-                    <div class="small text-muted mt-1 d-flex flex-wrap align-items-center gap-2">
-                      <span><i class="bi bi-calendar3 me-1"></i>{{ log.from_date }} → {{ log.to_date }}</span>
-                      <span class="text-muted">•</span>
+                    <div class="meta-row">
+                      <span class="meta-chip">
+                        <i class="bi bi-calendar3"></i> {{ log.from_date }} → {{ log.to_date }}
+                      </span>
                       <span class="badge text-bg-primary">Submitted</span>
+                      {% if log.attachment or log.attachments.all %}
+                        <span class="meta-chip">
+                          <i class="bi bi-paperclip"></i> Attachment available
+                        </span>
+                      {% endif %}
                     </div>
                   </div>
 
                   <div class="d-flex flex-column flex-sm-row gap-2">
                     {% if log.attachment %}
-                      <a href="{{ log.attachment.url }}" class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener">
+                      <a href="{{ log.attachment.url }}" class="btn btn-outline-danger" target="_blank" rel="noopener">
                         <i class="bi bi-paperclip me-1"></i> Attachment
                       </a>
                     {% endif %}
+                    {% for item in log.attachments.all %}
+                      <a href="{{ item.file.url }}" class="btn btn-outline-danger" target="_blank" rel="noopener">
+                        <i class="bi bi-paperclip me-1"></i> File {{ forloop.counter }}
+                      </a>
+                    {% endfor %}
 
-                    <a href="{% url 'supervisor_students' %}" class="btn btn-light border btn-sm">
+                    <a href="{% url 'supervisor_students' %}" class="btn btn-light border">
                       <i class="bi bi-people me-1"></i> Assigned Students
                     </a>
                   </div>
                 </div>
 
-                <hr class="my-3"/>
+                <div class="p-3 p-md-4">
 
-                <!-- DAILY TABLE (Mon → Fri order comes from the view Prefetch ordering) -->
-                <div class="mb-3">
-                  <div class="fw-semibold mb-2">
-                    <i class="bi bi-table me-1"></i> Daily Activities (Mon – Fri)
-                  </div>
+                  <!-- DAILY TABLE -->
+                  <div class="mb-3">
+                    <div class="fw-semibold mb-2">
+                      <i class="bi bi-table me-1"></i> Daily Activities (Mon – Fri)
+                    </div>
 
-                  <div class="table-responsive">
-                    <table class="table table-bordered align-middle mb-0">
-                      <thead class="table-light">
-                        <tr>
-                          <th style="width:140px;">Day</th>
-                          <th>Work Assignments</th>
-                          <th>Activities / Steps</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {% for e in log.entries.all %}
+                    <div class="table-responsive">
+                      <table class="table table-bordered align-middle mb-0 pl-table">
+                        <thead class="table-light">
                           <tr>
-                            <td class="fw-semibold">{{ e.get_day_display }}</td>
-                            <td style="white-space: pre-line; text-align:left;">{{ e.work_assignment|default:"—" }}</td>
-                            <td style="white-space: pre-line; text-align:left;">{{ e.activities_steps|default:"—" }}</td>
+                            <th style="width:140px;">Day</th>
+                            <th>Work Assignments</th>
+                            <th>Activities / Steps</th>
                           </tr>
-                        {% empty %}
-                          <tr>
-                            <td colspan="3" class="text-muted small">
-                              No daily entries found for this log.
-                            </td>
-                          </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div class="small text-muted mt-2">
-                    Days are shown in order (Mon → Fri).
-                  </div>
-                </div>
-
-                <!-- Remarks -->
-                <div class="row g-3 mt-3 company-remarks">
-                  <div class="col-12 col-lg-6">
-                    <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
-                      <i class="bi bi-exclamation-triangle"></i> <span>Challenges</span>
+                        </thead>
+                        <tbody>
+                          {% for e in log.entries.all %}
+                            <tr>
+                              <td class="fw-semibold">{{ e.get_day_display }}</td>
+                              <td style="white-space: pre-line; text-align:left;">{{ e.work_assignment|default:"—" }}</td>
+                              <td style="white-space: pre-line; text-align:left;">{{ e.activities_steps|default:"—" }}</td>
+                            </tr>
+                          {% empty %}
+                            <tr>
+                              <td colspan="3" class="text-muted small">
+                                No daily entries found for this log.
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
                     </div>
-                    <div class="remarks-text text-muted small" style="white-space: pre-line;">
-                      {{ log.challenges|default:"—" }}
+
+                    <div class="small text-muted mt-2">
+                      Days are shown in order (Mon → Fri).
                     </div>
                   </div>
 
-                  <div class="col-12 col-lg-6">
-                    <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
-                      <i class="bi bi-lightbulb"></i> <span>Lessons Learnt</span>
+                  <!-- Remarks -->
+                  <div class="row g-3 mt-3 company-remarks">
+                    <div class="col-12 col-lg-6">
+                      <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
+                        <i class="bi bi-exclamation-triangle"></i> <span>Challenges</span>
+                      </div>
+                      <div class="remarks-text text-muted small" style="white-space: pre-line;">
+                        {{ log.challenges|default:"—" }}
+                      </div>
                     </div>
-                    <div class="remarks-text text-muted small" style="white-space: pre-line;">
-                      {{ log.lessons|default:"—" }}
+
+                    <div class="col-12 col-lg-6">
+                      <div class="fw-semibold mb-1 d-flex align-items-center gap-2">
+                        <i class="bi bi-lightbulb"></i> <span>Lessons Learnt</span>
+                      </div>
+                      <div class="remarks-text text-muted small" style="white-space: pre-line;">
+                        {{ log.lessons|default:"—" }}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <hr class="my-3"/>
+                  <hr class="my-3"/>
 
-                <!-- Action Form -->
-                <form method="post" action="{% url 'company_action_log' log.id %}">
-                  {% csrf_token %}
+                  <!-- Action Form -->
+                  <form method="post" action="{% url 'company_action_log' log.id %}">
+                    {% csrf_token %}
 
-                  <div class="d-flex flex-column flex-md-row gap-2">
-                    <button name="action" value="approve" type="submit" class="btn btn-success">
-                      <i class="bi bi-check-circle me-1"></i> Approve
-                    </button>
-
-                    <button
-                      type="button"
-                      class="btn btn-warning js-return-toggle"
-                      data-target="returnBox-{{ log.id }}"
-                      data-textarea="reason-{{ log.id }}"
-                    >
-                      <i class="bi bi-arrow-return-left me-1"></i> Return
-                    </button>
-                  </div>
-
-                  <!-- Hidden return reason box -->
-                  <div id="returnBox-{{ log.id }}" class="border rounded-4 p-3 mt-3 bg-light d-none">
-                    <div class="fw-semibold mb-1">
-                      <i class="bi bi-chat-left-text me-1"></i> Return reason (required)
-                    </div>
-
-                    <textarea
-                      id="reason-{{ log.id }}"
-                      name="reason"
-                      class="form-control"
-                      rows="3"
-                      placeholder="Explain what the student should fix (dates, missing details, evidence, etc.)"></textarea>
-
-                    <div class="form-text">
-                      This reason will be shown to the student so they can correct the log and resubmit.
-                    </div>
-
-                    <div class="d-flex flex-column flex-md-row gap-2 mt-3">
-                      <button name="action" value="return" type="submit" class="btn btn-danger">
-                        <i class="bi bi-arrow-return-left me-1"></i> Confirm Return
+                    <div class="d-flex flex-column flex-md-row gap-2">
+                      <button name="action" value="approve" type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i> Approve
                       </button>
 
                       <button
                         type="button"
-                        class="btn btn-outline-secondary js-return-cancel"
+                        class="btn btn-warning js-return-toggle"
                         data-target="returnBox-{{ log.id }}"
                         data-textarea="reason-{{ log.id }}"
                       >
-                        Cancel
+                        <i class="bi bi-arrow-return-left me-1"></i> Return
                       </button>
                     </div>
-                  </div>
-                </form>
 
+                    <!-- Hidden return reason box -->
+                    <div id="returnBox-{{ log.id }}" class="return-box p-3 mt-3 d-none">
+                      <div class="fw-semibold mb-1">
+                        <i class="bi bi-chat-left-text me-1"></i> Return reason (required)
+                      </div>
+
+                      <textarea
+                        id="reason-{{ log.id }}"
+                        name="reason"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Explain what the student should fix (dates, missing details, evidence, etc.)"></textarea>
+
+                      <div class="form-text">
+                        This reason will be shown to the student so they can correct the log and resubmit.
+                      </div>
+
+                      <div class="d-flex flex-column flex-md-row gap-2 mt-3">
+                        <button name="action" value="return" type="submit" class="btn btn-danger">
+                          <i class="bi bi-arrow-return-left me-1"></i> Confirm Return
+                        </button>
+
+                        <button
+                          type="button"
+                          class="btn btn-outline-secondary js-return-cancel"
+                          data-target="returnBox-{{ log.id }}"
+                          data-textarea="reason-{{ log.id }}"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                </div>
               </div>
             {% endfor %}
           </div>
+
         {% else %}
           <div class="text-center py-5">
             <div class="mb-2">
@@ -197,46 +372,51 @@
 
   <!-- SIDEBAR -->
   <div class="col-12 col-lg-3">
-    <div class="card mb-4">
-      <div class="card-header fw-bold">
-        <i class="bi bi-check2-square me-1"></i> Approval Checklist
-      </div>
-      <div class="card-body small text-muted">
-        <ul class="mb-0">
-          <li>Dates match the week number.</li>
-          <li>Daily entries are clear and complete.</li>
-          <li>Work assignments & steps are realistic.</li>
-          <li>Evidence attached if needed (optional).</li>
-          <li>Professional language is used.</li>
-        </ul>
-      </div>
-    </div>
+    <div class="pl-sticky d-grid gap-3">
 
-    <div class="card">
-      <div class="card-header fw-bold">
-        <i class="bi bi-link-45deg me-1"></i> Quick Links
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold bg-white">
+          <i class="bi bi-check2-square me-1"></i> Approval Checklist
+        </div>
+        <div class="card-body small text-muted">
+          <ul class="mb-0">
+            <li>Dates match the week number.</li>
+            <li>Daily entries are clear and complete.</li>
+            <li>Work assignments & steps are realistic.</li>
+            <li>Evidence attached if needed (optional).</li>
+            <li>Professional language is used.</li>
+          </ul>
+        </div>
       </div>
-      <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
-          <i class="bi bi-hourglass-split me-1"></i> Pending Logs
-        </a>
 
-        <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
-          <i class="bi bi-check2-circle me-1"></i> Approved Logs
-        </a>
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold bg-white">
+          <i class="bi bi-link-45deg me-1"></i> Quick Links
+        </div>
+        <div class="card-body d-grid gap-2">
 
-        <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
-          <i class="bi bi-people me-1"></i> Assigned Students
-        </a>
+          <!-- ✅ Added Dashboard link -->
+          <a class="btn btn-outline-dark" href="{% url 'industry_dashboard' %}">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+          </a>
+
+          <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
+            <i class="bi bi-hourglass-split me-1"></i> Pending Logs
+          </a>
+
+          <a class="btn btn-outline-success" href="{% url 'company_approved_logs' %}">
+            <i class="bi bi-check2-circle me-1"></i> Approved Logs
+          </a>
+
+          <a class="btn btn-outline-secondary" href="{% url 'supervisor_students' %}">
+            <i class="bi bi-people me-1"></i> Assigned Students
+          </a>
+        </div>
       </div>
+
     </div>
   </div>
 </div>
-
-<style>
-  .company-remarks, .company-remarks * { text-align: left !important; }
-  .company-remarks .remarks-text { width:100% !important; display:block !important; margin:0 !important; }
-</style>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {

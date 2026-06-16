@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from companies.models import Company, CompanyContact
@@ -10,7 +11,77 @@ class InternshipPeriod(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     is_active = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-is_active", "-start_date"]
+
+    def clean(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "End date cannot be before start date."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+        if self.is_active:
+            InternshipPeriod.objects.exclude(pk=self.pk).filter(is_active=True).update(is_active=False)
+
+    @property
+    def duration_days(self):
+        if not self.start_date or not self.end_date:
+            return 0
+        return (self.end_date - self.start_date).days + 1
+
+    @property
+    def duration_weeks(self):
+        if not self.duration_days:
+            return 0
+        return round(self.duration_days / 7, 1)
+
+    @property
+    def days_remaining(self):
+        if not self.end_date:
+            return 0
+        return max((self.end_date - timezone.localdate()).days, 0)
     
+
+    def __str__(self):
+        return self.name
+
+
+class RecommendationLetterSettings(models.Model):
+    name = models.CharField(max_length=120, default="Default recommendation letter settings")
+    stamp_image = models.ImageField(upload_to="recommendation_letter/stamps/", blank=True, null=True)
+    signature_image = models.ImageField(upload_to="recommendation_letter/signatures/", blank=True, null=True)
+    signatory_name = models.CharField(max_length=160, blank=True)
+    signatory_title = models.CharField(max_length=160, blank=True, default="Dean")
+    signatory_email = models.EmailField(blank=True)
+    signatory_phone = models.CharField(max_length=60, blank=True)
+    footer_address = models.CharField(
+        max_length=255,
+        blank=True,
+        default="Victoria Tower, Plot No. 1-13 Jinja Road P.O. Box 30866 Kampala, Uganda",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_recommendation_letter_settings",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Recommendation letter setting"
+        verbose_name_plural = "Recommendation letter settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def current(cls):
+        settings_obj, _ = cls.objects.get_or_create(pk=1)
+        return settings_obj
 
     def __str__(self):
         return self.name
@@ -150,6 +221,18 @@ class Placement(models.Model):
 
     def __str__(self):
         return f"{self.request.student.reg_no} @ {self.company.name}"
+
+    @property
+    def duration_days(self):
+        if not self.start_date or not self.end_date:
+            return 0
+        return (self.end_date - self.start_date).days + 1
+
+    @property
+    def duration_weeks(self):
+        if not self.duration_days:
+            return 0
+        return round(self.duration_days / 7, 1)
 
 
 

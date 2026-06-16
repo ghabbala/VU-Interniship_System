@@ -1,0 +1,172 @@
+/* vu-evaluation.css
+   Page-scoped CSS for industry supervisor evaluation page
+   Uses global VU variables already defined in your main VU theme.
+*/
+
+/* ===================== HERO HEADER ===================== */
+.eval-hero{
+  background: linear-gradient(135deg, rgba(179,0,0,.10), rgba(255,255,255,.70));
+  border: 1px solid var(--vu-border);
+  border-radius: var(--vu-radius);
+  box-shadow: var(--vu-shadow);
+  padding: 1rem;
+}
+
+.eval-hero .title{
+  display:flex;
+  align-items:center;
+  gap:.6rem;
+  font-weight: 900;
+  letter-spacing:.2px;
+}
+
+.eval-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.5rem .75rem;
+  color: var(--vu-muted);
+  font-size: .9rem;
+  margin-top: .35rem;
+}
+
+.eval-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:.45rem;
+  padding:.35rem .65rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+  border: 1px solid rgba(0,0,0,.10);
+  color: var(--vu-dark);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.eval-pill i{ color: var(--vu-red-2); }
+
+/* ===================== CRITERIA CARDS ===================== */
+.crit-card{
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: var(--vu-radius);
+  background: #fff;
+  overflow: hidden;
+}
+
+.crit-head{
+  padding: .85rem 1rem;
+  background: rgba(179,0,0,.04);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:.75rem;
+}
+
+.crit-title{
+  font-weight: 900;
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  color: var(--vu-dark);
+}
+
+.crit-badge{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display:grid;
+  place-items:center;
+  background: rgba(179,0,0,.10);
+  border: 1px solid rgba(179,0,0,.18);
+  color: var(--vu-red-2);
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.crit-body{ padding: 1rem; }
+
+/* ===================== SEGMENTED 1–5 RATINGS ===================== */
+.rating-row{
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.rating-pill{
+  position: relative;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 14px;
+  padding: .55rem .5rem;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+  background: #fff;
+  user-select: none;
+}
+
+.rating-pill:hover{
+  border-color: rgba(179,0,0,.25);
+  box-shadow: 0 10px 22px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+.rating-pill input{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rating-pill .val{
+  font-weight: 900;
+  color: var(--vu-dark);
+  font-size: 1rem;
+}
+
+/* Highlight selected option */
+.rating-pill:has(input:checked){
+  border-color: rgba(179,0,0,.45);
+  box-shadow: 0 0 0 .25rem rgba(179,0,0,.12);
+  background: rgba(179,0,0,.04);
+}
+
+/* ===================== STICKY ACTION BAR ===================== */
+.eval-actions{
+  position: sticky;
+  bottom: .75rem;
+  z-index: 5;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: var(--vu-radius);
+  box-shadow: 0 12px 30px rgba(0,0,0,.10);
+  padding: .85rem;
+  margin-top: 1rem;
+}
+
+/* ===================== SIDEBAR KEY ===================== */
+.key-list li{ margin-bottom: .35rem; }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 576px){
+  .rating-row{ grid-template-columns: repeat(5, 1fr); }
+}
+
+/* Sticky hero header (keeps student particulars visible while scrolling) */
+.eval-hero-sticky{
+  position: sticky;
+  top: .75rem;           /* adjust if navbar overlaps */
+  z-index: 20;
+}
+
+/* When sticky, it should look like a floating bar */
+.eval-hero-sticky{
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0,0,0,.10);
+}
+
+/* Add subtle shadow so it stays visually separated while you scroll */
+.eval-hero-sticky{
+  box-shadow: 0 10px 26px rgba(0,0,0,.08);
+}

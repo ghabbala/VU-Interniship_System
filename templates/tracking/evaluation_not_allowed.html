@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Evaluation Not Available — Industry Supervisor{% endblock %}
+{% block title %}Evaluation Not Available - Industry Supervisor{% endblock %}
 
 {% block content %}
 <div class="row g-4">
@@ -9,9 +9,9 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-start gap-2">
         <div>
-          <div class="fw-bold">Evaluation Not Available Yet</div>
+          <div class="fw-bold">{{ lock_title|default:"Evaluation Not Available Yet" }}</div>
           <div class="text-muted small">
-            You can only evaluate an intern near the end of the internship period.
+            {{ lock_message|default:"You can only evaluate an intern near the end of the internship period." }}
           </div>
         </div>
         <span class="badge text-bg-warning">Locked</span>
@@ -19,10 +19,14 @@
 
       <div class="card-body">
         <div class="alert alert-light border">
-          <div class="fw-semibold mb-1">Why you’re seeing this</div>
+          <div class="fw-semibold mb-1">Why you are seeing this</div>
           <div class="small text-muted">
-            This evaluation becomes available only within the last
-            <b>{{ window_days }}</b> days of the internship (or after the end date).
+            {% if lock_detail %}
+              {{ lock_detail }}
+            {% else %}
+              This evaluation becomes available only within the last
+              <b>{{ window_days }}</b> days of the internship, or after the end date.
+            {% endif %}
           </div>
         </div>
 
@@ -31,7 +35,7 @@
             <div class="col-12 col-md-6">
               <div class="small text-muted">Student</div>
               <div class="fw-semibold">
-                {{ placement.request.student.reg_no }} — {{ placement.request.student.user.display_name }}
+                {{ placement.request.student.reg_no }} - {{ placement.request.student.user.display_name }}
               </div>
             </div>
 
@@ -41,16 +45,21 @@
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="small text-muted">Internship End Date</div>
-              <div class="fw-semibold">{{ placement.end_date|default:"—" }}</div>
+              <div class="small text-muted">Placement Status</div>
+              <div class="fw-semibold">{{ placement.get_status_display }}</div>
             </div>
 
             <div class="col-12 col-md-6">
-              <div class="small text-muted">Days remaining</div>
-              <div class="fw-semibold">
-                {{ days_to_end }} day(s)
-              </div>
+              <div class="small text-muted">Internship End Date</div>
+              <div class="fw-semibold">{{ placement.end_date|default:"-" }}</div>
             </div>
+
+            {% if days_to_end is not None %}
+              <div class="col-12 col-md-6">
+                <div class="small text-muted">Days remaining</div>
+                <div class="fw-semibold">{{ days_to_end }} day(s)</div>
+              </div>
+            {% endif %}
           </div>
         </div>
 
@@ -66,10 +75,6 @@
           <a href="{% url 'supervisor_students' %}" class="btn btn-danger ms-md-auto">
             <i class="bi bi-people me-1"></i> Assigned Students
           </a>
-        </div>
-
-        <div class="small text-muted mt-3">
-          Tip: If you need evaluation earlier, change <code>EVALUATION_WINDOW_DAYS</code> in the view.
         </div>
       </div>
     </div>

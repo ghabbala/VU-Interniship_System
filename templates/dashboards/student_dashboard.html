@@ -2,247 +2,678 @@
 {% block title %}Student Dashboard — Victoria University{% endblock %}
 
 {% block content %}
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.08);
+    --vu-muted: rgba(0,0,0,.62);
+  }
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #fff;
+  }
+  .vu-card .card-header{
+    background:#fff;
+    border-bottom:1px solid var(--vu-border);
+  }
+
+  .kpi{
+    border: 1px solid var(--vu-border);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 1rem;
+    height: 100%;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .kpi:hover{
+    transform: translateY(-1px);
+    box-shadow: 0 .6rem 1.6rem rgba(0,0,0,.08);
+  }
+  .kpi .icon{
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vu-red-soft);
+    color: var(--vu-red);
+    font-size: 1.2rem;
+  }
+  .kpi .label{ color: var(--vu-muted); font-size: .88rem; }
+  .kpi .value{ font-weight: 900; letter-spacing: .2px; }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.12);
+    background:#fff;
+    font-size:.85rem;
+    white-space:nowrap;
+  }
+
+  .soft-panel{
+    border: 1px dashed rgba(179,0,0,.22);
+    background: linear-gradient(135deg, rgba(179,0,0,.06), rgba(179,0,0,0));
+    border-radius: 1rem;
+  }
+
+  .notif{
+    border: 1px solid rgba(179,0,0,.15);
+    background: rgba(179,0,0,.04);
+    border-radius: 1rem;
+    padding: .85rem;
+  }
+
+  .rec-chip{
+    border: 1px solid rgba(179,0,0,.18);
+    background: rgba(179,0,0,.04);
+    border-radius: 1rem;
+    padding: .85rem;
+  }
+  .rec-chip .title{
+    font-weight: 900;
+    display:flex; align-items:center; gap:.5rem;
+  }
+
+  .marks-panel{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 1rem;
+    background: #fff;
+    overflow: hidden;
+  }
+  .marks-head{
+    padding: 1rem;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    background: linear-gradient(135deg, rgba(179,0,0,.05), rgba(255,255,255,0));
+  }
+  .marks-card{
+    height: 100%;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: .85rem;
+    padding: 1rem;
+    background: #fff;
+  }
+  .marks-card.pending{
+    background: rgba(0,0,0,.015);
+  }
+  .marks-score{
+    font-weight: 900;
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .marks-progress{
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.08);
+    overflow: hidden;
+  }
+  .marks-progress > div{
+    height: 100%;
+    border-radius: inherit;
+    background: var(--vu-red);
+  }
+  .marks-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:.75rem;
+    padding:.45rem 0;
+    border-bottom:1px solid rgba(0,0,0,.06);
+  }
+  .marks-row:last-child{ border-bottom:0; }
+  .marks-row .name{ color:var(--vu-muted); }
+  .marks-row .score{ font-weight:800; white-space:nowrap; }
+</style>
+
 <div class="row g-4">
+
   <!-- MAIN -->
   <div class="col-12 col-lg-8">
-    <div class="card">
+    <div class="card vu-card">
+
+      <!-- Header -->
       <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
         <div>
-          <div class="fw-bold">Student Dashboard</div>
-          <div class="text-muted small">Manage your internship process at Victoria University</div>
+          <div class="fw-bold fs-5">
+            <i class="bi bi-speedometer2 text-danger me-1"></i> Student Dashboard
+          </div>
+          <div class="text-muted small">
+            Welcome, <span class="fw-semibold text-dark">{{ request.user.display_name }}</span>
+            {% if placement and placement.company %}
+              <span class="text-muted">•</span>
+              <span class="text-muted">Company:</span>
+              <span class="fw-semibold">{{ placement.company.name }}</span>
+            {% endif %}
+          </div>
         </div>
 
-        <span class="badge text-bg-light border">
-          <i class="bi bi-person-check me-1"></i> Student
-        </span>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="pill">
+            <i class="bi bi-mortarboard text-danger"></i> Student
+          </span>
+          <span class="pill">
+            <i class="bi bi-bell text-danger"></i>
+            Notifications
+            <span class="badge text-bg-danger">{{ unread_notifications|default:0 }}</span>
+          </span>
+        </div>
       </div>
 
       <div class="card-body">
-        <!-- Welcome strip -->
-        <div class="p-3 p-md-4 border rounded-4 bg-white">
-          <div class="d-flex align-items-start gap-3">
-            <i class="bi bi-mortarboard-fill text-danger fs-3"></i>
 
-            <div class="w-100">
-              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-                <div>
-                  <div class="fw-bold mb-1">
-                    Welcome, <span class="text-danger">{{ request.user.display_name }}</span>
-                  </div>
-                  <div class="text-muted">
-                    Use the quick actions below to submit requests, upload letters, and manage weekly logs.
-                  </div>
+        <!-- Recommendation status chip -->
+        {% if latest_req %}
+          <div class="rec-chip mb-3">
+            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+              <div>
+                <div class="title">
+                  <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  Recommendation Letter
                 </div>
 
-                {% if placement %}
-                  <span class="badge text-bg-light border">
-                    <i class="bi bi-briefcase me-1"></i>
-                    Placement: {{ placement.status|title }}
-                  </span>
-                {% else %}
-                  <span class="badge text-bg-warning">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    No placement yet
-                  </span>
+                <div class="small text-muted mt-1">
+                  Request status:
+                  <span class="badge text-bg-light border">{{ latest_req.status|default:"—" }}</span>
+
+                  {% if latest_req.recommendation_letter %}
+                    <span class="text-muted">•</span>
+                    {% if latest_req.recommendation_approved %}
+                      <span class="badge text-bg-success">Approved</span>
+                    {% else %}
+                      <span class="badge text-bg-warning">Pending approval</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="text-muted">•</span>
+                    <span class="badge text-bg-secondary">Not generated</span>
+                  {% endif %}
+                </div>
+
+                {% if not can_upload_acceptance %}
+                  <div class="small text-muted mt-2">
+                    <i class="bi bi-lock me-1"></i>
+                    Acceptance upload is locked until your recommendation letter is approved and issued.
+                  </div>
                 {% endif %}
               </div>
 
-              {% if placement and placement.company %}
-                <div class="small text-muted mt-2">
-                  <i class="bi bi-building me-1"></i> {{ placement.company.name }}
-                  {% if placement.university_supervisor %}
-                    <span class="mx-2">•</span>
-                    <i class="bi bi-person-badge me-1"></i> University Supervisor Assigned
-                  {% endif %}
-                </div>
-              {% endif %}
+              <div class="d-flex gap-2 flex-wrap">
+                {% if latest_req.recommendation_letter and latest_req.recommendation_approved %}
+                  <a class="btn btn-danger btn-sm" href="{% url 'download_recommendation_letter' latest_req.id %}">
+                    <i class="bi bi-download me-1"></i> Download Letter
+                  </a>
+                {% endif %}
+              </div>
             </div>
           </div>
-        </div>
+        {% endif %}
 
-        <hr class="my-4"/>
-
-        <!-- Quick actions -->
-        <div class="row g-3">
-          <div class="col-12 col-md-6">
-            <a href="{% url 'submit_request' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-file-earmark-text text-danger"></i>
-                  <div class="fw-bold">Submit Internship Request</div>
-                </div>
-                <div class="text-muted small">Fill your internship request form and submit to the coordinator.</div>
+        <!-- Supervisor Assessment Marks -->
+        <div class="marks-panel mb-3">
+          <div class="marks-head d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+            <div>
+              <div class="fw-bold">
+                <i class="bi bi-award text-danger me-1"></i> Supervisor Assessment Marks
               </div>
-            </a>
+              <div class="small text-muted">
+                Marks appear here after your Industry Supervisor and University Supervisor submit their evaluations.
+              </div>
+            </div>
+
+            {% if student_marks.overall_percent is not None %}
+              <span class="badge text-bg-danger px-3 py-2 rounded-pill">
+                Overall {{ student_marks.overall_percent|floatformat:1 }}%
+              </span>
+            {% else %}
+              <span class="badge text-bg-light border text-muted px-3 py-2 rounded-pill">
+                Awaiting assessment
+              </span>
+            {% endif %}
           </div>
 
-          <div class="col-12 col-md-6">
-            <a href="{% url 'student_upload_acceptance' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-cloud-upload text-danger"></i>
-                  <div class="fw-bold">Upload Acceptance Letter</div>
-                </div>
-                <div class="text-muted small">After receiving the company acceptance letter, upload it here.</div>
-              </div>
-            </a>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <a href="{% url 'student_logs' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-journal-check text-danger"></i>
-                  <div class="fw-bold">Weekly Logs</div>
-                </div>
-                <div class="text-muted small">View your weekly logs and track approvals.</div>
-              </div>
-            </a>
-          </div>
-
-          <div class="col-12 col-md-6">
-            <a href="{% url 'student_log_new' %}" class="text-decoration-none">
-              <div class="p-3 border rounded-4 h-100">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <i class="bi bi-plus-circle text-danger"></i>
-                  <div class="fw-bold">Add New Weekly Log</div>
-                </div>
-                <div class="text-muted small">Create a new weekly log entry, then submit it for approval.</div>
-              </div>
-            </a>
-          </div>
-
-          <!-- ✅ NEW: SITE VISITS -->
-          <div class="col-12">
-            <div class="p-3 border rounded-4 bg-light">
-              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-                <div>
-                  <div class="fw-bold mb-1">
-                    <i class="bi bi-geo-alt text-danger me-1"></i> Site Visits
-                  </div>
-                  <div class="small text-muted">
-                    Your university supervisor will schedule a physical or virtual visit. You may be required to confirm attendance.
+          <div class="p-3">
+            <div class="row g-3">
+              <div class="col-12 col-xl-4">
+                <div class="marks-card {% if not student_marks.industry %}pending{% endif %}">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-bold">Industry Supervisor</div>
+                      <div class="small text-muted">Company assessment</div>
+                    </div>
+                    {% if student_marks.industry %}
+                      <span class="badge text-bg-success">Submitted</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">Pending</span>
+                    {% endif %}
                   </div>
 
-                  {% if site_visit_next %}
-                    <div class="small mt-2">
-                      <span class="badge text-bg-info">
-                        Next: {{ site_visit_next.scheduled_at|date:"Y-m-d H:i" }}
-                      </span>
-                      {% if site_visit_next.visit_type %}
-                        <span class="badge text-bg-light border ms-1">{{ site_visit_next.visit_type|title }}</span>
-                      {% endif %}
+                  {% if student_marks.industry %}
+                    <div class="marks-score text-danger mt-3">
+                      {{ student_marks.industry.total_marks }}/{{ student_marks.industry.max_marks }}
+                    </div>
+                    <div class="small text-muted mt-1">
+                      {{ student_marks.industry.score_out_of_10|floatformat:1 }}/10
+                      <span class="text-muted">•</span>
+                      {{ student_marks.industry.score_out_of_100|floatformat:1 }}%
+                    </div>
+                    <div class="marks-progress mt-3">
+                      <div style="width: {{ student_marks.industry.score_out_of_100|floatformat:0 }}%;"></div>
+                    </div>
+                    {% if student_marks.industry.submitted_at %}
+                      <div class="small text-muted mt-2">
+                        <i class="bi bi-clock me-1"></i>{{ student_marks.industry.submitted_at|date:"d M Y H:i" }}
+                      </div>
+                    {% endif %}
+                  {% else %}
+                    <div class="small text-muted mt-3">
+                      Your company assessment has not been submitted yet.
                     </div>
                   {% endif %}
                 </div>
-
-                <div class="d-flex gap-2">
-                  {# Replace with your real student site visits url name #}
-                  <a class="btn btn-outline-danger" href="{% url 'student_site_visits' %}">
-                    <i class="bi bi-calendar2-check me-1"></i> View Visits
-                  </a>
-                </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Student Evaluation Form -->
-          <div class="col-12">
-            <div class="p-3 border rounded-4 bg-light">
-              <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-                <div>
-                  <div class="fw-bold mb-1">
-                    <i class="bi bi-ui-checks text-danger me-1"></i> Student Evaluation Form
+              <div class="col-12 col-xl-4">
+                <div class="marks-card {% if not student_marks.academic %}pending{% endif %}">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                      <div class="fw-bold">University Supervisor</div>
+                      <div class="small text-muted">Academic assessment</div>
+                    </div>
+                    {% if student_marks.academic %}
+                      <span class="badge text-bg-success">Submitted</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">Pending</span>
+                    {% endif %}
                   </div>
-                  <div class="small text-muted">
-                    Complete this at the end of internship to help improve the program for future interns.
-                  </div>
-                </div>
 
-                <div>
-                  {% if placement and placement.status == "active" %}
-                    <a class="btn btn-outline-primary" href="{% url 'student_evaluation_form' %}">Fill Form</a>
+                  {% if student_marks.academic %}
+                    <div class="marks-score text-danger mt-3">
+                      {{ student_marks.academic.total_marks }}/{{ student_marks.academic.max_marks }}
+                    </div>
+                    <div class="small text-muted mt-1">
+                      {{ student_marks.academic.score_out_of_10|floatformat:1 }}/10
+                      <span class="text-muted">•</span>
+                      {{ student_marks.academic.score_out_of_100|floatformat:1 }}%
+                    </div>
+                    <div class="marks-progress mt-3">
+                      <div style="width: {{ student_marks.academic.score_out_of_100|floatformat:0 }}%;"></div>
+                    </div>
+                    {% if student_marks.academic.submitted_at %}
+                      <div class="small text-muted mt-2">
+                        <i class="bi bi-clock me-1"></i>{{ student_marks.academic.submitted_at|date:"d M Y H:i" }}
+                      </div>
+                    {% endif %}
                   {% else %}
-                    <button class="btn btn-outline-secondary" disabled>
-                      <i class="bi bi-lock me-1"></i> Requires Active Placement
-                    </button>
+                    <div class="small text-muted mt-3">
+                      Your university supervisor assessment has not been submitted yet.
+                    </div>
                   {% endif %}
                 </div>
               </div>
 
-              {% if not placement %}
-                <div class="small text-muted mt-2">
-                  Tip: Once your placement is activated by the coordinator, this form will unlock.
+              <div class="col-12 col-xl-4">
+                <div class="marks-card">
+                  <div class="fw-bold">Combined Result</div>
+                  <div class="small text-muted">Based on submitted assessments</div>
+
+                  {% if student_marks.overall_percent is not None %}
+                    <div class="marks-score text-danger mt-3">
+                      {{ student_marks.overall_total }}/{{ student_marks.overall_max }}
+                    </div>
+                    <div class="small text-muted mt-1">
+                      {{ student_marks.overall_percent|floatformat:1 }}%
+                    </div>
+                    <div class="marks-progress mt-3">
+                      <div style="width: {{ student_marks.overall_percent|floatformat:0 }}%;"></div>
+                    </div>
+                  {% else %}
+                    <div class="small text-muted mt-3">
+                      No supervisor marks have been submitted yet.
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            {% if student_marks.industry or student_marks.academic %}
+              <div class="accordion mt-3" id="studentMarksBreakdown">
+                {% if student_marks.industry %}
+                  <div class="accordion-item">
+                    <h2 class="accordion-header">
+                      <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#industryMarksBreakdown">
+                        Industry Supervisor Breakdown
+                      </button>
+                    </h2>
+                    <div id="industryMarksBreakdown" class="accordion-collapse collapse" data-bs-parent="#studentMarksBreakdown">
+                      <div class="accordion-body">
+                        {% for item in student_marks.industry_breakdown %}
+                          <div class="marks-row">
+                            <div class="name">{{ item.label }}</div>
+                            <div class="score">{{ item.score|default:"-" }}/{{ item.max_score }}</div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+
+                {% if student_marks.academic %}
+                  <div class="accordion-item">
+                    <h2 class="accordion-header">
+                      <button class="accordion-button collapsed fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#academicMarksBreakdown">
+                        University Supervisor Breakdown
+                      </button>
+                    </h2>
+                    <div id="academicMarksBreakdown" class="accordion-collapse collapse" data-bs-parent="#studentMarksBreakdown">
+                      <div class="accordion-body">
+                        {% for item in student_marks.academic_breakdown %}
+                          <div class="marks-row">
+                            <div class="name">{{ item.label }}</div>
+                            <div class="score">{{ item.score|default:"-" }}/{{ item.max_score }}</div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- KPI ROW -->
+        <div class="row g-3">
+
+          <!-- Placement Status -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Placement Status</div>
+                  <div class="value fs-4">
+                    {% if placement %}
+                      <span class="text-danger">{{ placement.status|title }}</span>
+                    {% else %}
+                      <span class="text-warning">Not yet</span>
+                    {% endif %}
+                  </div>
+                  <div class="small text-muted">
+                    {% if placement and placement.company %}
+                      {{ placement.company.name }}
+                    {% else %}
+                      Submit your request to begin
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="icon"><i class="bi bi-briefcase"></i></div>
+              </div>
+
+              {% if placement %}
+                <a href="{% url 'student_logs' %}" class="btn btn-outline-danger btn-sm w-100 mt-3">
+                  View Internship Progress
+                </a>
+              {% else %}
+                <a href="{% url 'submit_request' %}" class="btn btn-danger btn-sm w-100 mt-3">
+                  Start Request
+                </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Weekly Logs -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Weekly Logs</div>
+                  <div class="value fs-2 text-danger">{{ approved_logs|default:0 }}</div>
+                  <div class="small text-muted">Approved by company</div>
+                </div>
+                <div class="icon"><i class="bi bi-journal-check"></i></div>
+              </div>
+              <div class="d-flex gap-2 mt-3">
+                <a href="{% url 'student_logs' %}" class="btn btn-outline-primary btn-sm w-100">View Logs</a>
+                <a href="{% url 'student_log_new' %}" class="btn btn-danger btn-sm w-100">New Log</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Site Visit -->
+          <div class="col-12 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Site Visit</div>
+                  <div class="value fs-6">
+                    {% if site_visit_next %}
+                      {{ site_visit_next.scheduled_at|date:"D, d M Y H:i" }}
+                    {% else %}
+                      Not scheduled
+                    {% endif %}
+                  </div>
+                  <div class="small text-muted">
+                    {% if site_visit_next %}
+                      {% if site_visit_next.status == "scheduled" %}
+                        Needs confirmation
+                      {% elif site_visit_next.status == "confirmed" %}
+                        Confirmed
+                      {% else %}
+                        {{ site_visit_next.status|title }}
+                      {% endif %}
+                      {% if site_visit_next.visit_type %}
+                        <span class="text-muted">•</span> {{ site_visit_next.visit_type|title }}
+                      {% endif %}
+                    {% else %}
+                      You’ll be notified once arranged
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="icon"><i class="bi bi-geo-alt"></i></div>
+              </div>
+
+              <div class="d-flex gap-2 mt-3">
+                <a href="{% url 'student_site_visits' %}" class="btn btn-outline-danger btn-sm w-100">View Visits</a>
+                {% if site_visit_next and site_visit_next.status == "scheduled" %}
+                  <a href="{% url 'student_confirm_site_visit' site_visit_next.id %}" class="btn btn-danger btn-sm w-100">Confirm</a>
+                {% else %}
+                  <button class="btn btn-outline-secondary btn-sm w-100" disabled>Confirm</button>
+                {% endif %}
+              </div>
+
+              {% if site_visit_last_completed %}
+                <div class="soft-panel p-3 mt-3 small">
+                  <div class="fw-semibold mb-1">
+                    <i class="bi bi-check2-circle text-danger me-1"></i> Last Completed
+                  </div>
+                  {% if site_visit_last_completed.actual_at %}
+                    {{ site_visit_last_completed.actual_at|date:"D, d M Y" }}
+                  {% else %}
+                    {{ site_visit_last_completed.scheduled_at|date:"D, d M Y" }}
+                  {% endif %}
                 </div>
               {% endif %}
             </div>
           </div>
-        </div>
 
-        <!-- Info box -->
-        <div class="mt-4 p-3 rounded-4 border bg-white">
-          <div class="d-flex align-items-start gap-2">
-            <i class="bi bi-info-circle text-danger fs-5"></i>
-            <div class="small text-muted">
-              <div class="fw-semibold text-dark mb-1">How approvals work</div>
-              Industry supervisor approves logs first. Then university supervisor schedules site visit and completes academic evaluation.
+          <!-- Acceptance Letter (LOCKED until recommendation is issued) -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Acceptance Letter</div>
+
+                  {% if placement and placement.status == "active" %}
+                    <div class="value fs-5"><span class="text-muted">Completed</span></div>
+                    <div class="small text-muted">Already verified for your active placement</div>
+                  {% else %}
+                    {% if can_upload_acceptance %}
+                      <div class="value fs-5"><span class="text-primary">Ready to upload</span></div>
+                      <div class="small text-muted">Upload after you receive the acceptance letter</div>
+                    {% else %}
+                      <div class="value fs-5"><span class="text-muted">Locked</span></div>
+                      <div class="small text-muted">Upload is available only after recommendation letter is approved & issued.</div>
+                    {% endif %}
+                  {% endif %}
+                </div>
+                <div class="icon"><i class="bi bi-cloud-upload"></i></div>
+              </div>
+
+              {% if placement and placement.status == "active" %}
+                <button class="btn btn-outline-secondary btn-sm w-100 mt-3" disabled>
+                  <i class="bi bi-lock me-1"></i> Upload Disabled
+                </button>
+              {% else %}
+                {% if can_upload_acceptance %}
+                  <a href="{% url 'student_upload_acceptance' %}" class="btn btn-outline-primary btn-sm w-100 mt-3">
+                    Upload Letter
+                  </a>
+                {% else %}
+                  <button class="btn btn-outline-secondary btn-sm w-100 mt-3" disabled
+                          title="Recommendation letter must be approved first">
+                    <i class="bi bi-lock me-1"></i> Upload Locked
+                  </button>
+                {% endif %}
+              {% endif %}
             </div>
           </div>
-        </div>
 
+          <!-- Student Evaluation -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Student Evaluation</div>
+                  <div class="value fs-5">
+                    {% if placement and placement.status == "active" %}
+                      <span class="text-primary">Available</span>
+                    {% else %}
+                      <span class="text-muted">Locked</span>
+                    {% endif %}
+                  </div>
+                  <div class="small text-muted">Fill at end of internship</div>
+                </div>
+                <div class="icon"><i class="bi bi-ui-checks"></i></div>
+              </div>
+
+              {% if placement and placement.status == "active" %}
+                <a href="{% url 'student_evaluation_form' %}" class="btn btn-outline-primary btn-sm w-100 mt-3">Open Form</a>
+              {% else %}
+                <button class="btn btn-outline-secondary btn-sm w-100 mt-3" disabled>
+                  <i class="bi bi-lock me-1"></i> Requires Active Placement
+                </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Today + Tip -->
+          <div class="col-12 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Today</div>
+                  <div class="value fs-5">{% now "D, d M Y" %}</div>
+                  <div class="small text-muted">Stay consistent</div>
+                </div>
+                <div class="icon"><i class="bi bi-calendar2-week"></i></div>
+              </div>
+              <div class="soft-panel p-3 mt-3 small">
+                <div class="fw-semibold mb-1">
+                  <i class="bi bi-lightbulb text-danger me-1"></i> Tip
+                </div>
+                Write specific tasks in your log (what you did, steps taken, and what you learned).
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
 
   <!-- SIDEBAR -->
   <div class="col-12 col-lg-4">
-    <div class="card">
+
+    {% include "dashboards/_notifications_panel.html" %}
+
+    <!-- Quick Actions -->
+    <div class="card vu-card mb-4">
       <div class="card-header fw-bold">
-        <i class="bi bi-clipboard-data me-1"></i> Summary
+        <i class="bi bi-lightning-charge text-danger me-1"></i> Quick Actions
       </div>
+      <div class="card-body d-grid gap-2">
 
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="text-muted">Placement</span>
-          {% if placement %}
-            {% if placement.status == "active" %}
-              <span class="badge text-bg-success">Active</span>
-            {% elif placement.status == "pending" %}
-              <span class="badge text-bg-warning">Pending</span>
-            {% else %}
-              <span class="badge text-bg-secondary">{{ placement.status }}</span>
-            {% endif %}
+        <a class="btn btn-danger" href="{% url 'submit_request' %}">
+          <i class="bi bi-file-earmark-text me-1"></i> Submit Internship Request
+        </a>
+
+        {% if latest_req %}
+          <a class="btn btn-outline-danger" href="{% url 'recommendation_letter_page' %}">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Recommendation Letter
+          </a>
+        {% else %}
+          <button class="btn btn-outline-secondary" disabled title="Submit a request first">
+            <i class="bi bi-lock me-1"></i> Recommendation Letter
+          </button>
+        {% endif %}
+
+        {% if placement and placement.status == "active" %}
+          <button class="btn btn-outline-secondary" disabled title="Acceptance already verified for this active placement">
+            <i class="bi bi-lock me-1"></i> Upload Acceptance Letter (Verified)
+          </button>
+        {% else %}
+          {% if can_upload_acceptance %}
+            <a class="btn btn-outline-primary" href="{% url 'student_upload_acceptance' %}">
+              <i class="bi bi-cloud-upload me-1"></i> Upload Acceptance Letter
+            </a>
           {% else %}
-            <span class="badge text-bg-secondary">Not yet</span>
+            <button class="btn btn-outline-secondary" disabled title="Recommendation letter must be approved first">
+              <i class="bi bi-lock me-1"></i> Upload Acceptance Letter (Locked)
+            </button>
           {% endif %}
-        </div>
+        {% endif %}
 
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="text-muted">Weekly Logs</span>
-          <a class="badge text-bg-primary text-decoration-none" href="{% url 'student_logs' %}">View</a>
-        </div>
+        <a class="btn btn-outline-secondary" href="{% url 'student_logs' %}">
+          <i class="bi bi-journal-check me-1"></i> Weekly Logs
+        </a>
 
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <span class="text-muted">Site Visits</span>
-          <a class="badge text-bg-danger text-decoration-none" href="{% url 'student_site_visits' %}">Open</a>
-        </div>
+        <a class="btn btn-outline-danger" href="{% url 'student_site_visits' %}">
+          <i class="bi bi-geo-alt me-1"></i> Site Visits
+        </a>
 
-        <div class="d-flex align-items-center justify-content-between">
-          <span class="text-muted">Evaluation Form</span>
-          {% if placement and placement.status == "active" %}
-            <span class="badge text-bg-success">Available</span>
-          {% else %}
-            <span class="badge text-bg-secondary">Locked</span>
-          {% endif %}
-        </div>
+        {% if placement and placement.status == "active" %}
+          <a class="btn btn-outline-primary" href="{% url 'student_evaluation_form' %}">
+            <i class="bi bi-ui-checks me-1"></i> Student Evaluation Form
+          </a>
+        {% else %}
+          <button class="btn btn-outline-secondary" disabled>
+            <i class="bi bi-lock me-1"></i> Student Evaluation Form (Locked)
+          </button>
+        {% endif %}
 
-        <hr class="my-3"/>
-
-        <div class="small text-muted">
-          Tip: Confirm a scheduled visit quickly so the supervisor can complete the visit report.
-        </div>
       </div>
     </div>
+
+    <!-- Workflow & Standards -->
+    <div class="card vu-card">
+      <div class="card-header fw-bold">
+        <i class="bi bi-check2-square text-danger me-1"></i> Workflow & Standards
+      </div>
+      <div class="card-body small text-muted">
+        <ul class="mb-0">
+          <li>Submit an internship request and wait for coordinator review.</li>
+          <li>Download your recommendation letter once approved by the coordinator.</li>
+          <li><b>Upload acceptance letter only after recommendation letter is issued.</b></li>
+          <li>Fill weekly logs Mon–Fri and submit for company approval.</li>
+          <li>Confirm scheduled site visits quickly when notified.</li>
+          <li>Complete the student evaluation form at the end of internship.</li>
+        </ul>
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}

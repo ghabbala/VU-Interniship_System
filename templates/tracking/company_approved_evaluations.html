@@ -1,76 +1,279 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Approved Evaluations — Industry Supervisor{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'tracking/css/vu-my-request.css' %}">
+<link rel="stylesheet" href="{% static 'tracking/css/vu-evaluation.css' %}">
+
+<style>
+  /* ===================== PAGE POLISH ===================== */
+  .page-hero{
+    background: linear-gradient(135deg, rgba(179,0,0,.10), rgba(255,255,255,.70));
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius, 18px);
+    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    padding: 1rem;
+  }
+  .page-hero .title{
+    display:flex; align-items:center; gap:.6rem;
+    font-weight: 900; letter-spacing:.2px;
+  }
+  .hero-meta{
+    display:flex; flex-wrap:wrap; gap:.5rem .75rem;
+    margin-top: .35rem;
+    color: rgba(0,0,0,.60);
+    font-size: .9rem;
+  }
+  .hero-pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.85);
+    border: 1px solid rgba(0,0,0,.10);
+    color: rgba(0,0,0,.82);
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .hero-pill i{ color: var(--vu-red-2, #b30000); }
+
+  /* Prevent the "centered" look */
+  .eval-left, .eval-left * { text-align:left !important; }
+
+  /* ===================== PER-STUDENT SCROLLING ===================== */
+  .student-card{
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: 18px;
+    background:#fff;
+    overflow:hidden;
+  }
+
+  /* Sticky student header */
+  .student-head{
+    position: sticky;
+    top: .75rem; /* if you have a fixed navbar, increase (e.g. 4.25rem) */
+    z-index: 12;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    padding: .95rem 1rem;
+  }
+
+  /* ✅ Make student name MUCH more visible */
+  .student-title{
+    display:flex;
+    align-items:flex-start;
+    gap: .75rem;
+  }
+  .student-avatar{
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display:grid;
+    place-items:center;
+    background: rgba(179,0,0,.08);
+    border: 1px solid rgba(179,0,0,.18);
+    color: var(--vu-red-2, #b30000);
+    flex: 0 0 auto;
+  }
+  .student-name{
+    line-height: 1.05;
+    font-weight: 950;
+    font-size: 1.12rem;
+    color: rgba(0,0,0,.88);
+    letter-spacing: .2px;
+    margin: 0;
+  }
+  .student-reg{
+    display:inline-flex;
+    align-items:center;
+    gap: .45rem;
+    margin-top: .25rem;
+    padding: .25rem .55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(255,255,255,.85);
+    font-weight: 900;
+    color: rgba(0,0,0,.75);
+    font-size: .85rem;
+    white-space: nowrap;
+  }
+  .student-reg i{ color: var(--vu-red-2, #b30000); }
+
+  .student-sub{
+    color: rgba(0,0,0,.60);
+    font-size: .9rem;
+    margin-top: .35rem;
+  }
+
+  /* Right side meta inside header */
+  .student-meta{
+    display:flex;
+    align-items:center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .student-meta .badge{ border-radius: 999px; }
+  .student-meta .count{
+    font-weight: 800;
+    color: rgba(0,0,0,.65);
+    font-size: .9rem;
+  }
+
+  /* Accordion header stays visible */
+  .student-acc .accordion-header{
+    position: sticky;
+    top: calc(.75rem + 92px); /* below student-head (slightly larger now) */
+    z-index: 11;
+    background: #fff;
+  }
+  .student-acc .accordion-button{
+    border-radius: 0 !important;
+  }
+
+  /* Scroll inside opened evaluation */
+  .ev-scroll{
+    max-height: min(70vh, 640px);
+    overflow: auto;
+    padding: 1rem;
+    background: rgba(255,255,255,.96);
+    border-top: 1px solid rgba(0,0,0,.06);
+  }
+
+  /* Scrollbars (optional) */
+  .ev-scroll::-webkit-scrollbar{ width: 10px; }
+  .ev-scroll::-webkit-scrollbar-thumb{ background: rgba(0,0,0,.18); border-radius: 999px; }
+  .ev-scroll::-webkit-scrollbar-track{ background: rgba(0,0,0,.06); }
+
+  /* Sticky table header inside scroll */
+  .ev-table thead th{
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+  }
+
+  .score-badges .badge{ border-radius: 999px; }
+
+  @media (max-width: 991.98px){
+    .student-head{ position: static; top:auto; }
+    .student-acc .accordion-header{ position: static; top:auto; }
+    .ev-scroll{ max-height: none; padding: .85rem; }
+    .ev-table thead th{ position: static; }
+  }
+</style>
+
 <div class="row g-4">
   <div class="col-12">
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-      <div>
-        <div class="fw-bold fs-5">Approved / Submitted Evaluations</div>
-        <div class="text-muted small">
-          These are evaluations you have submitted for interns in your company.
+    <!-- Top header -->
+    <div class="page-hero">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div>
+          <div class="title">
+            <span class="vu-dot"></span>
+            Approved / Submitted Evaluations
+          </div>
+          <div class="hero-meta">
+            <span class="hero-pill">
+              <i class="bi bi-info-circle"></i>
+              These are evaluations you have submitted for interns in your company.
+            </span>
+            <span class="hero-pill">
+              <i class="bi bi-clipboard-check"></i>
+              {{ evaluations|length }} total
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div class="d-flex gap-2">
-        <a href="{% url 'company_pending_logs' %}" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-hourglass-split me-1"></i> Pending Logs
-        </a>
-        <a href="{% url 'company_approved_evaluations' %}" class="btn btn-light border btn-sm">
-          <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-        </a>
+        <div class="d-flex gap-2">
+          <!-- ✅ Added Dashboard link -->
+          <a href="{% url 'industry_dashboard' %}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+          </a>
+
+          <a href="{% url 'company_pending_logs' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-hourglass-split me-1"></i> Pending Logs
+          </a>
+
+          <a href="{% url 'company_approved_evaluations' %}" class="btn btn-light border btn-sm">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+          </a>
+        </div>
       </div>
     </div>
 
     <div class="card mt-3">
       <div class="card-header d-flex align-items-center justify-content-between">
-        <span class="fw-bold"><i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations</span>
+        <span class="fw-bold"><i class="bi bi-clipboard-check me-1 text-danger"></i> Submitted Evaluations</span>
         <span class="badge text-bg-light border">{{ evaluations|length }} total</span>
       </div>
 
       <div class="card-body">
         {% if evaluations %}
 
-          {# Group evaluations by student #}
           {% regroup evaluations by placement.request.student as student_groups %}
 
           <div class="d-flex flex-column gap-4">
-            {% for g in student_groups %}
-              <div class="border rounded-4 p-3 p-md-4 bg-white">
-                <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
-                  <div>
-                    <div class="fw-bold">
-                      <i class="bi bi-person-badge text-danger me-1"></i>
-                      {{ g.grouper.reg_no }}
-                      <span class="text-muted fw-normal">— {{ g.grouper.user.display_name }}</span>
-                    </div>
-                    {% with ev=g.list.0 %}
-                      <div class="small text-muted mt-1">
-                        <i class="bi bi-building me-1"></i>
-                        {{ ev.placement.company.name }}
-                      </div>
-                    {% endwith %}
-                  </div>
 
-                  <div class="text-muted small">
-                    <span class="badge text-bg-success">Submitted</span>
-                    <span class="ms-2">{{ g.list|length }} evaluation(s)</span>
+            {% for g in student_groups %}
+              <div class="student-card">
+
+                <!-- Sticky student header -->
+                <div class="student-head">
+                  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+
+                    <div class="student-title">
+                      <div class="student-avatar">
+                        <i class="bi bi-person-badge"></i>
+                      </div>
+
+                      <div>
+                        <!-- ✅ Student name gets priority -->
+                        <div class="student-name">
+                          {{ g.grouper.user.display_name }}
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                          <span class="student-reg">
+                            <i class="bi bi-hash"></i> {{ g.grouper.reg_no }}
+                          </span>
+
+                          {% with ev=g.list.0 %}
+                            <span class="student-reg" title="Company">
+                              <i class="bi bi-building"></i> {{ ev.placement.company.name }}
+                            </span>
+                          {% endwith %}
+                        </div>
+
+                        <div class="student-sub">
+                          <i class="bi bi-check2-circle me-1 text-success"></i>
+                          Submitted evaluations for this intern (expand to view details)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="student-meta">
+                      <span class="badge text-bg-success">Submitted</span>
+                      <span class="count">{{ g.list|length }} evaluation(s)</span>
+                    </div>
                   </div>
                 </div>
 
-                <hr class="my-3">
-
-                <div class="accordion" id="acc-student-{{ g.grouper.id }}">
+                <!-- student accordion -->
+                <div class="accordion student-acc" id="acc-student-{{ g.grouper.id }}">
                   {% for ev in g.list %}
                     <div class="accordion-item">
+
                       <h2 class="accordion-header" id="h-ev-{{ ev.id }}">
                         <button class="accordion-button collapsed" type="button"
                                 data-bs-toggle="collapse"
                                 data-bs-target="#c-ev-{{ ev.id }}"
                                 aria-expanded="false"
                                 aria-controls="c-ev-{{ ev.id }}">
+
                           <div class="w-100 d-flex flex-column flex-md-row justify-content-between gap-2">
                             <div class="fw-semibold">
                               Evaluation — Internship Period
@@ -78,36 +281,32 @@
                                 ({{ ev.placement.start_date }} → {{ ev.placement.end_date }})
                               </span>
                             </div>
-                           <div class="d-flex flex-column align-items-md-end gap-1">
-                            <div class="small text-muted">
-                              {% if ev.submitted_at %}
-                                <i class="bi bi-clock me-1"></i>{{ ev.submitted_at|date:"Y-m-d H:i" }}
-                              {% else %}
-                                —
-                              {% endif %}
-                            </div>
 
-                            <div class="small">
-                              <span class="badge text-bg-light border">
-                                {{ ev.total_marks }}/{{ ev.max_marks }}
-                              </span>
-                              <span class="badge text-bg-success">
-                                {{ ev.score_out_of_10|floatformat:1 }}/10
-                              </span>
-                              <span class="badge text-bg-primary">
-                                {{ ev.score_out_of_100|floatformat:0 }}/100
-                              </span>
+                            <div class="d-flex flex-column align-items-md-end gap-1">
+                              <div class="small text-muted">
+                                {% if ev.submitted_at %}
+                                  <i class="bi bi-clock me-1"></i>{{ ev.submitted_at|date:"Y-m-d H:i" }}
+                                {% else %}
+                                  —
+                                {% endif %}
+                              </div>
+
+                              <div class="small score-badges">
+                                <span class="badge text-bg-light border">{{ ev.total_marks }}/{{ ev.max_marks }}</span>
+                                <span class="badge text-bg-success">{{ ev.score_out_of_10|floatformat:1 }}/10</span>
+                                <span class="badge text-bg-primary">{{ ev.score_out_of_100|floatformat:0 }}/100</span>
+                              </div>
                             </div>
                           </div>
 
-                          </div>
                         </button>
                       </h2>
 
                       <div id="c-ev-{{ ev.id }}" class="accordion-collapse collapse"
                            aria-labelledby="h-ev-{{ ev.id }}"
                            data-bs-parent="#acc-student-{{ g.grouper.id }}">
-                        <div class="accordion-body">
+
+                        <div class="ev-scroll eval-left">
 
                           <div class="alert alert-light border small mb-3">
                             <div class="fw-semibold mb-1">
@@ -122,7 +321,7 @@ Your assessment of the student’s learning experience, the attainment of goals,
                           </div>
 
                           <div class="table-responsive mb-3">
-                            <table class="table table-bordered align-middle mb-0">
+                            <table class="table table-bordered align-middle mb-0 ev-table">
                               <thead class="table-light">
                                 <tr>
                                   <th style="width:45%;">Criteria</th>
@@ -130,82 +329,28 @@ Your assessment of the student’s learning experience, the attainment of goals,
                                   <th>Comment</th>
                                 </tr>
                               </thead>
-                              <tbody class="eval-left">
-                                <tr>
-                                  <td class="fw-semibold">1. Basic work expectations</td>
-                                  <td>{{ ev.basic_work_expectations }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.basic_work_expectations_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">2. Knowledge and ability to learn</td>
-                                  <td>{{ ev.knowledge_and_learning }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.knowledge_and_learning_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">3. Ethical awareness and conduct</td>
-                                  <td>{{ ev.ethical_awareness }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.ethical_awareness_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">4. Interpersonal relations</td>
-                                  <td>{{ ev.interpersonal_relations }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.interpersonal_relations_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">5. Communication skills</td>
-                                  <td>{{ ev.communication_skills }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.communication_skills_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">6. Attendance</td>
-                                  <td>{{ ev.attendance }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.attendance_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">7. Punctuality</td>
-                                  <td>{{ ev.punctuality }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.punctuality_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">8. Flexibility</td>
-                                  <td>{{ ev.flexibility }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.flexibility_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">9. Dependability</td>
-                                  <td>{{ ev.dependability }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.dependability_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">10. Culture fit</td>
-                                  <td>{{ ev.culture_fit }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.culture_fit_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">11. Dress code</td>
-                                  <td>{{ ev.dress_code }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.dress_code_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">12. Behaviour</td>
-                                  <td>{{ ev.behaviour }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.behaviour_comment|default:"—" }}</td>
-                                </tr>
-                                <tr>
-                                  <td class="fw-semibold">13. Work productivity</td>
-                                  <td>{{ ev.work_productivity }}</td>
-                                  <td style="white-space: pre-line;">{{ ev.work_productivity_comment|default:"—" }}</td>
-                                </tr>
+                              <tbody>
+                                <tr><td class="fw-semibold">1. Basic work expectations</td><td>{{ ev.basic_work_expectations }}</td><td style="white-space: pre-line;">{{ ev.basic_work_expectations_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">2. Knowledge and ability to learn</td><td>{{ ev.knowledge_and_learning }}</td><td style="white-space: pre-line;">{{ ev.knowledge_and_learning_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">3. Ethical awareness and conduct</td><td>{{ ev.ethical_awareness }}</td><td style="white-space: pre-line;">{{ ev.ethical_awareness_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">4. Interpersonal relations</td><td>{{ ev.interpersonal_relations }}</td><td style="white-space: pre-line;">{{ ev.interpersonal_relations_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">5. Communication skills</td><td>{{ ev.communication_skills }}</td><td style="white-space: pre-line;">{{ ev.communication_skills_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">6. Attendance</td><td>{{ ev.attendance }}</td><td style="white-space: pre-line;">{{ ev.attendance_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">7. Punctuality</td><td>{{ ev.punctuality }}</td><td style="white-space: pre-line;">{{ ev.punctuality_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">8. Flexibility</td><td>{{ ev.flexibility }}</td><td style="white-space: pre-line;">{{ ev.flexibility_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">9. Dependability</td><td>{{ ev.dependability }}</td><td style="white-space: pre-line;">{{ ev.dependability_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">10. Culture fit</td><td>{{ ev.culture_fit }}</td><td style="white-space: pre-line;">{{ ev.culture_fit_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">11. Dress code</td><td>{{ ev.dress_code }}</td><td style="white-space: pre-line;">{{ ev.dress_code_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">12. Behaviour</td><td>{{ ev.behaviour }}</td><td style="white-space: pre-line;">{{ ev.behaviour_comment|default:"—" }}</td></tr>
+                                <tr><td class="fw-semibold">13. Work productivity</td><td>{{ ev.work_productivity }}</td><td style="white-space: pre-line;">{{ ev.work_productivity_comment|default:"—" }}</td></tr>
                               </tbody>
                             </table>
                           </div>
 
-                          <div class="row g-3 eval-left">
+                          <div class="row g-3">
                             <div class="col-12 col-lg-6">
                               <div class="fw-semibold mb-1">Recommend for employment?</div>
-                              <div class="text-muted" style="white-space: pre-line;">
-                                {{ ev.recommend_employment|yesno:"YES,NO" }}
-                              </div>
+                              <div class="text-muted">{{ ev.recommend_employment|yesno:"YES,NO" }}</div>
 
                               <div class="fw-semibold mt-3 mb-1">Comment</div>
                               <div class="text-muted small" style="white-space: pre-line;">
@@ -223,7 +368,7 @@ Your assessment of the student’s learning experience, the attainment of goals,
 
                           <hr class="my-3">
 
-                          <div class="row g-3 eval-left">
+                          <div class="row g-3">
                             <div class="col-12 col-md-6">
                               <div class="fw-semibold">Supervisor Name</div>
                               <div class="text-muted small">{{ ev.supervisor_name|default:"—" }}</div>
@@ -234,7 +379,7 @@ Your assessment of the student’s learning experience, the attainment of goals,
                             </div>
                           </div>
 
-                        </div>
+                        </div><!-- /ev-scroll -->
                       </div>
                     </div>
                   {% endfor %}
@@ -260,9 +405,4 @@ Your assessment of the student’s learning experience, the attainment of goals,
 
   </div>
 </div>
-
-<style>
-  /* Prevent the "centered" look */
-  .eval-left, .eval-left * { text-align: left !important; }
-</style>
 {% endblock %}

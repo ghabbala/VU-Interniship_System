@@ -1,0 +1,17 @@
+Hello {{ user.display_name }},
+
+Victoria University has created an Industry Supervisor account for you on the Internship Portal.
+
+Company: {{ company.name }}
+Login email: {{ user.email }}
+{% if generated_password %}
+Temporary password: {{ generated_password }}
+{% else %}
+Your existing account was reactivated.
+{% endif %}
+
+For security, use the Forgot password option on the login page to set your own password.
+
+Your account access is temporary and will be deactivated after the internship period ends.
+
+Victoria University Internship Management System

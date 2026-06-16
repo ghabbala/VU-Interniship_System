@@ -3,42 +3,189 @@
 {% block title %}My Internship Students — Victoria University{% endblock %}
 
 {% block content %}
+<style>
+  /* Page polish (scoped) */
+  .vu-pagehead{
+    background: linear-gradient(135deg, rgba(179,0,0,.10), rgba(255,255,255,.70));
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+    padding: 1rem 1.1rem;
+  }
+  .vu-pagehead-title{
+    display:flex; align-items:center; gap:.65rem;
+    font-weight: 900; letter-spacing:.2px;
+    margin:0;
+  }
+  .vu-dot{
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #b30000;
+    box-shadow: 0 0 0 .28rem rgba(179,0,0,.14);
+    flex:0 0 auto;
+  }
+  .vu-sub{
+    color: rgba(0,0,0,.60);
+    font-size: .92rem;
+    margin-top: .25rem;
+  }
+  .vu-countpill{
+    border-radius: 999px;
+    padding: .55rem .85rem;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(255,255,255,.85);
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  /* Card section header */
+  .vu-section{
+    border: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-section-head{
+    background: #fff;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    padding: .9rem 1rem;
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  }
+  .vu-section-title{
+    font-weight: 900;
+    display:flex; align-items:center; gap:.5rem;
+  }
+
+  /* Table */
+  .vu-table thead th{
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .vu-table tbody tr:hover{
+    background: rgba(179,0,0,.02);
+  }
+  .vu-avatar{
+    width: 38px; height: 38px;
+    border-radius: 999px;
+    display:flex; align-items:center; justify-content:center;
+    border: 1px solid rgba(0,0,0,.10);
+    background: #fff;
+    color: #b30000;
+    flex: 0 0 auto;
+  }
+
+  /* ✅ Student name + Reg separated */
+  .vu-name{
+    font-weight: 950;
+    color: rgba(0,0,0,.88);
+    letter-spacing: .2px;
+  }
+  .vu-reg{
+    display:inline-flex;
+    align-items:center;
+    gap:.4rem;
+    margin-top: .25rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    background: rgba(255,255,255,.85);
+    font-weight: 900;
+    color: rgba(0,0,0,.70);
+    font-size: .85rem;
+    white-space: nowrap;
+  }
+  .vu-reg i{ color:#b30000; }
+
+  .vu-company{
+    font-weight: 800;
+    color: rgba(0,0,0,.82);
+  }
+
+  /* Action buttons */
+  .btn-soft-danger{
+    background: rgba(179,0,0,.10);
+    border: 1px solid rgba(179,0,0,.18);
+    color: #b30000;
+  }
+  .btn-soft-danger:hover{
+    background: rgba(179,0,0,.14);
+    color: #b30000;
+  }
+  .vu-chip{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.85);
+    border: 1px solid rgba(0,0,0,.10);
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
+  /* Sidebar */
+  .vu-sticky{
+    position: sticky;
+    top: 1rem;
+  }
+
+  /* Responsive: make actions wrap nicely */
+  @media (max-width: 576px){
+    .vu-actions-wrap{ gap: .4rem !important; }
+    .vu-section-head{ flex-direction: column; align-items:flex-start; }
+  }
+</style>
+
 <div class="row g-4">
 
   <!-- MAIN -->
   <div class="col-12 col-lg-9">
 
     <!-- Page header -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
-      <div>
-        <h4 class="fw-bold mb-1">
-          <i class="bi bi-people-fill text-danger me-1"></i>
-          Assigned Students
-        </h4>
-        <div class="text-muted">Students allocated to you Mr.{{ request.user.display_name }} for supervision.</div>
-      </div>
+    <div class="vu-pagehead mb-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div>
+          <h4 class="vu-pagehead-title">
+            <span class="vu-dot"></span>
+            Assigned Students
+          </h4>
+          <div class="vu-sub">
+            Students allocated to you <span class="fw-semibold text-dark">{{ request.user.display_name }}</span> for supervision.
+          </div>
+        </div>
 
-      <span class="badge rounded-pill text-bg-light border px-3 py-2">
-        <i class="bi bi-person-check me-1"></i> {{ placements|length }} Assigned
-      </span>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span class="vu-countpill">
+            <i class="bi bi-person-check me-1"></i> {{ placements|length }} Assigned
+          </span>
+          <a href="{% url 'dashboard' %}" class="btn btn-light border">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+          </a>
+        </div>
+      </div>
     </div>
 
-    <div class="card shadow-sm overflow-hidden">
-      <div class="card-header bg-white border-bottom d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-        <div class="fw-bold">
-          <i class="bi bi-list-check me-1 text-danger"></i> Allocation List
+    <div class="card vu-section">
+      <div class="vu-section-head">
+        <div class="vu-section-title">
+          <i class="bi bi-list-check text-danger"></i>
+          Allocation List
         </div>
+        <span class="vu-chip">
+          <i class="bi bi-arrow-repeat"></i> Latest allocations
+        </span>
       </div>
 
       <div class="card-body p-0">
         {% if placements %}
 
           <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+            <table class="table table-hover align-middle mb-0 vu-table">
+              <thead class="table-light">
                 <tr>
-                  <th class="ps-3">Reg No</th>
-                  <th>Student Name</th>
+                  <!-- ✅ separated columns -->
+                  <th class="ps-3">Student Name</th>
+                  <th>Reg No</th>
                   <th>Company</th>
                   <th>Status</th>
                   <th class="text-end pe-3">Actions</th>
@@ -49,25 +196,33 @@
                 {% for p in placements %}
                   <tr>
 
-                    <!-- Reg No -->
+                    <!-- ✅ Student Name -->
                     <td class="ps-3">
                       <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle border d-flex align-items-center justify-content-center"
-                             style="width:38px;height:38px;background:#fff;">
-                          <i class="bi bi-person-badge text-danger"></i>
+                        <div class="vu-avatar">
+                          <i class="bi bi-person-badge"></i>
                         </div>
-                        <div class="fw-semibold">{{ p.request.student.reg_no }}</div>
+                        <div class="lh-sm">
+                          <div class="vu-name">
+                            {{ p.request.student.user.display_name }}
+                          </div>
+                          <div class="small text-muted">
+                            <i class="bi bi-person me-1"></i> Intern
+                          </div>
+                        </div>
                       </div>
                     </td>
 
-                    <!-- Student Name -->
+                    <!-- ✅ Reg No -->
                     <td>
-                      <div class="fw-semibold">{{ p.request.student.user.display_name }}</div>
+                      <span class="vu-reg">
+                        <i class="bi bi-hash"></i> {{ p.request.student.reg_no }}
+                      </span>
                     </td>
 
-                    <!-- Company (ONLY name) -->
+                    <!-- ✅ Company (removed “Industrial placement”) -->
                     <td>
-                      <div class="fw-semibold">{{ p.company.name }}</div>
+                      <div class="vu-company">{{ p.company.name }}</div>
                     </td>
 
                     <!-- Status -->
@@ -83,19 +238,17 @@
                       {% endif %}
                     </td>
 
-                    <!-- Actions (clean + dropdowns) -->
+                    <!-- Actions -->
                     <td class="text-end pe-3">
-                      <div class="d-inline-flex flex-wrap gap-2 justify-content-end align-items-center">
+                      <div class="d-inline-flex flex-wrap gap-2 justify-content-end align-items-center vu-actions-wrap">
 
                         {% if view_mode == "university" %}
 
-                          <!-- Primary: Site Visit -->
                           <a class="btn btn-outline-secondary btn-sm"
                              href="{% url 'supervisor_add_site_visit' p.id %}">
                             <i class="bi bi-geo-alt-fill me-1"></i> Site Visit
                           </a>
 
-                          <!-- Primary: Academic Eval (View/Evaluate) -->
                           {% if p.ac_eval_status == "submitted" %}
                             <a class="btn btn-outline-success btn-sm"
                                href="{% url 'supervisor_evaluate_student' p.id %}">
@@ -117,13 +270,12 @@
                               <i class="bi bi-graph-up me-1"></i> Scores
                             </button>
 
-                            <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 280px;">
+                            <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
                               <div class="fw-semibold mb-2">
                                 <i class="bi bi-info-circle me-1 text-danger"></i> Student Scores
                               </div>
 
                               <div class="d-flex flex-wrap gap-2">
-                                <!-- Academic -->
                                 {% if p.ac_eval_status == "submitted" %}
                                   <span class="badge text-bg-light border" title="Academic Total">
                                     A: {{ p.ac_eval_total }}/{{ p.ac_eval_max }}
@@ -132,23 +284,17 @@
                                     A: {{ p.ac_eval_score100|floatformat:0 }}/100
                                   </span>
                                 {% else %}
-                                  <span class="badge text-bg-light border" title="Academic evaluation not submitted yet">
-                                    A: —
-                                  </span>
+                                  <span class="badge text-bg-light border">A: —</span>
                                 {% endif %}
 
-                                <!-- Industry -->
                                 {% if p.eval_status == "submitted" %}
                                   <span class="badge text-bg-success" title="Industry score out of 100">
                                     I: {{ p.eval_score100|floatformat:0 }}/100
                                   </span>
                                 {% else %}
-                                  <span class="badge text-bg-light border" title="Industry evaluation not submitted yet">
-                                    I: —
-                                  </span>
+                                  <span class="badge text-bg-light border">I: —</span>
                                 {% endif %}
 
-                                <!-- Average -->
                                 {% if p.avg_score100 %}
                                   <span class="badge text-bg-dark" title="Average of Industry + Academic">
                                     Avg: {{ p.avg_score100|floatformat:0 }}/100
@@ -157,9 +303,7 @@
                                     {{ p.avg_score10|floatformat:1 }}/10
                                   </span>
                                 {% else %}
-                                  <span class="badge text-bg-light border" title="Average available after both evaluations are submitted">
-                                    Avg: —
-                                  </span>
+                                  <span class="badge text-bg-light border">Avg: —</span>
                                 {% endif %}
                               </div>
 
@@ -171,8 +315,11 @@
 
                         {% elif view_mode == "industry" %}
 
-                          <!-- Primary: Evaluate / View -->
-                          {% if p.eval_status == "submitted" %}
+                          {% if p.status != "active" %}
+                            <span class="badge text-bg-secondary rounded-pill px-3">
+                              <i class="bi bi-lock me-1"></i> Evaluation locked
+                            </span>
+                          {% elif p.eval_status == "submitted" %}
                             <a class="btn btn-outline-success btn-sm"
                                href="{% url 'company_evaluate_student' p.id %}">
                               <i class="bi bi-eye me-1"></i> Evaluation
@@ -184,7 +331,6 @@
                             </a>
                           {% endif %}
 
-                          <!-- More dropdown -->
                           <div class="dropdown">
                             <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
                                     type="button"
@@ -204,7 +350,6 @@
                             </div>
                           </div>
 
-                          <!-- Compact score chip -->
                           {% if p.eval_status == "submitted" %}
                             <span class="badge text-bg-primary" title="Score out of 100">
                               {{ p.eval_score100|floatformat:0 }}/100
@@ -240,7 +385,7 @@
                 When the coordinator allocates students to you, they will appear here.
               </div>
               <div class="mt-3">
-                <a href="/dashboard/" class="btn btn-outline-secondary">
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
                   <i class="bi bi-speedometer2 me-1"></i> Back to Dashboard
                 </a>
               </div>
@@ -254,49 +399,106 @@
 
   <!-- SIDEBAR -->
   <div class="col-12 col-lg-3">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header fw-bold bg-white">
-        <i class="bi bi-info-circle me-1 text-danger"></i> Supervisor Guidance
-      </div>
-      <div class="card-body small text-muted">
-        <ul class="mb-0 ps-3">
-          <li>Review company-approved logs where needed.</li>
-          <li>Schedule site visits early.</li>
-          <li>Record observations and recommendations.</li>
-          <li>Follow up on students with delays.</li>
-        </ul>
-      </div>
-    </div>
+    <div class="vu-sticky d-grid gap-3">
 
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold bg-white">
-        <i class="bi bi-link-45deg me-1 text-danger"></i> Quick Links
-      </div>
-      <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-secondary" href="/dashboard/">
-          <i class="bi bi-speedometer2 me-1"></i> Dashboard
-        </a>
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold bg-white">
+          <i class="bi bi-file-earmark-bar-graph me-1 text-danger"></i> Results Report
+        </div>
+        <div class="card-body small text-muted">
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+            <span class="fw-semibold text-dark">Readiness</span>
+            {% if latest_report %}
+              {% if latest_report.status == "approved" %}
+                <span class="badge text-bg-success rounded-pill">Approved</span>
+              {% elif latest_report.status == "submitted" or latest_report.status == "resubmitted" %}
+                <span class="badge text-bg-info rounded-pill">Under Review</span>
+              {% elif latest_report.status == "needs_changes" %}
+                <span class="badge text-bg-warning text-dark rounded-pill">Needs Changes</span>
+              {% else %}
+                <span class="badge text-bg-secondary rounded-pill">{{ latest_report.status|title }}</span>
+              {% endif %}
+            {% else %}
+              <span class="badge text-bg-light border rounded-pill">Not generated</span>
+            {% endif %}
+          </div>
 
-        {% if view_mode == "industry" %}
-          <a class="btn btn-outline-danger" href="{% url 'company_pending_logs' %}">
-            <i class="bi bi-hourglass-split me-1"></i> Company Pending Logs
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="border rounded-3 p-2 bg-light">
+                <div class="fw-bold text-dark">{{ report_summary.complete|default:0 }}/{{ report_summary.total|default:0 }}</div>
+                <div>Complete rows</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded-3 p-2 bg-light">
+                <div class="fw-bold {% if report_summary.incomplete|default:0 > 0 %}text-danger{% else %}text-success{% endif %}">
+                  {{ report_summary.incomplete|default:0 }}
+                </div>
+                <div>Missing marks</div>
+              </div>
+            </div>
+          </div>
+
+          <a class="btn btn-danger w-100" href="{% url 'supervisor_results_report' %}">
+            <i class="bi bi-file-earmark-text me-1"></i> Generate / Submit Report
+          </a>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold bg-white">
+          <i class="bi bi-info-circle me-1 text-danger"></i> Supervisor Guidance
+        </div>
+        <div class="card-body small text-muted">
+          <ul class="mb-0 ps-3">
+            <li>Complete academic evaluations for assigned students.</li>
+            <li>Confirm industry marks have been submitted.</li>
+            <li>Refresh the results report before submission.</li>
+            <li>Submit only when every student has complete marks.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold bg-white">
+          <i class="bi bi-link-45deg me-1 text-danger"></i> Quick Links
+        </div>
+        <div class="card-body d-grid gap-2">
+          <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
           </a>
 
-          <a class="btn btn-outline-primary" href="{% url 'company_approved_evaluations' %}">
-            <i class="bi bi-clipboard-data me-1"></i> Submitted Evaluations
-          </a>
-        {% endif %}
+          {% if view_mode == "industry" %}
+            <a class="btn btn-soft-danger" href="{% url 'company_pending_logs' %}">
+              <i class="bi bi-hourglass-split me-1"></i> Company Pending Logs
+            </a>
 
-        {% if view_mode == "university" %}
-          <a class="btn btn-outline-primary" href="{% url 'supervisor_submitted_academic_evaluations' %}">
-            <i class="bi bi-clipboard-data me-1"></i> Academic Evaluations
-          </a>
+            <a class="btn btn-outline-primary" href="{% url 'company_approved_evaluations' %}">
+              <i class="bi bi-clipboard-data me-1"></i> Submitted Evaluations
+            </a>
 
-          <a class="btn btn-danger" href="{% url 'supervisor_results_report' %}">
-            <i class="bi bi-file-earmark-text me-1"></i> Generate Results Report
-          </a>
-        {% endif %}
+            <a class="btn btn-danger" href="{% url 'industry_results_report' %}">
+              <i class="bi bi-file-earmark-bar-graph me-1"></i> Submit Industry Report
+            </a>
+          {% endif %}
+
+          {% if view_mode == "university" %}
+            <a class="btn btn-outline-primary" href="{% url 'supervisor_submitted_academic_evaluations' %}">
+              <i class="bi bi-clipboard-data me-1"></i> Academic Evaluations
+            </a>
+
+            <a class="btn btn-outline-secondary" href="{% url 'supervisor_industry_reports' %}">
+              <i class="bi bi-inbox me-1"></i> Industry Reports
+            </a>
+
+            <a class="btn btn-danger" href="{% url 'supervisor_results_report' %}">
+              <i class="bi bi-file-earmark-text me-1"></i> Generate / Submit Report
+            </a>
+          {% endif %}
+        </div>
       </div>
+
     </div>
   </div>
 

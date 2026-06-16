@@ -2,108 +2,242 @@
 {% block title %}Student Evaluation Form — Victoria University{% endblock %}
 
 {% block content %}
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.08);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-radius: 18px;
+  }
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+  }
+  .vu-card .card-header{
+    background:#fff;
+    border-bottom:1px solid var(--vu-border);
+  }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.12);
+    background:#fff;
+    font-size:.85rem;
+    white-space:nowrap;
+  }
+
+  .vu-info{
+    border: 1px dashed rgba(179,0,0,.25);
+    background: linear-gradient(135deg, rgba(179,0,0,.06), rgba(179,0,0,0));
+    border-radius: var(--vu-radius);
+  }
+
+  .q-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    padding: 1rem;
+    background:#fff;
+  }
+
+  .q-title{
+    font-weight: 800;
+    margin-bottom: .35rem;
+  }
+
+  .help{
+    color: var(--vu-muted);
+    font-size: .9rem;
+  }
+
+  .stickybar{
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--vu-border);
+    padding: .9rem;
+    border-radius: 0 0 var(--vu-radius) var(--vu-radius);
+    margin: 1rem -1.25rem -1.25rem;
+  }
+
+  input:disabled, select:disabled, textarea:disabled{
+    background: #f8f9fa !important;
+    color: rgba(0,0,0,.65) !important;
+  }
+</style>
+
 <div class="row g-4">
   <div class="col-12 col-lg-9">
-    <div class="card">
-      <div class="card-header">
-        <div class="fw-bold">Student Evaluation Form</div>
-        <div class="text-muted small">
-          Placement: <span class="fw-semibold">{{ placement.company.name }}</span> —
-          {{ placement.request.student.reg_no }} ({{ placement.request.student.user.display_name }})
+
+    <div class="card vu-card">
+
+      <!-- Header -->
+      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+        <div>
+          <div class="fw-bold fs-5">
+            <i class="bi bi-ui-checks text-danger me-1"></i> Student Evaluation Form
+          </div>
+          <div class="text-muted small">
+            Placement: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
+            <span class="mx-1">•</span>
+            Reg No: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
+            <span class="mx-1">•</span>
+            Student: <span class="fw-semibold text-dark">{{ placement.request.student.user.display_name }}</span>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <!-- ✅ Back to dashboard -->
+          <a href="{% url 'student_dashboard' %}" class="btn btn-light border btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+          </a>
+
+          <span class="pill">
+            <i class="bi bi-pencil-square text-danger"></i>
+            Status: <span class="fw-semibold">{{ evaluation.status|title }}</span>
+          </span>
+          <span class="pill">
+            <i class="bi bi-calendar2-week text-danger"></i>
+            {% now "D, d M Y" %}
+          </span>
         </div>
       </div>
 
       <div class="card-body">
-        <div class="alert alert-info small mb-4">
-          Complete this form as soon as your internship ends. When you submit, it will be visible to your University Supervisor and the Internship Coordinator.
+
+        <div class="vu-info p-3 p-md-4 mb-4">
+          <div class="d-flex gap-2 align-items-start">
+            <i class="bi bi-info-circle text-danger fs-5"></i>
+            <div class="small">
+              <div class="fw-semibold text-dark mb-1">Important</div>
+              Complete this evaluation when your internship ends. When you submit, it becomes read-only and is visible to your University Supervisor and the Internship Coordinator.
+            </div>
+          </div>
         </div>
 
-        <form method="post">
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix the errors below</div>
+            <div class="small">{{ form.non_field_errors }}</div>
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
           {% csrf_token %}
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
+          <!-- Top fields -->
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Program</label>
               {{ form.program }}
+              <div class="help mt-1">Pulled from your student profile.</div>
+              {% if form.program.errors %}<div class="text-danger small mt-1">{{ form.program.errors }}</div>{% endif %}
             </div>
-            <div class="col-md-4">
+
+            <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Internship Site</label>
               {{ form.internship_site }}
+              {% if form.internship_site.errors %}<div class="text-danger small mt-1">{{ form.internship_site.errors }}</div>{% endif %}
             </div>
-            <div class="col-md-4">
+
+            <div class="col-12 col-md-4">
               <label class="form-label fw-semibold">Date</label>
               {{ form.eval_date }}
+              {% if form.eval_date.errors %}<div class="text-danger small mt-1">{{ form.eval_date.errors }}</div>{% endif %}
             </div>
           </div>
 
-          <hr class="my-3"/>
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold">1) How did you find this internship?</label>
+          <!-- Questions -->
+          <div class="q-card mb-3">
+            <div class="q-title">1) How did you find this internship?</div>
             {{ form.q1 }}
+            {% if form.q1.errors %}<div class="text-danger small mt-1">{{ form.q1.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">2) Were you given sufficient supervision?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">2) Were you given sufficient supervision?</div>
             {{ form.q2 }}
+            {% if form.q2.errors %}<div class="text-danger small mt-1">{{ form.q2.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">3) Were you given helpful feedback on your work?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">3) Were you given helpful feedback on your work?</div>
             {{ form.q3 }}
+            {% if form.q3.errors %}<div class="text-danger small mt-1">{{ form.q3.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">4) Major strength of this internship?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">4) Major strength of this internship?</div>
             {{ form.q4 }}
+            {% if form.q4.errors %}<div class="text-danger small mt-1">{{ form.q4.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">5) How have you benefited from participating?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">5) How have you benefited from participating?</div>
             {{ form.q5 }}
+            {% if form.q5.errors %}<div class="text-danger small mt-1">{{ form.q5.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">6) How did the internship site benefit from you?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">6) How did the internship site benefit from you?</div>
             {{ form.q6 }}
+            {% if form.q6.errors %}<div class="text-danger small mt-1">{{ form.q6.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">7) Was the internship relevant to your degree program?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">7) Was the internship relevant to your degree program?</div>
             {{ form.q7 }}
+            {% if form.q7.errors %}<div class="text-danger small mt-1">{{ form.q7.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">8) Any major challenges + how can they be solved?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">8) Any major challenges + how can they be solved?</div>
             {{ form.q8 }}
+            {% if form.q8.errors %}<div class="text-danger small mt-1">{{ form.q8.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">9) What factors would have enabled better performance?</label>
+          <div class="q-card mb-3">
+            <div class="q-title">9) What factors would have enabled better performance?</div>
             {{ form.q9 }}
+            {% if form.q9.errors %}<div class="text-danger small mt-1">{{ form.q9.errors }}</div>{% endif %}
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">10) What would you change about this internship?</label>
+          <div class="q-card mb-0">
+            <div class="q-title">10) What would you change about this internship?</div>
             {{ form.q10 }}
+            {% if form.q10.errors %}<div class="text-danger small mt-1">{{ form.q10.errors }}</div>{% endif %}
           </div>
 
-          <div class="d-flex gap-2">
-            <button name="action" value="save" class="btn btn-outline-secondary">
-              <i class="bi bi-save me-1"></i> Save Draft
-            </button>
+          <!-- Sticky action bar -->
+          <div class="stickybar">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center">
+              <button name="action" value="save" class="btn btn-outline-secondary">
+                <i class="bi bi-save me-1"></i> Save Draft
+              </button>
 
-            <button name="action" value="submit" class="btn btn-danger">
-              <i class="bi bi-send-check me-1"></i> Submit
-            </button>
+              <button name="action" value="submit" class="btn btn-danger">
+                <i class="bi bi-send-check me-1"></i> Submit Evaluation
+              </button>
+
+              <div class="ms-md-auto small text-muted d-flex align-items-center">
+                <i class="bi bi-lock me-1"></i> Once submitted, it becomes read-only.
+              </div>
+            </div>
           </div>
 
-          <div class="small text-muted mt-2">
-            Once submitted, you can view it but cannot edit.
-          </div>
         </form>
+
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Internship Periods — Coordinator{% endblock %}
+
+{% block content %}
+<style>
+  .period-wrap{max-width:1100px;margin:0 auto;}
+  .period-hero{
+    border-radius:18px;
+    background:linear-gradient(135deg,#b30000,#ca0d1d);
+    color:#fff;
+    padding:1.25rem;
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+  }
+  .period-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:18px;
+    background:#fff;
+    overflow:hidden;
+    box-shadow:0 10px 24px rgba(0,0,0,.05);
+  }
+  .period-card .head{
+    padding:1rem;
+    border-bottom:1px solid rgba(0,0,0,.08);
+    background:#fff;
+  }
+  .period-kpi{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:16px;
+    padding:1rem;
+    background:#fff;
+    height:100%;
+  }
+  .period-kpi .label{
+    color:rgba(0,0,0,.58);
+    font-size:.8rem;
+    font-weight:800;
+    text-transform:uppercase;
+  }
+  .period-kpi .value{
+    font-weight:950;
+    font-size:1.35rem;
+  }
+</style>
+
+<div class="period-wrap">
+  <div class="period-hero mb-4 d-flex flex-column flex-md-row justify-content-between gap-3">
+    <div>
+      <div class="fw-bold fs-4">
+        <i class="bi bi-calendar-range me-1"></i> Internship Periods
+      </div>
+      <div class="small opacity-75">
+        Set the official internship duration students use when submitting requests.
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-start">
+      <a class="btn btn-light btn-sm rounded-pill" href="{% url 'coordinator_period_create' %}">
+        <i class="bi bi-plus-circle me-1"></i> New Period
+      </a>
+      <a class="btn btn-outline-light btn-sm rounded-pill" href="{% url 'coordinator_dashboard' %}">
+        <i class="bi bi-house-door me-1"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  {% if active_period %}
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="period-kpi">
+          <div class="label">Active Period</div>
+          <div class="value text-danger">{{ active_period.name }}</div>
+          <div class="small text-muted">{{ active_period.start_date }} to {{ active_period.end_date }}</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="period-kpi">
+          <div class="label">Duration</div>
+          <div class="value">{{ active_period.duration_weeks }} weeks</div>
+          <div class="small text-muted">{{ active_period.duration_days }} days</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="period-kpi">
+          <div class="label">Days Remaining</div>
+          <div class="value">{{ active_period.days_remaining }}</div>
+          <div class="small text-muted">Until official end date</div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="period-card">
+    <div class="head d-flex justify-content-between align-items-center gap-2">
+      <div class="fw-bold">
+        <i class="bi bi-list-check text-danger me-1"></i> All Periods
+      </div>
+      <span class="badge text-bg-light border rounded-pill">{{ periods|length }} period(s)</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Dates</th>
+            <th>Duration</th>
+            <th>Requests</th>
+            <th>Status</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for period in periods %}
+            <tr>
+              <td class="fw-semibold">{{ period.name }}</td>
+              <td class="text-muted">{{ period.start_date }} to {{ period.end_date }}</td>
+              <td>
+                <span class="badge text-bg-light border rounded-pill">{{ period.duration_weeks }} weeks</span>
+              </td>
+              <td>{{ period.request_count|default:0 }}</td>
+              <td>
+                {% if period.is_active %}
+                  <span class="badge text-bg-success rounded-pill">Active</span>
+                {% else %}
+                  <span class="badge text-bg-secondary rounded-pill">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-flex gap-2 justify-content-end flex-wrap">
+                  <a class="btn btn-outline-secondary btn-sm rounded-pill" href="{% url 'coordinator_period_edit' period.id %}">
+                    Edit
+                  </a>
+                  {% if not period.is_active %}
+                    <form method="post" action="{% url 'coordinator_period_activate' period.id %}" class="m-0">
+                      {% csrf_token %}
+                      <button class="btn btn-danger btn-sm rounded-pill" type="submit">Make Active</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                No internship periods yet. Create the first official duration.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

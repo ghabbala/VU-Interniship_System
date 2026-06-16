@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Industry Supervisor Accounts — Coordinator{% endblock %}
+
+{% block content %}
+<style>
+  .acct-wrap{max-width:1100px;margin:0 auto;}
+  .acct-hero{
+    border-radius:18px;
+    background:linear-gradient(135deg,#b30000,#ca0d1d);
+    color:#fff;
+    padding:1.25rem;
+    box-shadow:0 12px 28px rgba(0,0,0,.12);
+  }
+  .acct-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:18px;
+    overflow:hidden;
+    background:#fff;
+    box-shadow:0 10px 24px rgba(0,0,0,.05);
+  }
+  .acct-card .head{
+    padding:1rem;
+    border-bottom:1px solid rgba(0,0,0,.08);
+    background:#fff;
+  }
+</style>
+
+<div class="acct-wrap">
+  <div class="acct-hero mb-4 d-flex flex-column flex-md-row justify-content-between gap-3">
+    <div>
+      <div class="fw-bold fs-4">
+        <i class="bi bi-person-workspace me-1"></i> Industry Supervisor Accounts
+      </div>
+      <div class="small opacity-75">
+        External supervisor access is valid only while their company has an active/current placement.
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-start">
+      <a class="btn btn-light btn-sm rounded-pill" href="{% url 'industry_supervisor_account_create' %}">
+        <i class="bi bi-plus-circle me-1"></i> Create Account
+      </a>
+      <a class="btn btn-outline-light btn-sm rounded-pill" href="{% url 'coordinator_dashboard' %}">
+        <i class="bi bi-house-door me-1"></i> Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="acct-card">
+    <div class="head d-flex justify-content-between align-items-center">
+      <div class="fw-bold">
+        <i class="bi bi-list-check text-danger me-1"></i> Accounts
+      </div>
+      <span class="badge text-bg-light border rounded-pill">{{ rows|length }} account(s)</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Supervisor</th>
+            <th>Company</th>
+            <th>Status</th>
+            <th>Access</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ row.profile.user.display_name }}</div>
+                <div class="small text-muted">{{ row.profile.user.email }}</div>
+              </td>
+              <td>{{ row.profile.company.name }}</td>
+              <td>
+                {% if row.profile.user.is_active %}
+                  <span class="badge text-bg-success rounded-pill">Active</span>
+                {% else %}
+                  <span class="badge text-bg-secondary rounded-pill">Deactivated</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if row.has_access %}
+                  <span class="badge text-bg-primary rounded-pill">Current placement access</span>
+                {% else %}
+                  <span class="badge text-bg-warning rounded-pill">No current placement</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if row.profile.user.is_active %}
+                  <form method="post" action="{% url 'industry_supervisor_account_deactivate' row.profile.user.id %}" class="m-0">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm rounded-pill" type="submit">
+                      Deactivate
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="text-muted small">No action</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No industry supervisor accounts yet.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

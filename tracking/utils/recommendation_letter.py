@@ -8,10 +8,10 @@ from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 
 def _safe_image_path(static_path: str):
@@ -22,26 +22,35 @@ def _safe_image_path(static_path: str):
         return None
 
 
+def _safe_media_image_path(field_file):
+    try:
+        if field_file and getattr(field_file, "path", None):
+            return field_file.path
+    except Exception:
+        return None
+    return None
+
+
+def _get_letter_settings():
+    try:
+        from placements.models import RecommendationLetterSettings
+
+        return RecommendationLetterSettings.current()
+    except Exception:
+        return None
+
+
 def _clean_faculty_name(name: str) -> str:
-    """
-    Prevent: 'FACULTY OF FACULTY OF ...'
-    Handles inputs like:
-      - 'Faculty of Science and Technology'
-      - 'FACULTY OF SCIENCE AND TECHNOLOGY'
-      - 'FACULTY OF Faculty of Science and Technology'
-    Returns clean: 'Science and Technology' or 'SCIENCE AND TECHNOLOGY' (original casing preserved lightly)
-    """
     if not name:
         return ""
     n = (name or "").strip()
 
-    # remove repeated prefixes (case-insensitive)
     lowered = n.lower()
     if lowered.startswith("faculty of "):
         n = n[len("faculty of "):].strip()
         lowered = n.lower()
 
-    if lowered.startswith("facult of "):  # catch typos like "Facult of"
+    if lowered.startswith("facult of "):
         n = n[len("facult of "):].strip()
         lowered = n.lower()
 
@@ -50,13 +59,10 @@ def _clean_faculty_name(name: str) -> str:
         lowered = n.lower()
 
     if lowered.startswith("faculty"):
-        # Some data might store just "Faculty" then name after
-        # (rare, but safe)
         parts = n.split(" ", 1)
         if len(parts) == 2 and parts[1].strip().lower().startswith("of "):
             n = parts[1].strip()[3:].strip()
 
-    # Also remove if already "FACULTY OF ..." in uppercase form
     if n.upper().startswith("FACULTY OF "):
         n = n[10:].strip()
 
@@ -121,10 +127,6 @@ def _get_coordinator_contact(coordinator_user) -> str:
 
 
 def _draw_logo_nice(c, logo_path: str, x_left: float, y_top: float, max_w: float, max_h: float):
-    """
-    Draw logo starting from same left margin as paragraphs (x_left),
-    scaled proportionally (no stretching).
-    """
     if not logo_path:
         return
     try:
@@ -142,7 +144,8 @@ def _draw_logo_nice(c, logo_path: str, x_left: float, y_top: float, max_w: float
 
         c.drawImage(
             img,
-            dx, dy,
+            dx,
+            dy,
             width=draw_w,
             height=draw_h,
             mask="auto",
@@ -158,112 +161,125 @@ def generate_recommendation_letter_pdf(req, coordinator_user=None):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # Assets
+    letter_settings = _get_letter_settings()
     logo_path = _safe_image_path("base/img/letter_logo.png")
-    signature_path = _safe_image_path("base/img/coordinator_signature.png")
-    stamp_path = _safe_image_path("base/img/coordinator_stamp.png")
+    signature_path = (
+        _safe_media_image_path(getattr(letter_settings, "signature_image", None))
+        or _safe_image_path("base/img/coordinator_signature.png")
+    )
+    stamp_path = (
+        _safe_media_image_path(getattr(letter_settings, "stamp_image", None))
+        or _safe_image_path("base/img/coordinator_stamp.png")
+    )
 
-    # Data
     today_str = timezone.localdate().strftime("%d %b %Y")
     student_name = _get_student_name(req)
     reg_no = _get_reg_no(req)
-
-    # ✅ cleaned faculty name (no "Faculty of" inside it)
     faculty_name = _get_faculty_name_from_request(req)
-
     program_name = _get_program_name(req)
     company_name = _get_company_name(req)
 
-    coordinator_display_name = "Internship Coordinator"
+    coordinator_display_name = (getattr(letter_settings, "signatory_name", "") or "").strip() or "Internship Coordinator"
     coordinator_email = ""
     coordinator_contact = ""
 
-    if coordinator_user:
+    if coordinator_user and not (getattr(letter_settings, "signatory_name", "") or "").strip():
         try:
             coordinator_display_name = (coordinator_user.get_full_name() or "").strip() or coordinator_user.email
         except Exception:
             coordinator_display_name = getattr(coordinator_user, "email", "") or "Internship Coordinator"
-        coordinator_email = (getattr(coordinator_user, "email", "") or "").strip()
-        coordinator_contact = _get_coordinator_contact(coordinator_user)
 
-    # Yellow background
+    if letter_settings:
+        coordinator_email = (letter_settings.signatory_email or "").strip()
+        coordinator_contact = (letter_settings.signatory_phone or "").strip()
+
+    if coordinator_user:
+        coordinator_email = coordinator_email or (getattr(coordinator_user, "email", "") or "").strip()
+        coordinator_contact = coordinator_contact or _get_coordinator_contact(coordinator_user)
+
     c.saveState()
-    c.setFillColor(colors.Color(1, 0.98, 0.80))
+    c.setFillColor(colors.white)
     c.rect(0, 0, width, height, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#b30000"))
+    c.rect(0, height - 16, width, 16, fill=1, stroke=0)
     c.restoreState()
 
-    # Layout
     left = 60
     right = width - 60
     top = height - 55
 
-    # Logo (aligned)
     _draw_logo_nice(c, logo_path, x_left=left, y_top=top, max_w=180, max_h=55)
 
-    # ✅ Heading (NO duplication)
+    c.saveState()
+    c.setStrokeColor(colors.HexColor("#d8dee8"))
+    c.setLineWidth(1)
+    c.line(left, top - 68, right, top - 68)
+    c.restoreState()
+
     fac_title = f"FACULTY OF {faculty_name}".upper() if faculty_name else "FACULTY OF ______________________"
-    c.setFont("Helvetica-Bold", 15)
-    c.drawCentredString(width / 2, top - 90, fac_title)
+    c.setFillColor(colors.HexColor("#1f2937"))
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(width / 2, top - 95, fac_title)
 
     c.setFont("Helvetica-Bold", 13)
-    c.drawCentredString(width / 2, top - 112, "OFFICE OF THE DEAN")
+    c.drawCentredString(width / 2, top - 117, "OFFICE OF THE DEAN")
+    c.setFillColor(colors.black)
 
-    # Date
     c.setFont("Helvetica", 11)
-    c.drawString(left, top - 155, "Date:")
-    c.drawString(left + 40, top - 155, today_str)
+    c.drawString(left, top - 152, "Date:")
+    c.drawString(left + 40, top - 152, today_str)
 
-    # Dear Sir/Madam
-    c.drawString(left, top - 190, "Dear Sir/Madam,")
+    c.drawString(left, top - 188, "Dear Sir/Madam,")
 
-    # RE
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, top - 235, "RE: STUDENT INTERNSHIP/INDUSTRIAL TRAINING PLACEMENT")
+    c.setFillColor(colors.HexColor("#b30000"))
+    c.drawString(left, top - 226, "RE: STUDENT INTERNSHIP/INDUSTRIAL TRAINING PLACEMENT")
+    c.setFillColor(colors.black)
 
-    # Body (justified)
     styles = getSampleStyleSheet()
     body_style = ParagraphStyle(
         "VUBody",
         parent=styles["Normal"],
         fontName="Times-Roman",
         fontSize=11,
-        leading=16,
+        leading=17,
         alignment=TA_JUSTIFY,
-        textColor=colors.black,
+        textColor=colors.HexColor("#111827"),
     )
 
     degree_line = program_name or "Bachelor/Diploma programme"
     org_line = company_name or "your Company/Organization"
 
     body_html = f"""
-    It is my pleasure to introduce to you <b>{student_name}</b> (Reg No: <b>{reg_no or "—"}</b>),
-    who is our student at Victoria University, pursuing <b>{degree_line}</b>,
-    and he/she is interested in carrying out his/her internship/industrial training from <b>{org_line}</b>.
-    Internship/industrial training today is mandatory, but it is also our University aim to promote experiential learning,
-    where students graduate with extra knowledge and experience from the real work environment.<br/><br/>
+    Victoria University is pleased to introduce <b>{student_name}</b> (Registration No: <b>{reg_no or "N/A"}</b>),
+    a student pursuing <b>{degree_line}</b>, who is seeking internship/industrial training placement with
+    <b>{org_line}</b>.<br/><br/>
 
-    We shall highly appreciate any assistance rendered to him/her.
-    For any further inquiries please do not hesitate to contact the Faculty through the email and phone number below;
+    The internship forms an important part of the student's academic training and is intended to strengthen
+    practical skills, professional conduct, and exposure to real workplace expectations. We kindly request
+    your organisation to consider the student for placement and to provide appropriate supervision during
+    the training period.<br/><br/>
+
+    Victoria University will highly appreciate any assistance rendered. For further information, please
+    contact the Faculty using the details below.
     """
 
     p = Paragraph(body_html, body_style)
     available_width = right - left
-    body_top_y = top - 265
-    w, h = p.wrap(available_width, 520)
+    body_top_y = top - 255
+    _, h = p.wrap(available_width, 520)
     p.drawOn(c, left, body_top_y - h)
 
     after_body_y = body_top_y - h - 28
 
-    # Yours sincerely
     c.setFont("Times-Roman", 12)
     c.drawString(left, after_body_y, "Yours Sincerely,")
 
-    # Signature + stamp (pushed down)
     sig_block_top = after_body_y - 70
     sig_w, sig_h = 170, 55
     stamp_w, stamp_h = 120, 120
 
-    if coordinator_user and signature_path:
+    if signature_path:
         try:
             c.drawImage(
                 ImageReader(signature_path),
@@ -278,7 +294,7 @@ def generate_recommendation_letter_pdf(req, coordinator_user=None):
         except Exception:
             pass
 
-    if coordinator_user and stamp_path:
+    if stamp_path:
         try:
             c.drawImage(
                 ImageReader(stamp_path),
@@ -293,46 +309,47 @@ def generate_recommendation_letter_pdf(req, coordinator_user=None):
         except Exception:
             pass
 
-    # Coordinator details
     name_y = sig_block_top - 20
     c.setFont("Times-Bold", 12)
     c.drawString(left, name_y, coordinator_display_name)
 
-    # ✅ faculty line (no duplication)
-    # If you want "Dean, Faculty of X" specifically:
-    faculty_line = f"Dean, Faculty of {faculty_name}" if faculty_name else "Dean, Faculty of ______________________"
+    configured_title = (getattr(letter_settings, "signatory_title", "") or "").strip()
+    if configured_title and faculty_name and "faculty" not in configured_title.lower():
+        faculty_line = f"{configured_title}, Faculty of {faculty_name}"
+    elif configured_title:
+        faculty_line = configured_title
+    else:
+        faculty_line = f"Dean, Faculty of {faculty_name}" if faculty_name else "Dean, Faculty of ______________________"
 
     c.setFont("Times-Roman", 12)
     c.drawString(left, name_y - 22, faculty_line)
 
-    # Email + contact
     c.setFont("Times-Roman", 11)
-    email_line = coordinator_email or "—"
-    contact_line = coordinator_contact or "—"
+    email_line = coordinator_email or "N/A"
+    contact_line = coordinator_contact or "N/A"
     c.drawString(left, name_y - 70, f"Email: {email_line}   (Tel. {contact_line})")
 
-    # Footer (no overlap)
     footer_y = 52
     c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.red)
+    c.setFillColor(colors.HexColor("#b30000"))
     c.drawCentredString(width / 2, footer_y + 32, "www.vu.ac.ug")
 
+    footer_address = (
+        (getattr(letter_settings, "footer_address", "") or "").strip()
+        or "Victoria Tower, Plot No. 1-13 Jinja Road P.O. Box 30866 Kampala, Uganda"
+    )
     c.setFillColor(colors.HexColor("#444444"))
     c.setFont("Helvetica", 8.5)
-    c.drawCentredString(
-        width / 2,
-        footer_y + 16,
-        "Victoria Tower, Plot No. 1-13 Jinja Road P.O. Box 30866 Kampala, Uganda"
-    )
+    c.drawCentredString(width / 2, footer_y + 16, footer_address)
     c.drawCentredString(
         width / 2,
         footer_y + 4,
-        "+256 759 996 146  |  marketing@vu.ac.ug  |  admissions@vu.ac.ug"
+        "+256 759 996 146  |  marketing@vu.ac.ug  |  admissions@vu.ac.ug",
     )
     c.drawCentredString(
         width / 2,
         footer_y - 8,
-        "Facebook: victoria university kampala uganda  |  Twitter/X: @vukampala  |  Instagram: victoriauniversity_kampala"
+        "Facebook: victoria university kampala uganda  |  Twitter/X: @vukampala  |  Instagram: victoriauniversity_kampala",
     )
     c.setFillColor(colors.black)
 

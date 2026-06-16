@@ -1,8 +1,109 @@
 {% extends "base.html" %}
+{% load static %}
+{% block title %}Upload Acceptance Letter — Not Available{% endblock %}
+
 {% block content %}
-<div class="alert alert-warning">
-  You can only upload acceptance letter after the coordinator issues the recommendation letter.
-  Current status: <b>{{ req.status }}</b>
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.08);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-radius: 18px;
+  }
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    overflow: hidden;
+    background:#fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+  }
+  .vu-card .card-header{
+    background:#fff;
+    border-bottom: 1px solid var(--vu-border);
+  }
+  .vu-soft{
+    border: 1px dashed rgba(179,0,0,.22);
+    background: linear-gradient(135deg, rgba(179,0,0,.06), rgba(179,0,0,0));
+    border-radius: 16px;
+  }
+  .vu-pill{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .65rem;
+    border-radius:999px;
+    border:1px solid rgba(0,0,0,.12);
+    background:#fff;
+    font-size:.85rem;
+    white-space:nowrap;
+  }
+</style>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <div class="card vu-card">
+      <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div>
+          <div class="fw-bold fs-5">
+            <i class="bi bi-cloud-upload text-danger me-1"></i> Upload Acceptance Letter
+          </div>
+          <div class="text-muted small">
+            This step unlocks after the recommendation letter is issued.
+          </div>
+        </div>
+
+        <span class="vu-pill">
+          <i class="bi bi-info-circle text-danger"></i>
+          Status: <span class="fw-semibold">{{ req.status|default:"—" }}</span>
+        </span>
+      </div>
+
+      <div class="card-body">
+
+        <div class="alert alert-warning mb-3">
+          <div class="fw-semibold">
+            <i class="bi bi-exclamation-triangle me-1"></i> Not available yet
+          </div>
+          <div class="small mb-0">
+            You can only upload an acceptance letter after the coordinator issues your recommendation letter.
+          </div>
+        </div>
+
+        <div class="p-3 p-md-4 vu-soft">
+          <div class="fw-semibold mb-2">
+            <i class="bi bi-list-check text-danger me-1"></i> What to do next
+          </div>
+          <ul class="mb-0 small text-muted">
+            <li>Wait for the coordinator to issue your recommendation letter.</li>
+            <li>Download it and present it to the company.</li>
+            <li>Once you receive the company acceptance letter, return here to upload it.</li>
+          </ul>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+          <a class="btn btn-outline-secondary" href="{% url 'my_request' %}">
+            <i class="bi bi-arrow-left me-1"></i> Back to My Request
+          </a>
+
+          {% if req.recommendation_letter %}
+            <a class="btn btn-danger ms-md-auto" href="{% url 'download_recommendation_letter' req.id %}">
+              <i class="bi bi-file-earmark-pdf me-1"></i> View Recommendation Letter
+            </a>
+          {% else %}
+            <button class="btn btn-outline-danger ms-md-auto" disabled>
+              <i class="bi bi-file-earmark-pdf me-1"></i> Recommendation Letter Not Yet Issued
+            </button>
+          {% endif %}
+        </div>
+
+        <div class="small text-muted mt-3">
+          <i class="bi bi-lightbulb me-1 text-danger"></i>
+          Tip: If your status stays unchanged for long, contact the internship coordinator for assistance.
+        </div>
+
+      </div>
+    </div>
+
+  </div>
 </div>
-<a class="btn btn-outline-secondary" href="{% url 'my_request' %}">Back</a>
 {% endblock %}

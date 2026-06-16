@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Recommendation Letter — Victoria University{% endblock %}
+
+{% block content %}
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft: rgba(179,0,0,.06);
+    --vu-border: rgba(0,0,0,.08);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.88);
+    --vu-radius: 18px;
+  }
+
+  .vu-wrap{max-width: 980px; margin: 0 auto;}
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    overflow: hidden;
+    background:#fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-card .card-header{
+    background:#fff;
+    border-bottom: 1px solid var(--vu-border);
+  }
+
+  .vu-hero{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    color:#fff;
+    border-radius: var(--vu-radius);
+    padding: 1rem 1rem;
+    box-shadow: 0 12px 28px rgba(0,0,0,.10);
+  }
+  .vu-chip{
+    display:inline-flex; align-items:center; gap:.5rem;
+    padding:.42rem .75rem;
+    border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.20);
+    font-weight:850;
+    font-size:.88rem;
+    white-space:nowrap;
+  }
+  .vu-sub{color: rgba(255,255,255,.88);}
+
+  .vu-soft{
+    border: 1px dashed rgba(179,0,0,.22);
+    background: linear-gradient(135deg, rgba(179,0,0,.06), rgba(179,0,0,0));
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  .btn-pill{ border-radius: 999px; }
+</style>
+
+<div class="vu-wrap">
+
+  <!-- Top hero -->
+  <div class="vu-hero mb-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start">
+      <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="vu-chip">
+            <i class="bi bi-file-earmark-pdf"></i> Recommendation Letter
+          </span>
+
+          {% if req %}
+            <span class="vu-chip">
+              <i class="bi bi-clipboard-check"></i> Request #{{ req.id }}
+            </span>
+          {% endif %}
+
+          {% if req and req.recommendation_approved %}
+            <span class="vu-chip">
+              <i class="bi bi-check-circle"></i> Approved
+            </span>
+          {% elif req %}
+            <span class="vu-chip">
+              <i class="bi bi-hourglass-split"></i> Pending
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="vu-sub small">
+          Open your letter in a new tab or download it when ready.
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-light btn-sm btn-pill" href="{% url 'student_dashboard' %}">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="vu-card">
+    <div class="card-header p-3 p-md-3">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <div>
+          <div class="fw-bold text-dark">
+            <i class="bi bi-file-earmark-arrow-down text-danger me-1"></i> Letter Access
+          </div>
+          
+        </div>
+
+        {% if req %}
+          <span class="badge text-bg-light border" style="border-radius:999px;">
+            Status: {{ req.status|default:"—" }}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-body p-3 p-md-4">
+
+      {# --- Error states --- #}
+      {% if error_title %}
+        <div class="alert alert-danger mb-0">
+          <div class="fw-semibold">
+            <i class="bi bi-x-circle me-1"></i> {{ error_title }}
+          </div>
+          <div class="small">{{ error_message }}</div>
+        </div>
+
+      {% else %}
+
+        <div class="vu-soft mb-3">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+            <div>
+              <div class="fw-bold text-dark">
+                <i class="bi bi-info-circle text-danger me-1"></i> How to use it
+              </div>
+              <div class="small text-muted mt-1">
+                Present this letter to your company to request an acceptance letter.
+              </div>
+              <div class="small text-muted mt-2">
+                <i class="bi bi-shield-lock me-1"></i>
+                If you open on a public computer, don’t forget to sign out and clear downloads.
+              </div>
+            </div>
+
+            <div class="text-md-end">
+              {% if req.recommendation_approved %}
+                <span class="badge text-bg-success" style="border-radius:999px;">
+                  <i class="bi bi-check-circle me-1"></i> Approved & ready
+                </span>
+              {% else %}
+                <span class="badge text-bg-warning" style="border-radius:999px;">
+                  <i class="bi bi-hourglass-split me-1"></i> Awaiting approval
+                </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# --- Blocked state --- #}
+        {% if blocked %}
+          <div class="alert alert-warning">
+            <div class="fw-semibold">
+              <i class="bi bi-exclamation-triangle me-1"></i> Not available yet
+            </div>
+            <div class="small">{{ blocked_reason }}</div>
+          </div>
+
+          <div class="small text-muted">
+            Tip: Check again later or contact the coordinator if it stays pending for long.
+          </div>
+
+        {% else %}
+
+          <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-2">
+            
+
+            <div class="d-flex gap-2 flex-wrap">
+              
+
+              <a class="btn btn-danger btn-sm btn-pill"
+                 href="{{ file_url }}" download>
+                <i class="bi bi-file-earmark-arrow-down me-1"></i> Download PDF
+              </a>
+            </div>
+          </div>
+
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

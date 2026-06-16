@@ -1,0 +1,286 @@
+/* vu-my-request.css
+   Page-scoped CSS for my_request.html (uses your global VU variables)
+   Cleaned + de-duplicated + slightly modernized
+*/
+
+/* ===================== HEADER / CARD SHELL ===================== */
+.vu-request-card{
+  border: 1px solid var(--vu-border);
+}
+
+.vu-request-head{
+  padding: 1rem 1rem .9rem;
+  background: linear-gradient(135deg, var(--vu-soft), rgba(255,255,255,.55));
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.vu-title{
+  display:flex;
+  align-items:center;
+  gap:.6rem;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: var(--vu-dark);
+}
+
+.vu-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vu-red-2);
+  box-shadow: 0 0 0 .28rem rgba(179,0,0,.14);
+  flex: 0 0 auto;
+}
+
+.vu-sub{
+  color: var(--vu-muted);
+  font-size: .9rem;
+  margin-top: .25rem;
+}
+
+/* status pill */
+.vu-status{
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  font-weight: 800;
+  letter-spacing: .2px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+/* divider */
+.vu-divider{
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, rgba(179,0,0,.28), rgba(0,0,0,0));
+}
+
+/* ===================== PAGE HEADER (dashboard style) ===================== */
+.vu-pagehead{
+  background: linear-gradient(135deg, rgba(179,0,0,.10), rgba(255,255,255,.55));
+  border: 1px solid var(--vu-border);
+  border-radius: var(--vu-radius);
+  box-shadow: var(--vu-shadow);
+  padding: 1rem;
+}
+
+.vu-pagehead-title{
+  display:flex;
+  align-items:center;
+  gap:.6rem;
+  font-weight: 900;
+  letter-spacing:.2px;
+  font-size: 1.05rem;
+}
+
+.vu-pagehead-sub{
+  color: var(--vu-muted);
+  font-size: .9rem;
+  margin-top:.25rem;
+}
+
+/* ===================== SIDEBAR ===================== */
+.vu-sticky{
+  position: sticky;
+  top: 1rem;
+}
+
+/* Sidebar step rows */
+.vu-step{
+  display:flex;
+  gap:.65rem;
+  align-items:flex-start;
+  padding:.55rem .65rem;
+  border-radius: var(--vu-radius-sm);
+}
+
+.vu-step:hover{
+  background: rgba(179,0,0,.04);
+}
+
+.vu-step i{
+  color: var(--vu-red-2);
+  font-size: 1.05rem;
+  line-height: 1.1;
+}
+
+/* ===================== FORM BASE ===================== */
+.vu-form .form-label{
+  font-weight: 800;
+}
+
+.vu-form .form-text{
+  color: var(--vu-muted);
+}
+
+.vu-form .text-danger ul{
+  margin: 0;
+  padding-left: 1.05rem;
+}
+
+/* Make controls consistently modern */
+.vu-form input:not([type="checkbox"]):not([type="radio"]),
+.vu-form select,
+.vu-form textarea{
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.12);
+  padding: .62rem .85rem;
+  background: #fff;
+  transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease;
+}
+
+.vu-form textarea{ min-height: 110px; }
+
+.vu-form input:focus,
+.vu-form select:focus,
+.vu-form textarea:focus{
+  outline: none;
+  border-color: rgba(179,0,0,.35);
+  box-shadow: 0 0 0 .25rem rgba(179,0,0,.15);
+}
+
+/* Make file input look tidy */
+.vu-form input[type="file"]{
+  padding: .55rem .75rem;
+}
+
+/* action divider */
+.vu-actions{
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(0,0,0,.14);
+}
+
+/* ===================== STEP BADGE ===================== */
+.vu-stepbadge{
+  display:inline-grid;
+  place-items:center;
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  margin-right: .5rem;
+  background: rgba(179,0,0,.10);
+  border: 1px solid rgba(179,0,0,.18);
+  color: var(--vu-red-2);
+  font-weight: 900;
+  font-size: .85rem;
+}
+
+/* ===================== OPTION CARDS ===================== */
+.vu-optioncard{
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: var(--vu-radius);
+  padding: 1rem;
+  background: rgba(255,255,255,.92);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.vu-optioncard:hover{
+  border-color: rgba(179,0,0,.22);
+  box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+.vu-optioncard.is-muted{
+  opacity: .55;
+  filter: grayscale(.15);
+  transform: none;
+}
+
+.vu-optionicon{
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display:grid;
+  place-items:center;
+  background: rgba(179,0,0,.08);
+  border: 1px solid rgba(179,0,0,.14);
+  color: var(--vu-red-2);
+  flex: 0 0 auto;
+}
+
+/* OR divider */
+.vu-or{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  color: var(--vu-muted);
+}
+
+.vu-or::before,
+.vu-or::after{
+  content:"";
+  height:1px;
+  flex:1;
+  background: rgba(0,0,0,.10);
+}
+
+.vu-or span{
+  font-weight: 900;
+  letter-spacing: .12em;
+  font-size: .78rem;
+  padding: .25rem .6rem;
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 999px;
+  background: rgba(255,255,255,.85);
+}
+
+/* ===================== UPLOAD ROWS ===================== */
+.vu-upload{
+  display:flex;
+  align-items:center;
+  gap: .85rem;
+  border: 1px dashed rgba(0,0,0,.18);
+  border-radius: var(--vu-radius);
+  padding: .9rem 1rem;
+  background: rgba(179,0,0,.03);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.vu-upload:hover{
+  border-color: rgba(179,0,0,.28);
+  background: rgba(179,0,0,.05);
+  box-shadow: 0 10px 22px rgba(0,0,0,.05);
+}
+
+.vu-upload-icon{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  background: rgba(179,0,0,.08);
+  border: 1px solid rgba(179,0,0,.14);
+  color: var(--vu-red-2);
+  flex: 0 0 auto;
+}
+
+.vu-upload-control{
+  min-width: 240px;
+}
+
+/* ===================== SMALL HELPERS ===================== */
+.vu-muted{ color: var(--vu-muted); }
+.vu-cardpad{ padding: 1rem; }
+.vu-help{ font-size: .9rem; color: var(--vu-muted); }
+
+/* Mobile spacing polish */
+@media (max-width: 576px){
+  .vu-upload{ flex-direction: column; align-items: stretch; }
+  .vu-upload-control{ min-width: 100%; }
+}
+/* Keep step text starting right after the number */
+.vu-step{
+  align-items: flex-start;
+}
+
+.vu-step i{
+  flex: 0 0 26px;        /* fixed icon column width */
+  width: 26px;
+  margin-top: 1px;
+}
+
+.vu-step > div{
+  flex: 1 1 auto;        /* text takes remaining width */
+  min-width: 0;
+}

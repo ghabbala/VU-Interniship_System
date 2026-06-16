@@ -55,10 +55,16 @@
                           <i class="bi bi-journal-text me-1"></i> Logs
                         </a>
 
-                        <a class="btn btn-outline-primary btn-sm"
-                           href="{% url 'company_evaluate_student' p.id %}">
-                          <i class="bi bi-clipboard2-check me-1"></i> Evaluate
-                        </a>
+                        {% if p.status == "active" %}
+                          <a class="btn btn-outline-primary btn-sm"
+                             href="{% url 'company_evaluate_student' p.id %}">
+                            <i class="bi bi-clipboard2-check me-1"></i> Evaluate
+                          </a>
+                        {% else %}
+                          <span class="badge text-bg-secondary align-self-center">
+                            <i class="bi bi-lock me-1"></i> Evaluation locked
+                          </span>
+                        {% endif %}
                       </div>
                     </td>
                   </tr>

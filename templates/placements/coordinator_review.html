@@ -3,154 +3,354 @@
 {% block title %}Review Request — Coordinator{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <!-- MAIN -->
-  <div class="col-12 col-lg-8">
-    <div class="card">
-      <div class="card-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-        <div>
-          <div class="fw-bold">Review Internship Request</div>
-          <div class="text-muted small">Confirm details and take action.</div>
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft:#fff5f5;
+    --vu-border: rgba(0,0,0,.10);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.88);
+    --vu-radius: 18px;
+  }
+
+  .vu-wrap{max-width:1200px;margin:0 auto;}
+
+  /* HERO */
+  .vu-hero{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    color:#fff;
+    border-radius: var(--vu-radius);
+    box-shadow: 0 12px 28px rgba(0,0,0,.12);
+    overflow:hidden;
+  }
+  .vu-chip{
+    display:inline-flex;align-items:center;gap:.5rem;
+    padding:.42rem .75rem;border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.20);
+    font-weight:850;font-size:.88rem;white-space:nowrap;
+  }
+  .vu-sub{color:rgba(255,255,255,.88)}
+
+  /* Cards */
+  .vu-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius);
+    overflow:hidden;
+    background:#fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-card .head{
+    padding:.9rem 1rem;
+    border-bottom:1px solid rgba(0,0,0,.06);
+    background:#fff;
+    display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+    flex-wrap:wrap;
+  }
+  .vu-title{
+    font-weight:950;color:var(--vu-dark);
+    display:flex;align-items:center;gap:.55rem;
+  }
+  .badge-pill{border-radius:999px;}
+  .btn-pill{border-radius:999px;}
+
+  /* Sections inside main card */
+  .section{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius: 16px;
+    background:#fff;
+    padding: .95rem;
+  }
+  .section .label{
+    font-weight:900;color:var(--vu-dark);
+    display:flex;align-items:center;gap:.55rem;
+    margin-bottom:.5rem;
+  }
+  .muted{color:var(--vu-muted);}
+  .kv{
+    display:grid;
+    grid-template-columns: 160px 1fr;
+    gap:.35rem .75rem;
+    font-size:.92rem;
+  }
+  @media (max-width: 575.98px){
+    .kv{grid-template-columns: 1fr;}
+  }
+  .k{color: rgba(0,0,0,.55);}
+  .v{color: var(--vu-dark); font-weight:600;}
+  .docbtn{
+    border-radius: 14px;
+    border:1px solid rgba(179,0,0,.18);
+  }
+
+  /* Sticky sidebar */
+  .sticky-side{position: sticky; top: 1rem;}
+
+  /* Save bar */
+  .actionbar{
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 16px;
+    padding: .75rem;
+    box-shadow: 0 10px 24px rgba(0,0,0,.08);
+  }
+  .actionbar .hint{font-size:.85rem;color: rgba(0,0,0,.58);}
+</style>
+
+<div class="vu-wrap">
+
+  <!-- HERO -->
+  <div class="vu-hero p-3 p-md-4 mb-4" id="top">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start">
+      <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="vu-chip"><i class="bi bi-clipboard-check"></i> Review Internship Request</span>
+
+          <span class="vu-chip">
+            <i class="bi bi-person-badge"></i>
+            {{ req.student.reg_no }}
+          </span>
+
+          <span class="vu-chip">
+            <i class="bi bi-flag"></i>
+            {% if req.status == "submitted" %}
+              Submitted
+            {% elif req.status == "under_review" %}
+              Under Review
+            {% elif req.status == "rejected" %}
+              Rejected
+            {% elif req.status == "recommended" %}
+              Recommended
+            {% else %}
+              {{ req.get_status_display|default:req.status }}
+            {% endif %}
+          </span>
         </div>
 
-        <a href="{% url 'coordinator_queue' %}" class="btn btn-light border btn-sm">
-          <i class="bi bi-arrow-left me-1"></i> Back to Queue
-        </a>
+        <div class="vu-sub small">
+          Confirm details, review attachments, then take action.
+        </div>
       </div>
 
-      <div class="card-body">
-        <!-- Student + Status -->
-        <div class="p-3 border rounded-4 bg-white mb-3">
-          <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-            <div>
-              <div class="fw-bold">
-                <i class="bi bi-person-badge text-danger me-1"></i>
-                {{ req.student.reg_no }}
-              </div>
-              <div class="small text-muted">{{ req.student.user.email }}</div>
-            </div>
-
-            <div>
-              {% if req.status == "submitted" %}
-                <span class="badge text-bg-primary">Submitted</span>
-              {% elif req.status == "under_review" %}
-                <span class="badge text-bg-warning">Under Review</span>
-              {% elif req.status == "rejected" %}
-                <span class="badge text-bg-danger">Rejected</span>
-              {% elif req.status == "recommended" %}
-                <span class="badge text-bg-success">Recommended</span>
-              {% else %}
-                <span class="badge text-bg-secondary">{{ req.status }}</span>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        <!-- Company Details -->
-        <div class="p-3 border rounded-4 bg-white mb-3">
-          <div class="fw-bold mb-2"><i class="bi bi-building text-danger me-1"></i> Company Details</div>
-
-          {% if req.preferred_company %}
-            <div class="fw-semibold">{{ req.preferred_company.name }}</div>
-            <div class="small text-muted">Preferred company selected by student.</div>
-          {% else %}
-            <div class="fw-semibold">{{ req.proposed_company_name }}</div>
-            <div class="small text-muted">
-              {{ req.proposed_company_district }} • {{ req.proposed_company_address }}
-            </div>
-            <div class="small text-muted">
-              <i class="bi bi-telephone me-1"></i> {{ req.proposed_company_contact }}
-            </div>
-          {% endif %}
-        </div>
-
-        <!-- Attachments -->
-        <div class="p-3 border rounded-4 bg-white mb-4">
-          <div class="fw-bold mb-2"><i class="bi bi-paperclip text-danger me-1"></i> Attachments</div>
-
-          <div class="d-flex flex-column gap-2">
-            {% if req.cv %}
-              <a class="btn btn-outline-danger btn-sm w-100 text-start" href="{{ req.cv.url }}">
-                <i class="bi bi-file-earmark-person me-1"></i> View CV
-              </a>
-            {% else %}
-              <div class="small text-muted">CV: —</div>
-            {% endif %}
-
-            {% if req.request_letter %}
-              <a class="btn btn-outline-danger btn-sm w-100 text-start" href="{{ req.request_letter.url }}">
-                <i class="bi bi-file-earmark-text me-1"></i> View Request Letter
-              </a>
-            {% else %}
-              <div class="small text-muted">Request Letter: —</div>
-            {% endif %}
-          </div>
-        </div>
-
-        <!-- Actions Form -->
-        <form method="post" novalidate>
-          {% csrf_token %}
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Review Notes (optional)</label>
-            <textarea class="form-control" name="review_notes" rows="4"
-                      placeholder="Write notes for record keeping (e.g., missing details, clarification needed, decision reason)">{{ req.review_notes }}</textarea>
-            <div class="form-text">
-              Notes help with audit trail and follow-up with the student.
-            </div>
-          </div>
-
-          <div class="d-flex flex-column flex-md-row gap-2">
-            <button name="action" value="mark_under_review" type="submit" class="btn btn-outline-secondary">
-              <i class="bi bi-hourglass-split me-1"></i> Mark Under Review
-            </button>
-
-            <button name="action" value="reject" type="submit" class="btn btn-warning">
-              <i class="bi bi-x-circle me-1"></i> Reject
-            </button>
-
-            <button name="action" value="approve_and_create_placement" type="submit" class="btn btn-success ms-md-auto">
-              <i class="bi bi-check2-circle me-1"></i> Approve & Create Placement
-            </button>
-          </div>
-
-          <div class="small text-muted mt-2">
-            Approving creates placement and allows issuing recommendation letter.
-          </div>
-        </form>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'coordinator_queue' %}" class="btn btn-light btn-sm btn-pill">
+          <i class="bi bi-arrow-left me-1"></i> Back to Queue
+        </a>
+        <a href="{% url 'coordinator_dashboard' %}" class="btn btn-outline-light btn-sm btn-pill">
+          <i class="bi bi-house-door me-1"></i> Dashboard
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- SIDEBAR -->
-  <div class="col-12 col-lg-4">
-    <div class="card mb-4">
-      <div class="card-header fw-bold">
-        <i class="bi bi-check2-square me-1"></i> Review Checklist
-      </div>
-      <div class="card-body small text-muted">
-        <ul class="mb-0">
-          <li>Student details are correct.</li>
-          <li>Company details are valid and reachable.</li>
-          <li>Attachments are present (CV, request letter).</li>
-          <li>Decision is recorded with notes.</li>
-        </ul>
+  <div class="row g-4">
+
+    <!-- MAIN -->
+    <div class="col-12 col-lg-8">
+      <div class="vu-card">
+        <div class="head">
+          <div class="vu-title">
+            <i class="bi bi-search" style="color:var(--vu-red)"></i>
+            Request Details
+          </div>
+
+          <div>
+            {% if req.status == "submitted" %}
+              <span class="badge text-bg-primary badge-pill">Submitted</span>
+            {% elif req.status == "under_review" %}
+              <span class="badge text-bg-warning badge-pill">Under Review</span>
+            {% elif req.status == "rejected" %}
+              <span class="badge text-bg-danger badge-pill">Rejected</span>
+            {% elif req.status == "recommended" %}
+              <span class="badge text-bg-success badge-pill">Recommended</span>
+            {% else %}
+              <span class="badge text-bg-secondary badge-pill">{{ req.get_status_display|default:req.status }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="p-3 p-md-3 d-grid gap-3">
+
+          <!-- Student -->
+          <div class="section">
+            <div class="label">
+              <i class="bi bi-person-badge text-danger"></i> Student
+            </div>
+
+            <div class="kv">
+              <div class="k">Reg No</div>
+              <div class="v">{{ req.student.reg_no }}</div>
+
+              <div class="k">Name</div>
+              <div class="v">{{ req.student.user.get_full_name|default:req.student.user.display_name }}</div>
+
+              <div class="k">Email</div>
+              <div class="v">{{ req.student.user.email }}</div>
+
+              {% if req.period %}
+                <div class="k">Period</div>
+                <div class="v">{{ req.period.name }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Company -->
+          <div class="section">
+            <div class="label">
+              <i class="bi bi-building text-danger"></i> Company
+            </div>
+
+            {% if req.preferred_company %}
+              <div class="fw-semibold">{{ req.preferred_company.name }}</div>
+              <div class="small muted">Preferred company selected by student.</div>
+            {% else %}
+              <div class="kv mt-2">
+                <div class="k">Name</div>
+                <div class="v">{{ req.proposed_company_name|default:"—" }}</div>
+
+                <div class="k">District</div>
+                <div class="v">{{ req.proposed_company_district|default:"—" }}</div>
+
+                <div class="k">Address</div>
+                <div class="v">{{ req.proposed_company_address|default:"—" }}</div>
+
+                <div class="k">Contact</div>
+                <div class="v">{{ req.proposed_company_contact|default:"—" }}</div>
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Attachments -->
+          <div class="section">
+            <div class="label">
+              <i class="bi bi-paperclip text-danger"></i> Attachments
+            </div>
+
+            <div class="row g-2">
+              <div class="col-12 col-md-6">
+                {% if req.cv %}
+                  <a class="btn btn-outline-danger w-100 text-start docbtn"
+                     href="{{ req.cv.url }}" target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-person me-1"></i> View CV
+                  </a>
+                {% else %}
+                  <div class="small muted">CV: —</div>
+                {% endif %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                {% if req.request_letter %}
+                  <a class="btn btn-outline-danger w-100 text-start docbtn"
+                     href="{{ req.request_letter.url }}" target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-text me-1"></i> View Request Letter
+                  </a>
+                {% else %}
+                  <div class="small muted">Request Letter: —</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="small muted mt-2">
+              Tip: open documents in a new tab and confirm the company + period match the request.
+            </div>
+          </div>
+
+          <!-- Notes + Actions -->
+          <form method="post" novalidate class="d-grid gap-3">
+            {% csrf_token %}
+
+            <div class="section">
+              <div class="label">
+                <i class="bi bi-journal-text text-danger"></i> Review Notes
+              </div>
+              <textarea class="form-control" name="review_notes" rows="4"
+                        placeholder="Write notes for record keeping (e.g., missing details, clarification needed, decision reason)">{{ req.review_notes }}</textarea>
+              <div class="form-text">
+                Notes help with audit trail and follow-up with the student.
+              </div>
+            </div>
+
+            <!-- Sticky action bar -->
+            <div class="actionbar">
+              <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2 flex-wrap">
+
+                <button name="action" value="mark_under_review" type="submit"
+                        class="btn btn-outline-secondary btn-pill">
+                  <i class="bi bi-hourglass-split me-1"></i> Mark Under Review
+                </button>
+
+                <button name="action" value="reject" type="submit"
+                        class="btn btn-warning btn-pill">
+                  <i class="bi bi-x-circle me-1"></i> Reject
+                </button>
+
+                {# ✅ FIXED: use req.id (request_id) #}
+                <a class="btn btn-success btn-pill"
+                   href="{% url 'coordinator_issue_recommendation' req.id %}">
+                  <i class="bi bi-file-earmark-check me-1"></i> Issue Letter
+                </a>
+
+              </div>
+
+              <div class="hint mt-2">
+                Tip: Use “Under Review” when waiting for clarification, and add notes for auditing.
+              </div>
+            </div>
+          </form>
+
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header fw-bold">
-        <i class="bi bi-link-45deg me-1"></i> Quick Links
-      </div>
-      <div class="card-body d-grid gap-2">
-        <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
-          <i class="bi bi-inbox me-1"></i> Requests Queue
-        </a>
-        <a class="btn btn-outline-secondary" href="{% url 'coordinator_acceptance_queue' %}">
-          <i class="bi bi-patch-check me-1"></i> Acceptance Queue
-        </a>
+    <!-- SIDEBAR -->
+    <div class="col-12 col-lg-4">
+      <div class="sticky-side d-grid gap-4">
+
+        <div class="vu-card">
+          <div class="head">
+            <div class="vu-title">
+              <i class="bi bi-check2-square" style="color:var(--vu-red)"></i>
+              Review Checklist
+            </div>
+          </div>
+          <div class="p-3 small muted">
+            <ul class="mb-0">
+              <li>Student details are correct (reg no, email, period).</li>
+              <li>Company is valid and reachable.</li>
+              <li>Attachments are present and readable (CV, request letter).</li>
+              <li>Decision is recorded with notes (for audit trail).</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="vu-card">
+          <div class="head">
+            <div class="vu-title">
+              <i class="bi bi-link-45deg" style="color:var(--vu-red)"></i>
+              Quick Links
+            </div>
+          </div>
+          <div class="p-3 d-grid gap-2">
+            <a class="btn btn-outline-secondary btn-pill" href="{% url 'coordinator_queue' %}">
+              <i class="bi bi-inbox me-1"></i> Requests Queue
+            </a>
+            <a class="btn btn-outline-secondary btn-pill" href="{% url 'coordinator_acceptance_queue' %}">
+              <i class="bi bi-patch-check me-1"></i> Acceptance Queue
+            </a>
+            <a class="btn btn-outline-danger btn-pill" href="#top">
+              <i class="bi bi-arrow-up me-1"></i> Back to top
+            </a>
+          </div>
+        </div>
+
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}

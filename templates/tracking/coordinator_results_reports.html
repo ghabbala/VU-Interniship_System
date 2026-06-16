@@ -1,113 +1,356 @@
 {% extends "base.html" %}
-{% block title %}Submitted Results Reports — Coordinator{% endblock %}
+{% block title %}Results Reports — Coordinator{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <div class="col-12">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-2:#ca0d1d;
+    --vu-soft:#fff5f5;
+    --vu-border: rgba(0,0,0,.10);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.88);
+    --vu-radius: 18px;
+  }
+
+  .vu-wrap{max-width:1200px;margin:0 auto;}
+
+  /* HERO */
+  .vu-hero{
+    background: linear-gradient(135deg, var(--vu-red), var(--vu-red-2));
+    color:#fff;
+    border-radius: var(--vu-radius);
+    box-shadow: 0 12px 28px rgba(0,0,0,.12);
+    overflow:hidden;
+  }
+  .vu-chip{
+    display:inline-flex;align-items:center;gap:.5rem;
+    padding:.42rem .75rem;border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.20);
+    font-weight:850;font-size:.88rem;white-space:nowrap;
+  }
+  .vu-sub{color:rgba(255,255,255,.88)}
+  .btn-pill{border-radius:999px;}
+  .badge-pill{border-radius:999px;}
+
+  /* Cards */
+  .vu-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius);
+    overflow:hidden;
+    background:#fff;
+    box-shadow: 0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-card .head{
+    padding:.9rem 1rem;
+    border-bottom:1px solid rgba(0,0,0,.06);
+    background:#fff;
+    display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+    flex-wrap:wrap;
+  }
+  .vu-title{
+    font-weight:950;color:var(--vu-dark);
+    display:flex;align-items:center;gap:.55rem;
+  }
+
+  /* Filters */
+  .filters{
+    display:grid;
+    grid-template-columns: 1fr 260px;
+    gap:.6rem;
+  }
+  @media (max-width: 991.98px){
+    .filters{grid-template-columns:1fr;}
+  }
+  .vu-search{
+    border-radius: 999px !important;
+    padding-left: 2.2rem;
+  }
+  .search-ico{
+    position:absolute;left:.85rem;top:50%;transform:translateY(-50%);
+    color: rgba(0,0,0,.45);
+  }
+
+  /* Table */
+  .vu-table thead th{
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:#6c757d;
+    background:#f8f9fa !important;
+    white-space:nowrap;
+  }
+  .muted{color: var(--vu-muted);}
+  .nowrap{white-space:nowrap;}
+  .avatar{
+    width:40px;height:40px;border-radius:14px;
+    display:grid;place-items:center;
+    background: var(--vu-soft);
+    border:1px solid rgba(179,0,0,.14);
+    color: var(--vu-red);
+    flex:0 0 auto;
+  }
+  .who{
+    display:flex;align-items:flex-start;gap:.65rem;
+  }
+
+  .vu-empty{
+    background:#f8f9fa;border:1px dashed rgba(0,0,0,.16);
+    border-radius: var(--vu-radius);padding:1.2rem;
+  }
+</style>
+
+<div class="vu-wrap">
+
+  <!-- HERO -->
+  <div class="vu-hero p-3 p-md-4 mb-4">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-start">
       <div>
-        <div class="fw-bold fs-5">Submitted Results Reports</div>
-        <div class="text-muted small">
-          Reports submitted by University Supervisors (snapshot of averages).
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="vu-chip"><i class="bi bi-clipboard-data"></i> Results Reports Inbox</span>
+          <span class="vu-chip"><i class="bi bi-collection"></i> {{ reports|length }} total</span>
+        </div>
+        <div class="vu-sub small">
+          Reports submitted by University Supervisors (snapshot averages). Review, approve, or request changes.
         </div>
       </div>
 
       <div class="d-flex flex-wrap gap-2">
-        <span class="badge text-bg-warning border">
-          <i class="bi bi-inbox me-1"></i> Pending: {{ pending_count }}
-        </span>
-        <span class="badge text-bg-success border">
-          <i class="bi bi-check2-circle me-1"></i> Received: {{ received_count }}
-        </span>
+        <a class="btn btn-light btn-sm btn-pill" href="{% url 'coordinator_dashboard' %}">
+          <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+        <a class="btn btn-outline-light btn-sm btn-pill" href="{% url 'coordinator_student_performance' %}">
+          <i class="bi bi-bar-chart-line me-1"></i> Performance
+        </a>
       </div>
     </div>
 
-    <div class="card mt-3">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span class="fw-bold"><i class="bi bi-clipboard-data me-1"></i> Reports Inbox</span>
-        <span class="badge text-bg-light border">{{ reports|length }} total</span>
+    <!-- KPI chips (less bulky than big cards) -->
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <span class="badge text-bg-info border badge-pill">
+        <i class="bi bi-hourglass-split me-1"></i> Pending: {{ pending_count|default:0 }}
+      </span>
+      <span class="badge text-bg-warning border text-dark badge-pill">
+        <i class="bi bi-exclamation-triangle me-1"></i> Needs Changes: {{ needs_changes_count|default:0 }}
+      </span>
+      <span class="badge text-bg-success border badge-pill">
+        <i class="bi bi-patch-check me-1"></i> Approved: {{ approved_count|default:0 }}
+      </span>
+      <span class="badge text-bg-danger border badge-pill">
+        <i class="bi bi-x-octagon me-1"></i> Rejected: {{ rejected_count|default:0 }}
+      </span>
+    </div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="vu-card">
+    <div class="head">
+      <div class="vu-title">
+        <i class="bi bi-inbox" style="color:var(--vu-red)"></i>
+        Reports
       </div>
 
-      <div class="card-body">
-        {% if reports %}
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Supervisor</th>
-                  <th class="text-muted">Submitted</th>
-                  <th>Status</th>
-                  <th class="text-end">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in reports %}
-                  <tr>
-                    <td class="fw-semibold">
+      <span class="badge text-bg-light border badge-pill">
+        Showing {{ reports|length }} item{{ reports|length|pluralize }}
+      </span>
+    </div>
+
+    <div class="p-3 p-md-3">
+      <!-- Client-side search + status filter -->
+      <div class="filters mb-3">
+        <div class="position-relative">
+          <i class="bi bi-search search-ico"></i>
+          <input id="qSearch" type="text" class="form-control vu-search"
+                 placeholder="Search by supervisor name/email or status…">
+        </div>
+
+        <select id="qStatus" class="form-select btn-pill">
+          <option value="">All statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="resubmitted">Resubmitted</option>
+          <option value="needs_changes">Needs changes</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      {% if reports %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 vu-table" id="reportsTable">
+            <thead>
+              <tr>
+                <th>Supervisor</th>
+                <th class="nowrap">Students</th>
+                <th class="nowrap">Submitted</th>
+                <th class="nowrap">Revision</th>
+                <th class="nowrap">Status</th>
+                <th class="text-end nowrap">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for r in reports %}
+                <tr class="r-row"
+                    data-status="{{ r.status|default:'' }}"
+                    data-search="
                       {{ r.supervisor_user.display_name|default:r.supervisor_user.username }}
-                    </td>
-
-                    <td class="text-muted small">
-                      {% if r.submitted_at %}
-                        {{ r.submitted_at|date:"Y-m-d H:i" }}
-                      {% else %}
-                        —
-                      {% endif %}
-                    </td>
-
-                    <td>
-                      {% if r.status == "submitted" %}
-                        <span class="badge text-bg-warning">
-                          <i class="bi bi-hourglass-split me-1"></i> Submitted
-                        </span>
-                      {% elif r.status == "received" %}
-                        <span class="badge text-bg-success">
-                          <i class="bi bi-check2-circle me-1"></i> Received
-                        </span>
-                      {% else %}
-                        <span class="badge text-bg-secondary">{{ r.status }}</span>
-                      {% endif %}
-                    </td>
-
-                    <td class="text-end">
-                      <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
-                        <a class="btn btn-outline-primary btn-sm"
-                           href="{% url 'coordinator_results_report_detail' r.id %}">
-                          <i class="bi bi-eye me-1"></i> View
-                        </a>
-
-                        <a class="btn btn-outline-secondary btn-sm"
-                           href="{% url 'coordinator_results_report_pdf' r.id %}">
-                          <i class="bi bi-filetype-pdf me-1"></i> PDF
-                        </a>
-
-                        {% if r.status == "submitted" %}
-                          <form method="post"
-                                action="{% url 'coordinator_mark_report_received' r.id %}"
-                                class="m-0">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-success btn-sm">
-                              <i class="bi bi-check2-square me-1"></i> Mark Received
-                            </button>
-                          </form>
+                      {{ r.supervisor_user.email }}
+                      {{ r.status }}
+                      rev {{ r.revision|default:1 }}
+                    ">
+                  <td>
+                    <div class="who">
+                      <div class="avatar"><i class="bi bi-person-badge"></i></div>
+                      <div>
+                        <div class="fw-semibold">
+                          {{ r.supervisor_user.display_name|default:r.supervisor_user.username }}
+                        </div>
+                        {% if r.supervisor_user.email %}
+                          <div class="small muted">{{ r.supervisor_user.email }}</div>
                         {% endif %}
                       </div>
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="text-center py-5">
-            <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
-            <div class="fw-bold mt-2">No submitted reports</div>
-            <div class="text-muted small">When supervisors submit results reports, they will appear here.</div>
-          </div>
-        {% endif %}
-      </div>
-    </div>
+                    </div>
+                  </td>
 
+                  <td class="nowrap">
+                    <span class="badge text-bg-light border badge-pill">
+                      <i class="bi bi-people me-1"></i>{{ r.rows|length }}
+                    </span>
+                  </td>
+
+                  <td class="small muted nowrap">
+                    {% if r.submitted_at %}{{ r.submitted_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+                  </td>
+
+                  <td class="nowrap">
+                    <span class="badge text-bg-light border badge-pill">Rev {{ r.revision|default:1 }}</span>
+                  </td>
+
+                  <td class="nowrap">
+                    {% if r.status == "submitted" %}
+                      <span class="badge text-bg-info badge-pill">
+                        <i class="bi bi-hourglass-split me-1"></i> Submitted
+                      </span>
+                    {% elif r.status == "resubmitted" %}
+                      <span class="badge text-bg-info badge-pill">
+                        <i class="bi bi-arrow-repeat me-1"></i> Resubmitted
+                      </span>
+                    {% elif r.status == "needs_changes" %}
+                      <span class="badge text-bg-warning text-dark badge-pill">
+                        <i class="bi bi-exclamation-triangle me-1"></i> Needs Changes
+                      </span>
+                    {% elif r.status == "approved" %}
+                      <span class="badge text-bg-success badge-pill">
+                        <i class="bi bi-patch-check me-1"></i> Approved
+                      </span>
+                    {% elif r.status == "rejected" %}
+                      <span class="badge text-bg-danger badge-pill">
+                        <i class="bi bi-x-octagon me-1"></i> Rejected
+                      </span>
+                    {% else %}
+                      <span class="badge text-bg-secondary badge-pill">{{ r.status }}</span>
+                    {% endif %}
+                  </td>
+
+                  <td class="text-end nowrap">
+                    <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
+                      <a class="btn btn-outline-primary btn-sm btn-pill"
+                         href="{% url 'coordinator_results_report_detail' r.id %}">
+                        <i class="bi bi-eye me-1"></i> View
+                      </a>
+
+                      <a class="btn btn-outline-secondary btn-sm btn-pill"
+                         href="{% url 'coordinator_results_report_pdf' r.id %}">
+                        <i class="bi bi-filetype-pdf me-1"></i> PDF
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+          <div class="small muted">
+            Tip: filter by status (Pending / Needs Changes) to clear the inbox faster.
+          </div>
+          <button class="btn btn-light border btn-sm btn-pill" type="button" id="clearFilters">
+            <i class="bi bi-x-circle me-1"></i> Clear filters
+          </button>
+        </div>
+
+      {% else %}
+        <div class="vu-empty text-center py-5">
+          <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+          <div class="fw-bold mt-2">No reports yet</div>
+          <div class="text-muted small">
+            When supervisors submit results reports, they will appear here.
+          </div>
+        </div>
+      {% endif %}
+    </div>
   </div>
+
 </div>
+
+<script>
+  (function(){
+    const qSearch = document.getElementById("qSearch");
+    const qStatus = document.getElementById("qStatus");
+    const clearBtn = document.getElementById("clearFilters");
+    const rows = Array.from(document.querySelectorAll(".r-row"));
+
+    function norm(s){ return (s || "").toString().toLowerCase().trim(); }
+
+    function applyFilters(){
+      const term = norm(qSearch && qSearch.value);
+      const st = norm(qStatus && qStatus.value);
+      let visible = 0;
+
+      rows.forEach(tr => {
+        const hay = norm(tr.getAttribute("data-search"));
+        const rStatus = norm(tr.getAttribute("data-status"));
+
+        const okTerm = !term || hay.includes(term);
+        const okStatus = !st || rStatus === st;
+
+        const show = okTerm && okStatus;
+        tr.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+
+      const table = document.getElementById("reportsTable");
+      if (table){
+        let hint = document.getElementById("noMatchesHint");
+        if (!hint){
+          hint = document.createElement("div");
+          hint.id = "noMatchesHint";
+          hint.className = "vu-empty text-center mt-3";
+          hint.innerHTML = `
+            <i class="bi bi-filter-circle text-danger" style="font-size:1.8rem;"></i>
+            <div class="fw-bold mt-2">No matches</div>
+            <div class="text-muted small">Try clearing filters or adjusting your search.</div>
+          `;
+          table.parentElement.appendChild(hint);
+        }
+        hint.style.display = visible === 0 ? "" : "none";
+      }
+    }
+
+    if (qSearch) qSearch.addEventListener("input", applyFilters);
+    if (qStatus) qStatus.addEventListener("change", applyFilters);
+
+    if (clearBtn){
+      clearBtn.addEventListener("click", () => {
+        if (qSearch) qSearch.value = "";
+        if (qStatus) qStatus.value = "";
+        applyFilters();
+      });
+    }
+
+    applyFilters();
+  })();
+</script>
 {% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Recommendation Letter Settings - Victoria University{% endblock %}
+
+{% block content %}
+<style>
+  .vu-settings-wrap{max-width:980px;margin:0 auto;}
+  .vu-panel{border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff;box-shadow:0 12px 28px rgba(0,0,0,.06);overflow:hidden;}
+  .vu-panel-head{padding:1rem 1.15rem;border-bottom:1px solid rgba(0,0,0,.07);display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;}
+  .vu-title{font-weight:900;color:#1f2937;display:flex;align-items:center;gap:.55rem;}
+  .vu-sub{color:#6b7280;font-size:.9rem;margin-top:.2rem;}
+  .vu-body{padding:1.15rem;}
+  .stamp-preview{border:1px dashed rgba(0,0,0,.18);border-radius:14px;min-height:170px;background:#f8fafc;display:grid;place-items:center;padding:1rem;}
+  .stamp-preview img{max-width:210px;max-height:150px;object-fit:contain;}
+  .field-help{color:#6b7280;font-size:.82rem;margin-top:.25rem;}
+  .btn-pill{border-radius:999px;}
+</style>
+
+<div class="vu-settings-wrap">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="mb-1 fw-bold">Recommendation Letter Settings</h3>
+      <div class="text-muted small">Manage the official stamp and signatory details used on generated recommendation letters.</div>
+    </div>
+    <a href="{% url 'coordinator_dashboard' %}" class="btn btn-light border btn-pill">
+      <i class="bi bi-arrow-left me-1"></i> Dashboard
+    </a>
+  </div>
+
+  <div class="vu-panel">
+    <div class="vu-panel-head">
+      <div>
+        <div class="vu-title">
+          <i class="bi bi-file-earmark-text text-danger"></i>
+          Official Letter Assets
+        </div>
+        <div class="vu-sub">Newly approved or regenerated letters will use these details.</div>
+      </div>
+      {% if settings_obj.updated_at %}
+        <span class="badge text-bg-light border btn-pill">
+          Updated {{ settings_obj.updated_at|date:"Y-m-d H:i" }}
+        </span>
+      {% endif %}
+    </div>
+
+    <div class="vu-body">
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-4">
+          <div class="col-12 col-lg-5">
+            <label class="form-label fw-semibold" for="{{ form.stamp_image.id_for_label }}">Official stamp</label>
+            <div class="stamp-preview mb-3">
+              {% if settings_obj.stamp_image %}
+                <img src="{{ settings_obj.stamp_image.url }}" alt="Current recommendation letter stamp">
+              {% else %}
+                <div class="text-center text-muted small">
+                  <i class="bi bi-image d-block fs-1 text-danger mb-2"></i>
+                  The default system stamp is currently being used.
+                </div>
+              {% endif %}
+            </div>
+            {{ form.stamp_image }}
+            {% if form.stamp_image.help_text %}<div class="field-help">{{ form.stamp_image.help_text }}</div>{% endif %}
+            {% if form.stamp_image.errors %}<div class="text-danger small mt-1">{{ form.stamp_image.errors }}</div>{% endif %}
+
+            <label class="form-label fw-semibold mt-4" for="{{ form.signature_image.id_for_label }}">Official signature</label>
+            <div class="stamp-preview mb-3">
+              {% if settings_obj.signature_image %}
+                <img src="{{ settings_obj.signature_image.url }}" alt="Current recommendation letter signature">
+              {% else %}
+                <div class="text-center text-muted small">
+                  <i class="bi bi-vector-pen d-block fs-1 text-danger mb-2"></i>
+                  The default system signature is currently being used.
+                </div>
+              {% endif %}
+            </div>
+            {{ form.signature_image }}
+            {% if form.signature_image.help_text %}<div class="field-help">{{ form.signature_image.help_text }}</div>{% endif %}
+            {% if form.signature_image.errors %}<div class="text-danger small mt-1">{{ form.signature_image.errors }}</div>{% endif %}
+          </div>
+
+          <div class="col-12 col-lg-7">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.signatory_name.id_for_label }}">Signatory name</label>
+                {{ form.signatory_name }}
+                <div class="field-help">{{ form.signatory_name.help_text }}</div>
+                {% if form.signatory_name.errors %}<div class="text-danger small mt-1">{{ form.signatory_name.errors }}</div>{% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.signatory_title.id_for_label }}">Signatory title</label>
+                {{ form.signatory_title }}
+                <div class="field-help">{{ form.signatory_title.help_text }}</div>
+                {% if form.signatory_title.errors %}<div class="text-danger small mt-1">{{ form.signatory_title.errors }}</div>{% endif %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.signatory_email.id_for_label }}">Email</label>
+                {{ form.signatory_email }}
+                <div class="field-help">{{ form.signatory_email.help_text }}</div>
+                {% if form.signatory_email.errors %}<div class="text-danger small mt-1">{{ form.signatory_email.errors }}</div>{% endif %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold" for="{{ form.signatory_phone.id_for_label }}">Phone</label>
+                {{ form.signatory_phone }}
+                <div class="field-help">{{ form.signatory_phone.help_text }}</div>
+                {% if form.signatory_phone.errors %}<div class="text-danger small mt-1">{{ form.signatory_phone.errors }}</div>{% endif %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold" for="{{ form.footer_address.id_for_label }}">Footer address</label>
+                {{ form.footer_address }}
+                {% if form.footer_address.errors %}<div class="text-danger small mt-1">{{ form.footer_address.errors }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="alert alert-light border small mt-4">
+          <i class="bi bi-info-circle text-danger me-1"></i>
+          Existing PDFs remain unchanged until a coordinator opens the recommendation letter and clicks regenerate or approves it again.
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
+          <a href="{% url 'coordinator_queue' %}" class="btn btn-light border btn-pill">
+            <i class="bi bi-inbox me-1"></i> Request Queue
+          </a>
+          <button class="btn btn-danger btn-pill" type="submit">
+            <i class="bi bi-save me-1"></i> Save Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

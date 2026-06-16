@@ -3,18 +3,231 @@
 {% block title %}Submitted Evaluations — University Supervisor{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <div class="col-12">
+<style>
+  :root{
+    --vu-red:#b30000;
+    --vu-red-soft: rgba(179,0,0,.08);
+    --vu-border: rgba(0,0,0,.10);
+    --vu-muted: rgba(0,0,0,.62);
+    --vu-dark: rgba(0,0,0,.86);
+    --vu-radius: 18px;
+  }
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+  .vu-shell{ max-width: 1200px; margin: 0 auto; }
+  html{ scroll-behavior: smooth; }
+
+  .vu-hero{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    background:
+      radial-gradient(900px 360px at 20% 0%, var(--vu-red-soft), rgba(255,255,255,0) 60%),
+      #fff;
+    padding: 16px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.06);
+  }
+  .vu-hero .title{ font-weight: 800; letter-spacing: .2px; color: var(--vu-dark); }
+  .vu-hero .subtitle{ color: var(--vu-muted); font-size: .9rem; }
+
+  .vu-chip{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.35rem .7rem; border-radius: 999px;
+    border: 1px solid var(--vu-border);
+    background: #fff; font-size: .85rem; color: var(--vu-dark);
+    white-space: nowrap;
+  }
+
+  .vu-card{
+    border: 1px solid var(--vu-border);
+    border-radius: var(--vu-radius);
+    overflow: hidden;
+    background:#fff;
+    box-shadow: 0 10px 24px rgba(0,0,0,.06);
+  }
+
+  /* ✅ Search bar */
+  .vu-search{
+    display:flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 12px;
+  }
+  .vu-search .form-control{
+    border-radius: 999px;
+    padding-left: 2.25rem;
+  }
+  .vu-search .search-wrap{
+    position: relative;
+    flex: 1 1 360px;
+    min-width: 260px;
+  }
+  .vu-search .search-icon{
+    position:absolute;
+    left: .85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0,0,0,.55);
+    pointer-events:none;
+  }
+  .vu-search .btn{ border-radius: 999px; }
+
+  /* ✅ Per-student scroll container + sticky header */
+  .student-block{
+    border: 1px solid var(--vu-border);
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .student-scroll{
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .student-head{
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.97);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--vu-border);
+    box-shadow: 0 8px 18px rgba(0,0,0,.06);
+  }
+  .student-head::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:-1px;
+    height: 12px;
+    background: linear-gradient(to bottom, rgba(255,255,255,.98), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+
+  /* ✅ Make student name VERY visible */
+  .student-title{
+    display:flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .55rem .65rem;
+    line-height: 1.12;
+  }
+  .student-name{
+    font-weight: 900;
+    font-size: 1.12rem;   /* bigger */
+    color: var(--vu-dark);
+    letter-spacing: .15px;
+  }
+  .student-reg{
+    display:inline-flex;
+    align-items:center;
+    gap:.35rem;
+    padding: .18rem .55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(179,0,0,.22);
+    background: rgba(179,0,0,.06);
+    color: #8f0000;
+    font-weight: 800;
+    font-size: .78rem;
+    white-space: nowrap;
+  }
+  .student-meta{
+    color: var(--vu-muted);
+    font-size: .9rem;
+    margin-top: .35rem;
+  }
+
+  .badge-soft-success{
+    background: rgba(25,135,84,.12) !important;
+    color: #146c43 !important;
+    border: 1px solid rgba(25,135,84,.22) !important;
+  }
+
+  .accordion-item{ border: 0; border-top: 1px solid var(--vu-border); }
+  .accordion-button{ background:#fff; box-shadow:none !important; padding: 14px; }
+  .accordion-button:not(.collapsed){ background: rgba(179,0,0,.05); color: var(--vu-dark); }
+  .accordion-body{ background:#fff; padding: 14px 14px 16px; }
+
+  .eval-left, .eval-left * { text-align: left !important; }
+
+  .remark-card{
+    border: 1px solid var(--vu-border);
+    border-radius: 14px;
+    padding: 12px;
+    background: #fff;
+  }
+  .remark-title{
+    font-weight: 700;
+    display:flex;
+    align-items:center;
+    gap:.45rem;
+    margin-bottom: .35rem;
+  }
+
+  /* nicer scrollbars */
+  .student-scroll::-webkit-scrollbar{ width: 10px; }
+  .student-scroll::-webkit-scrollbar-thumb{
+    background: rgba(0,0,0,.14);
+    border-radius: 999px;
+    border: 3px solid rgba(255,255,255,.9);
+  }
+  .student-scroll::-webkit-scrollbar-track{ background: rgba(0,0,0,.03); }
+
+  /* empty state for search */
+  .vu-empty-search{
+    border: 1px dashed rgba(0,0,0,.2);
+    border-radius: 16px;
+    padding: 20px;
+    background: rgba(255,255,255,.65);
+  }
+
+  .vu-fab{
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 50;
+    border-radius: 999px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    display: none;
+  }
+  .vu-fab.show{ display: inline-flex; }
+
+  @media (max-width: 575.98px){
+    .student-scroll{ max-height: 72vh; }
+    .student-name{ font-size: 1.06rem; }
+  }
+</style>
+
+<div id="top"></div>
+
+<div class="vu-shell">
+  <!-- HERO -->
+  <div class="vu-hero mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
       <div>
-        <div class="fw-bold fs-5">Submitted Industry Evaluations</div>
-        <div class="text-muted small">
+        <div class="title fs-5">
+          <i class="bi bi-clipboard-check text-danger me-1"></i>
+          Submitted Industry Evaluations
+        </div>
+        <div class="subtitle">
           Evaluations submitted by Industry Supervisors for students assigned to you.
+        </div>
+
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          <span class="vu-chip">
+            <i class="bi bi-collection text-danger"></i>
+            {{ evaluations|length }} submitted
+          </span>
+          <span class="vu-chip">
+            <i class="bi bi-shield-check text-danger"></i>
+            University Supervisor
+          </span>
         </div>
       </div>
 
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'supervisor_dashboard' %}" class="btn btn-danger btn-sm">
+          <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
         <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary btn-sm">
           <i class="bi bi-people me-1"></i> My Students
         </a>
@@ -24,48 +237,85 @@
       </div>
     </div>
 
-    <div class="card mt-3">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <span class="fw-bold"><i class="bi bi-clipboard-check me-1"></i> Submitted Evaluations</span>
-        <span class="badge text-bg-light border">{{ evaluations|length }} total</span>
+    {% if evaluations %}
+      {% regroup evaluations by placement.request.student as student_groups %}
+      <div class="vu-search">
+        <div class="search-wrap">
+          <i class="bi bi-search search-icon"></i>
+          <input id="studentSearch" type="text" class="form-control form-control-sm"
+                 placeholder="Search student by Reg No, name, company, or supervisor…">
+        </div>
+        <button id="clearSearch" class="btn btn-light border btn-sm" type="button">
+          <i class="bi bi-x-circle me-1"></i> Clear
+        </button>
       </div>
+    {% endif %}
+  </div>
 
-      <div class="card-body">
-        {% if evaluations %}
+  <!-- MAIN -->
+  <div class="vu-card">
+    <div class="card-body">
+      {% if evaluations %}
+        {% regroup evaluations by placement.request.student as student_groups %}
 
-          {# ✅ Group by student #}
-          {% regroup evaluations by placement.request.student as student_groups %}
+        <div id="searchEmpty" class="vu-empty-search text-center d-none">
+          <i class="bi bi-search text-danger" style="font-size:1.8rem;"></i>
+          <div class="fw-bold mt-2">No matching student found</div>
+          <div class="text-muted small">Try searching with Reg No or part of the student name.</div>
+        </div>
 
-          <div class="d-flex flex-column gap-4">
-            {% for g in student_groups %}
-              <div class="border rounded-4 p-3 p-md-4 bg-white">
+        <div id="studentsWrap" class="d-flex flex-column gap-3">
+          {% for g in student_groups %}
+            <section class="student-block student-item"
+                     id="student-{{ g.grouper.id }}"
+                     data-search="
+                       {{ g.grouper.reg_no }}
+                       {{ g.grouper.user.get_full_name|default:g.grouper.user.email }}
+                       {% with ev=g.list.0 %}
+                         {{ ev.placement.company.name|default:'' }}
+                         {{ ev.supervisor_name|default:'' }}
+                       {% endwith %}
+                     ">
+              <div class="student-scroll">
 
-                <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
-                  <div>
-                    <div class="fw-bold">
-                      <i class="bi bi-person-badge text-danger me-1"></i>
-                      {{ g.grouper.reg_no }}
-                      <span class="text-muted fw-normal">— {{ g.grouper.user.display_name }}</span>
+                <!-- ✅ Sticky student particulars (NAME is now primary) -->
+                <div class="student-head">
+                  <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                    <div>
+                      <div class="student-title">
+                        <span class="student-name">
+                          <i class="bi bi-person-badge text-danger me-1"></i>
+                          {{ g.grouper.user.get_full_name|default:g.grouper.user.email }}
+                        </span>
+                        <span class="student-reg">
+                          <i class="bi bi-hash"></i> {{ g.grouper.reg_no }}
+                        </span>
+                      </div>
+
+                      {% with ev=g.list.0 %}
+                        <div class="student-meta">
+                          <i class="bi bi-building me-1"></i>
+                          {{ ev.placement.company.name|default:"—" }}
+                          <span class="mx-2">•</span>
+                          <i class="bi bi-person-check me-1"></i>
+                          Industry Supervisor: {{ ev.supervisor_name|default:"—" }}
+                        </div>
+                      {% endwith %}
                     </div>
 
-                    {% with ev=g.list.0 %}
-                      <div class="small text-muted mt-1">
-                        <i class="bi bi-building me-1"></i>
-                        {{ ev.placement.company.name }}
-                        <span class="mx-2">•</span>
-                        <i class="bi bi-person-check me-1"></i>
-                        Industry Supervisor: {{ ev.supervisor_name|default:"—" }}
-                      </div>
-                    {% endwith %}
-                  </div>
-
-                  <div class="text-muted small">
-                    <span class="badge text-bg-success">Submitted</span>
-                    <span class="ms-2">{{ g.list|length }} evaluation(s)</span>
+                    <div class="text-muted small d-flex align-items-center gap-2 flex-wrap justify-content-md-end">
+                      <span class="badge badge-soft-success">
+                        <i class="bi bi-check-circle me-1"></i> Submitted
+                      </span>
+                      <span class="badge text-bg-light border">
+                        <i class="bi bi-list-ol me-1"></i> {{ g.list|length }} evaluation(s)
+                      </span>
+                      <a href="#top" class="btn btn-light border btn-sm py-1">
+                        <i class="bi bi-arrow-up me-1"></i> Top
+                      </a>
+                    </div>
                   </div>
                 </div>
-
-                <hr class="my-3">
 
                 <div class="accordion" id="acc-student-{{ g.grouper.id }}">
                   {% for ev in g.list %}
@@ -111,6 +361,7 @@
                            aria-labelledby="h-ev-{{ ev.id }}"
                            data-bs-parent="#acc-student-{{ g.grouper.id }}">
                         <div class="accordion-body eval-left">
+                          <!-- (rest of your evaluation content remains unchanged) -->
 
                           <div class="alert alert-light border small mb-3">
                             <div class="fw-semibold mb-1">
@@ -153,19 +404,31 @@ Your assessment of the student’s learning experience, the attainment of goals,
 
                           <div class="row g-3">
                             <div class="col-12 col-lg-6">
-                              <div class="fw-semibold mb-1">Recommend for employment?</div>
-                              <div class="text-muted">{{ ev.recommend_employment|yesno:"YES,NO" }}</div>
+                              <div class="remark-card">
+                                <div class="remark-title">
+                                  <i class="bi bi-person-workspace text-danger"></i>
+                                  <span>Employment Recommendation</span>
+                                </div>
+                                <div class="text-muted">
+                                  Recommend for employment? <b>{{ ev.recommend_employment|yesno:"YES,NO" }}</b>
+                                </div>
 
-                              <div class="fw-semibold mt-3 mb-1">Comment</div>
-                              <div class="text-muted small" style="white-space: pre-line;">
-                                {{ ev.recommend_comment|default:"—" }}
+                                <div class="fw-semibold mt-3 mb-1">Comment</div>
+                                <div class="text-muted small" style="white-space: pre-line;">
+                                  {{ ev.recommend_comment|default:"—" }}
+                                </div>
                               </div>
                             </div>
 
                             <div class="col-12 col-lg-6">
-                              <div class="fw-semibold mb-1">Other comments / suggestions</div>
-                              <div class="text-muted small" style="white-space: pre-line;">
-                                {{ ev.other_comments|default:"—" }}
+                              <div class="remark-card">
+                                <div class="remark-title">
+                                  <i class="bi bi-chat-left-text text-danger"></i>
+                                  <span>Other comments / suggestions</span>
+                                </div>
+                                <div class="text-muted small" style="white-space: pre-line;">
+                                  {{ ev.other_comments|default:"—" }}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -190,28 +453,102 @@ Your assessment of the student’s learning experience, the attainment of goals,
                 </div>
 
               </div>
-            {% endfor %}
+            </section>
+          {% endfor %}
+        </div>
+
+      {% else %}
+        <div class="text-center py-5">
+          <div class="mb-2">
+            <i class="bi bi-clipboard-x text-danger" style="font-size:2rem;"></i>
+          </div>
+          <div class="fw-bold">No submitted evaluations yet</div>
+          <div class="text-muted small">
+            Evaluations will appear here after Industry Supervisors submit them.
           </div>
 
-        {% else %}
-          <div class="text-center py-5">
-            <div class="mb-2">
-              <i class="bi bi-clipboard-x text-danger" style="font-size:2rem;"></i>
-            </div>
-            <div class="fw-bold">No submitted evaluations yet</div>
-            <div class="text-muted small">
-              Evaluations will appear here after Industry Supervisors submit them.
-            </div>
+          <div class="mt-3 d-flex justify-content-center gap-2 flex-wrap">
+            <a href="{% url 'supervisor_dashboard' %}" class="btn btn-danger btn-sm">
+              <i class="bi bi-speedometer2 me-1"></i> Back to Dashboard
+            </a>
+            <a href="{% url 'supervisor_students' %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-people me-1"></i> My Students
+            </a>
           </div>
-        {% endif %}
-      </div>
+        </div>
+      {% endif %}
     </div>
-
   </div>
 </div>
 
-<style>
-  /* Prevent the "centered/indented" look */
-  .eval-left, .eval-left * { text-align: left !important; }
-</style>
+<!-- Floating Back-to-top -->
+<a href="#top" id="vuFab" class="btn btn-danger btn-sm vu-fab" aria-label="Back to top">
+  <i class="bi bi-arrow-up"></i>
+</a>
+
+<script>
+  // Page FAB
+  (function(){
+    const fab = document.getElementById("vuFab");
+    const onScroll = () => {
+      if (!fab) return;
+      if (window.scrollY > 500) fab.classList.add("show");
+      else fab.classList.remove("show");
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // ✅ Student Search (RegNo / Name / Company / Supervisor)
+  (function(){
+    const input = document.getElementById("studentSearch");
+    const clearBtn = document.getElementById("clearSearch");
+    const items = Array.from(document.querySelectorAll(".student-item"));
+    const empty = document.getElementById("searchEmpty");
+    const jumps = Array.from(document.querySelectorAll(".student-jump"));
+
+    if (!input) return;
+
+    const normalize = (s) => (s || "").toString().toLowerCase().replace(/\s+/g, " ").trim();
+
+    const applyFilter = () => {
+      const q = normalize(input.value);
+      let visibleCount = 0;
+
+      items.forEach((el) => {
+        const hay = normalize(el.getAttribute("data-search"));
+        const show = !q || hay.includes(q);
+        el.classList.toggle("d-none", !show);
+        if (show) visibleCount++;
+      });
+
+      // Also filter jump pills (if any)
+      jumps.forEach((a) => {
+        const hay = normalize(a.getAttribute("data-key"));
+        const show = !q || hay.includes(q);
+        a.classList.toggle("d-none", !show);
+      });
+
+      if (empty) empty.classList.toggle("d-none", visibleCount !== 0);
+
+      // If exactly one student matches, auto-scroll to it
+      if (q && visibleCount === 1) {
+        const target = items.find(el => !el.classList.contains("d-none"));
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
+    input.addEventListener("input", applyFilter, { passive: true });
+
+    if (clearBtn){
+      clearBtn.addEventListener("click", () => {
+        input.value = "";
+        applyFilter();
+        input.focus();
+      });
+    }
+
+    applyFilter();
+  })();
+</script>
 {% endblock %}

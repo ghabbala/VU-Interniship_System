@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Active Interns - Victoria University{% endblock %}
+
+{% block content %}
+<style>
+  .vu-wrap{max-width:1200px;margin:0 auto;}
+  .vu-hero{background:linear-gradient(135deg,#b30000,#ca0d1d);color:#fff;border-radius:18px;box-shadow:0 12px 28px rgba(0,0,0,.12);}
+  .vu-chip{display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .75rem;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);font-weight:800;font-size:.88rem;}
+  .vu-card{border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff;box-shadow:0 12px 28px rgba(0,0,0,.06);overflow:hidden;}
+  .btn-pill{border-radius:999px;}
+  .vu-table thead th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#6c757d;background:#f8f9fa;white-space:nowrap;}
+  .stat{border:1px solid rgba(0,0,0,.08);border-radius:16px;background:#fff;padding:.9rem;height:100%;}
+  .stat .label{font-size:.78rem;color:#6c757d;font-weight:800;text-transform:uppercase;}
+  .stat .value{font-size:1.45rem;font-weight:950;line-height:1.1;}
+</style>
+
+<div class="vu-wrap">
+  <div class="vu-hero p-3 p-md-4 mb-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+      <div>
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+          <span class="vu-chip"><i class="bi bi-people"></i> Active Interns</span>
+          <span class="vu-chip"><i class="bi bi-buildings"></i> Placement Locations</span>
+        </div>
+        <div class="small" style="color:rgba(255,255,255,.86);">
+          Students currently on internship and the companies hosting them.
+        </div>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'coordinator_dashboard' %}" class="btn btn-light btn-sm btn-pill">
+          <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+        <a href="{% url 'coordinator_student_performance' %}" class="btn btn-outline-light btn-sm btn-pill">
+          <i class="bi bi-bar-chart-line me-1"></i> Performance
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="stat">
+        <div class="label">Active interns</div>
+        <div class="value text-danger">{{ total_active|default:0 }}</div>
+        <div class="text-muted small">Currently active placements</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat">
+        <div class="label">Host companies</div>
+        <div class="value">{{ active_companies|default:0 }}</div>
+        <div class="text-muted small">Companies with active interns</div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="stat">
+        <div class="label">Missing VU supervisor</div>
+        <div class="value {% if unassigned_count|default:0 > 0 %}text-danger{% else %}text-success{% endif %}">
+          {{ unassigned_count|default:0 }}
+        </div>
+        <div class="text-muted small">Need supervisor assignment</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="vu-card">
+    <div class="p-3 border-bottom">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-12 col-lg-7">
+          <label class="form-label small fw-semibold">Search</label>
+          <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Search student, reg no, company, district, supervisor">
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label small fw-semibold">VU supervisor</label>
+          <select name="supervisor" class="form-select">
+            <option value="">All</option>
+            <option value="assigned" {% if supervisor_filter == "assigned" %}selected{% endif %}>Assigned</option>
+            <option value="unassigned" {% if supervisor_filter == "unassigned" %}selected{% endif %}>Unassigned</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2 d-grid">
+          <button class="btn btn-outline-danger" type="submit">
+            <i class="bi bi-search me-1"></i> Filter
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if placements %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 vu-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Reg No</th>
+              <th>Company</th>
+              <th>District</th>
+              <th>Period</th>
+              <th>University Supervisor</th>
+              <th>Industry Supervisor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in placements %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ p.request.student.user.display_name|default:p.request.student.user.email }}</div>
+                  <div class="small text-muted">{{ p.request.student.user.email }}</div>
+                </td>
+                <td><span class="badge text-bg-light border rounded-pill">{{ p.request.student.reg_no }}</span></td>
+                <td>
+                  <div class="fw-semibold">{{ p.company.name }}</div>
+                  {% if p.company.address %}<div class="small text-muted">{{ p.company.address }}</div>{% endif %}
+                </td>
+                <td>{{ p.company.district|default:"-" }}</td>
+                <td class="small text-muted text-nowrap">{{ p.start_date }} to {{ p.end_date }}</td>
+                <td>
+                  {% if p.university_supervisor %}
+                    <div class="fw-semibold">
+                      {{ p.university_supervisor.user.display_name|default:p.university_supervisor.user.email }}
+                    </div>
+                    <div class="small text-muted">{{ p.university_supervisor.user.email }}</div>
+                  {% else %}
+                    <span class="badge text-bg-warning text-dark rounded-pill">Unassigned</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.industry_supervisor %}
+                    <div class="fw-semibold">{{ p.industry_supervisor.name }}</div>
+                    <div class="small text-muted">{{ p.industry_supervisor.email|default:p.industry_supervisor.phone }}</div>
+                  {% elif p.industry_supervisor_profiles %}
+                    {% for profile in p.industry_supervisor_profiles %}
+                      <div class="{% if not forloop.first %}mt-2{% endif %}">
+                        <div class="fw-semibold">
+                          {{ profile.user.display_name|default:profile.user.email }}
+                        </div>
+                        <div class="small text-muted">{{ profile.user.email }}</div>
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <span class="badge text-bg-secondary rounded-pill">Not assigned</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-people text-danger" style="font-size:2rem;"></i>
+        <div class="fw-bold mt-2">No active interns found</div>
+        <div class="text-muted small">Active placements will appear here after acceptance verification.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

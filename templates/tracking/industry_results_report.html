@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Industry Results Report - Victoria University{% endblock %}
+
+{% block content %}
+<style>
+  .vu-shell{max-width:1200px;margin:0 auto;}
+  .vu-hero{border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.06);padding:1rem;}
+  .vu-title{font-weight:900;color:#1f2937;}
+  .btn-pill{border-radius:999px;}
+  .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;}
+  .summary-card{border:1px solid rgba(0,0,0,.08);border-radius:16px;background:#fff;padding:.85rem;}
+  .summary-card .label{color:#6b7280;font-size:.78rem;font-weight:800;text-transform:uppercase;}
+  .summary-card .value{font-weight:950;font-size:1.35rem;line-height:1.1;}
+  .vu-card{border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff;box-shadow:0 10px 24px rgba(0,0,0,.06);overflow:hidden;}
+  .vu-table thead th{font-size:.8rem;text-transform:uppercase;color:#6b7280;background:#f8f9fa;white-space:nowrap;}
+  @media(max-width:767.98px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+
+<div class="vu-shell">
+  <div class="vu-hero mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+      <div>
+        <div class="vu-title fs-5">
+          <i class="bi bi-file-earmark-bar-graph text-danger me-1"></i>
+          Industry Results Report
+        </div>
+        <div class="text-muted small mt-1">
+          Company: <b>{{ company.name }}</b>
+          {% if report %}
+            &bull; Report Ref: <b>#{{ report.id }}</b>
+            &bull; Status: <b>{{ report.get_status_display }}</b>
+          {% else %}
+            &bull; Preview mode
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-start justify-content-md-end">
+        <a class="btn btn-light border btn-sm btn-pill" href="{% url 'industry_dashboard' %}">
+          <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+        <a class="btn btn-outline-danger btn-sm btn-pill" href="{% url 'industry_results_report_pdf' %}">
+          <i class="bi bi-filetype-pdf me-1"></i> Download PDF
+        </a>
+        {% if not report or report.status == "draft" %}
+          <form method="post" action="{% url 'industry_refresh_results_report' %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-outline-primary btn-sm btn-pill" type="submit">
+              <i class="bi bi-arrow-clockwise me-1"></i> Refresh Evaluations
+            </button>
+          </form>
+          <form method="post" action="{% url 'industry_submit_results_report' %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm btn-pill" type="submit" {% if not can_submit_report %}disabled{% endif %}>
+              <i class="bi bi-send-check me-1"></i> Submit to University Supervisor
+            </button>
+          </form>
+        {% else %}
+          <span class="badge text-bg-info align-self-center rounded-pill px-3">
+            <i class="bi bi-lock me-1"></i> Submitted
+          </span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="summary-grid mt-3">
+      <div class="summary-card">
+        <div class="label">Students</div>
+        <div class="value">{{ summary.total|default:0 }}</div>
+        <div class="text-muted small">Active placements</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Evaluated</div>
+        <div class="value text-success">{{ summary.complete|default:0 }}</div>
+        <div class="text-muted small">Submitted assessments</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Missing</div>
+        <div class="value {% if summary.incomplete|default:0 > 0 %}text-danger{% else %}text-success{% endif %}">
+          {{ summary.incomplete|default:0 }}
+        </div>
+        <div class="text-muted small">Required before submit</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">VU Supervisors</div>
+        <div class="value">{{ summary.assigned_university_supervisors|default:0 }}</div>
+        <div class="text-muted small">Will receive report</div>
+      </div>
+    </div>
+
+    {% if rows and summary.incomplete|default:0 > 0 and not report.status == "submitted" %}
+      <div class="alert alert-warning border-0 mt-3 mb-0">
+        <div class="fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i> Report not ready</div>
+        <div class="small text-muted mt-1">All active students must have a submitted industry evaluation before this report can be sent.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="vu-card">
+    <div class="p-3 border-bottom">
+      <div class="fw-bold">
+        <i class="bi bi-table text-danger me-1"></i> Student Assessment Snapshot
+      </div>
+      <div class="text-muted small">This is the report that will be sent to the assigned University Supervisor(s).</div>
+    </div>
+
+    {% if rows %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 vu-table">
+          <thead>
+            <tr>
+              <th>Reg No</th>
+              <th>Student</th>
+              <th>University Supervisor</th>
+              <th class="text-end">Industry /100</th>
+              <th class="text-end">Industry /10</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td class="fw-semibold">{{ r.reg_no }}</td>
+                <td>{{ r.name }}</td>
+                <td class="text-muted small">{{ r.university_supervisor_name }}</td>
+                <td class="text-end">
+                  {% if r.industry_100 is not None %}
+                    <span class="badge text-bg-success">{{ r.industry_100|floatformat:0 }}</span>
+                  {% else %}
+                    <span class="badge text-bg-light border">Missing</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if r.industry_10 is not None %}
+                    <span class="badge text-bg-dark">{{ r.industry_10|floatformat:1 }}</span>
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-danger" style="font-size:2rem;"></i>
+        <div class="fw-bold mt-2">No active students found</div>
+        <div class="text-muted small">Active company placements will appear here.</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

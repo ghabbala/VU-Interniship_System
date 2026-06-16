@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Companies - Victoria University{% endblock %}
+
+{% block content %}
+<style>
+  .vu-wrap{max-width:1180px;margin:0 auto;}
+  .vu-card{border:1px solid rgba(0,0,0,.08);border-radius:18px;background:#fff;box-shadow:0 12px 28px rgba(0,0,0,.06);overflow:hidden;}
+  .btn-pill{border-radius:999px;}
+  .vu-table thead th{font-size:.78rem;text-transform:uppercase;color:#6c757d;background:#f8f9fa;white-space:nowrap;}
+</style>
+
+<div class="vu-wrap">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="fw-bold mb-1">Companies</h3>
+      <div class="text-muted small">Manage organisations that can host VU internship students.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'coordinator_dashboard' %}" class="btn btn-light border btn-pill">
+        <i class="bi bi-arrow-left me-1"></i> Dashboard
+      </a>
+      <a href="{% url 'coordinator_company_create' %}" class="btn btn-danger btn-pill">
+        <i class="bi bi-building-add me-1"></i> Add Company
+      </a>
+    </div>
+  </div>
+
+  <div class="vu-card">
+    <div class="p-3 border-bottom">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-12 col-lg-7">
+          <label class="form-label small fw-semibold">Search</label>
+          <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Search company, district, contact, industry">
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label small fw-semibold">Status</label>
+          <select name="status" class="form-select">
+            <option value="">All statuses</option>
+            {% for value,label in status_choices %}
+              <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2 d-grid">
+          <button class="btn btn-outline-danger" type="submit">
+            <i class="bi bi-search me-1"></i> Filter
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if companies %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 vu-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Industry</th>
+              <th>District</th>
+              <th>Status</th>
+              <th>Contacts</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in companies %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ c.name }}</div>
+                  {% if c.address %}<div class="small text-muted">{{ c.address }}</div>{% endif %}
+                </td>
+                <td>{{ c.industry|default:"-" }}</td>
+                <td>{{ c.district|default:"-" }}</td>
+                <td>
+                  {% if c.status == "approved" %}
+                    <span class="badge text-bg-success rounded-pill">Approved</span>
+                  {% elif c.status == "pending_verification" %}
+                    <span class="badge text-bg-warning text-dark rounded-pill">Pending</span>
+                  {% elif c.status == "inactive" %}
+                    <span class="badge text-bg-secondary rounded-pill">Inactive</span>
+                  {% else %}
+                    <span class="badge text-bg-danger rounded-pill">{{ c.get_status_display }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge text-bg-light border rounded-pill">{{ c.contact_count }}</span>
+                </td>
+                <td class="small text-muted">{{ c.created_at|date:"Y-m-d" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-building text-danger" style="font-size:2rem;"></i>
+        <div class="fw-bold mt-2">No companies found</div>
+        <div class="text-muted small">Add the company before assigning or approving a student placement.</div>
+        <a href="{% url 'coordinator_company_create' %}" class="btn btn-danger btn-pill mt-3">
+          <i class="bi bi-building-add me-1"></i> Add Company
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

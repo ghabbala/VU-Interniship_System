@@ -1,139 +1,715 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block title %}Evaluate Intern — Industry Supervisor{% endblock %}
 
 {% block content %}
-<div class="row g-4">
-  <div class="col-12 col-lg-9">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-start gap-2">
-        <div>
-          <div class="fw-bold">Site Supervisor’s Evaluation</div>
-          <div class="text-muted small">
-            Student: <span class="fw-semibold text-dark">{{ placement.request.student.reg_no }}</span>
-            — {{ placement.request.student.user.display_name }}
+<link rel="stylesheet" href="{% static 'tracking/css/vu-my-request.css' %}">
+<link rel="stylesheet" href="{% static 'tracking/css/vu-evaluation.css' %}">
+
+<style>
+  /* ===================== STICKY HEADER + PANELS ===================== */
+
+  /* Sticky student particulars header */
+  .eval-hero-sticky{
+    position: sticky;
+    top: .75rem; /* if you have a fixed navbar, increase e.g. 4.25rem */
+    z-index: 30;
+    background: rgba(255,255,255,.90);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,.10);
+    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+  }
+
+  /* Sticky "About" card inside main column */
+  .about-sticky{
+    position: sticky;
+    top: calc(.75rem + 96px); /* below hero; adjust if your hero height differs */
+    z-index: 15;
+  }
+
+  /* Sticky sidebar cards */
+  .side-sticky{
+    position: sticky;
+    top: calc(.75rem + 96px);
+    z-index: 15;
+  }
+
+  /* Small screens: sticky panels can take too much space, so disable them */
+  @media (max-width: 991.98px){
+    .about-sticky, .side-sticky{ position: static; top: auto; }
+  }
+
+  /* ===================== SCORE SUMMARY ===================== */
+  .score-card{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius);
+    background: #fff;
+    overflow: hidden;
+  }
+  .score-head{
+    padding: .85rem 1rem;
+    background: rgba(179,0,0,.04);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  }
+  .score-title{
+    font-weight: 900;
+    display:flex; align-items:center; gap:.5rem;
+    color: var(--vu-dark);
+  }
+  .score-body{ padding: 1rem; }
+  .score-metric{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: .55rem .75rem;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    background: rgba(255,255,255,.90);
+    margin-bottom: .6rem;
+  }
+  .score-metric .k{ color: var(--vu-muted); font-weight: 800; }
+  .score-metric .v{ font-weight: 900; color: var(--vu-dark); }
+
+  .score-progress{
+    height: 10px;
+    background: rgba(0,0,0,.08);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .score-progress > div{
+    height: 100%;
+    width: 0%;
+    background: rgba(179,0,0,.60);
+    border-radius: 999px;
+    transition: width .2s ease;
+  }
+
+  /* ===================== CRITERIA UI (rating segmented) ===================== */
+  .crit-card{
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: var(--vu-radius);
+    background: #fff;
+    overflow: hidden;
+  }
+  .crit-head{
+    padding: .85rem 1rem;
+    background: rgba(179,0,0,.04);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem;
+  }
+  .crit-title{
+    font-weight: 900;
+    display:flex; align-items:center; gap:.55rem;
+    color: var(--vu-dark);
+  }
+  .crit-badge{
+    width: 28px; height: 28px;
+    border-radius: 10px;
+    display:grid; place-items:center;
+    background: rgba(179,0,0,.10);
+    border: 1px solid rgba(179,0,0,.18);
+    color: var(--vu-red-2);
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+  .crit-body{ padding: 1rem; }
+
+  .rating-row{
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: .5rem;
+  }
+  .rating-pill{
+    position: relative;
+    border: 1px solid rgba(0,0,0,.12);
+    border-radius: 14px;
+    padding: .55rem .5rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    background: #fff;
+    user-select: none;
+    min-height: 44px;
+  }
+  .rating-pill:hover{
+    border-color: rgba(179,0,0,.25);
+    box-shadow: 0 10px 22px rgba(0,0,0,.06);
+    transform: translateY(-1px);
+  }
+  .rating-pill input{
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .rating-pill .val{
+    font-weight: 900;
+    color: var(--vu-dark);
+    font-size: 1rem;
+  }
+  .rating-pill:has(input:checked){
+    border-color: rgba(179,0,0,.45);
+    box-shadow: 0 0 0 .25rem rgba(179,0,0,.12);
+    background: rgba(179,0,0,.04);
+  }
+
+  /* ===================== ACTION BAR ===================== */
+  .eval-actions{
+    position: sticky;
+    bottom: .75rem;
+    z-index: 20;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: var(--vu-radius);
+    box-shadow: 0 12px 30px rgba(0,0,0,.10);
+    padding: .85rem;
+    margin-top: 1rem;
+  }
+</style>
+
+<div class="vu-page">
+
+  <!-- ===================== HERO HEADER (STICKY) ===================== -->
+  <div class="eval-hero eval-hero-sticky mb-3" id="evalHero">
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+      <div>
+        <div class="title">
+          <span class="vu-dot"></span>
+          Site Supervisor’s Evaluation
+        </div>
+
+        <div class="eval-meta">
+          <span class="eval-pill">
+            <i class="bi bi-person-badge"></i>
+            {{ placement.request.student.user.display_name }}
+          </span>
+          <span class="eval-pill">
+            <i class="bi bi-hash"></i>
+            {{ placement.request.student.reg_no }}
+          </span>
+          <span class="eval-pill">
+            <i class="bi bi-building"></i>
+            {{ placement.company.name }}
+          </span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-light text-dark border px-3 py-2" style="border-radius:999px;">
+          {% if evaluation.status == "draft" %}
+            <i class="bi bi-pencil-square me-1" style="color: var(--vu-red-2);"></i> Draft
+          {% else %}
+            <i class="bi bi-check2-circle me-1" style="color: #198754;"></i> Submitted
+          {% endif %}
+        </span>
+
+        <a class="btn btn-light border" href="{% url 'company_pending_logs' %}">
+          <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ===================== MAIN ===================== -->
+    <div class="col-12 col-lg-9">
+
+      <div class="card vu-section">
+        <div class="vu-section-head">
+          <div class="vu-section-title">
+            <i class="bi bi-clipboard-check me-1" style="color: var(--vu-red-2);"></i>
+            Evaluation Form
           </div>
-          <div class="text-muted small">
-            Company: <span class="fw-semibold text-dark">{{ placement.company.name }}</span>
+          <span class="vu-chip">
+            <i class="bi bi-star-fill"></i> All ratings are required
+          </span>
+        </div>
+
+        <div class="vu-section-body">
+
+          <!-- ✅ Sticky About -->
+          <div class="about-sticky mb-3">
+            <div class="alert alert-light border small mb-0">
+              <div class="fw-semibold mb-1">
+                <i class="bi bi-info-circle me-1"></i> About this evaluation
+              </div>
+              <div class="text-muted" style="white-space: pre-line;">
+The purpose of this evaluation is to help students on internship to further develop their job performance.
+You are encouraged to discuss your responses with the student in a positive and objective manner, just as you would review job performance with your colleagues.
+This evaluation will assist in determining the student’s grade.
+Your assessment of the student’s learning experience, the attainment of goals, and the professional development achieved over the service period is valued.
+              </div>
+              <hr class="my-2">
+              <div class="text-muted">
+                Please grade the Intern with marks from <b>1</b> to <b>5</b> (5 = highest, 1 = lowest).
+              </div>
+            </div>
+          </div>
+
+          {% if form.errors %}
+            <div class="alert alert-danger">
+              <div class="fw-semibold"><i class="bi bi-x-circle me-1"></i> Please fix the highlighted errors</div>
+              <div class="small">Some required ratings/fields are missing.</div>
+            </div>
+          {% endif %}
+
+          <form method="post" novalidate id="evalForm">
+            {% csrf_token %}
+
+            <!-- ===================== CRITERIA (ALL) ===================== -->
+            <div class="d-flex flex-column gap-3">
+
+              {# 1..13 ratings + comments #}
+              {% with R=form.basic_work_expectations C=form.basic_work_expectations_comment N=1 L="Basic work expectations" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                    <div class="small text-muted d-none d-md-block">Choose one</div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.knowledge_and_learning C=form.knowledge_and_learning_comment N=2 L="Knowledge and ability to learn" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                    <div class="small text-muted d-none d-md-block">Choose one</div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.ethical_awareness C=form.ethical_awareness_comment N=3 L="Ethical awareness and conduct" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                    <div class="small text-muted d-none d-md-block">Choose one</div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.interpersonal_relations C=form.interpersonal_relations_comment N=4 L="Interpersonal Relations" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.communication_skills C=form.communication_skills_comment N=5 L="Communication skills" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.attendance C=form.attendance_comment N=6 L="Attendance" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.punctuality C=form.punctuality_comment N=7 L="Punctuality" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.flexibility C=form.flexibility_comment N=8 L="Flexibility" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.dependability C=form.dependability_comment N=9 L="Dependability" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.culture_fit C=form.culture_fit_comment N=10 L="Culture fit" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.dress_code C=form.dress_code_comment N=11 L="Dress code" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.behaviour C=form.behaviour_comment N=12 L="Behaviour" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+              {% with R=form.work_productivity C=form.work_productivity_comment N=13 L="Work productivity" %}
+                <div class="crit-card">
+                  <div class="crit-head">
+                    <div class="crit-title"><span class="crit-badge">{{ N }}</span><span>{{ L }} <span class="text-danger">*</span></span></div>
+                  </div>
+                  <div class="crit-body">
+                    <div class="rating-row mb-2">
+                      {% for r in R %}<label class="rating-pill">{{ r.tag }} <span class="val">{{ r.choice_label }}</span></label>{% endfor %}
+                    </div>
+                    {% if R.errors %}<div class="text-danger small mt-1">{{ R.errors }}</div>{% endif %}
+                    <div class="mt-3">
+                      <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                      {{ C }} {% if C.errors %}<div class="text-danger small mt-1">{{ C.errors }}</div>{% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endwith %}
+
+            </div>
+
+            <!-- ===================== RECOMMENDATION ===================== -->
+            <div class="crit-card mt-4">
+              <div class="crit-head">
+                <div class="crit-title">
+                  <span class="crit-badge"><i class="bi bi-briefcase"></i></span>
+                  <span>Employment Recommendation <span class="text-danger">*</span></span>
+                </div>
+              </div>
+              <div class="crit-body">
+                <div class="fw-semibold mb-2">Would you recommend this student for employment?</div>
+                <div class="mb-2">
+                  {{ form.recommend_employment }}
+                  {% if form.recommend_employment.errors %}<div class="text-danger small mt-1">{{ form.recommend_employment.errors }}</div>{% endif %}
+                </div>
+                <div class="small text-muted mb-1"><i class="bi bi-chat-left-text me-1"></i> Comment (optional)</div>
+                {{ form.recommend_comment }}
+                {% if form.recommend_comment.errors %}<div class="text-danger small mt-1">{{ form.recommend_comment.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- ===================== OTHER COMMENTS ===================== -->
+            <div class="crit-card mt-3">
+              <div class="crit-head">
+                <div class="crit-title">
+                  <span class="crit-badge"><i class="bi bi-lightbulb"></i></span>
+                  <span>Any other Comments/Suggestions</span>
+                </div>
+              </div>
+              <div class="crit-body">
+                {{ form.other_comments }}
+                {% if form.other_comments.errors %}<div class="text-danger small mt-1">{{ form.other_comments.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- ===================== SIGN OFF ===================== -->
+            <div class="crit-card mt-3">
+              <div class="crit-head">
+                <div class="crit-title">
+                  <span class="crit-badge"><i class="bi bi-pen"></i></span>
+                  <span>Supervisor sign-off <span class="text-danger">*</span></span>
+                </div>
+              </div>
+              <div class="crit-body">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold">Supervisor’s Name <span class="text-danger">*</span></label>
+                    {{ form.supervisor_name }}
+                    {% if form.supervisor_name.errors %}<div class="text-danger small mt-1">{{ form.supervisor_name.errors }}</div>{% endif %}
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold">Supervisor’s Signature (type name) <span class="text-danger">*</span></label>
+                    {{ form.supervisor_signature }}
+                    {% if form.supervisor_signature.errors %}<div class="text-danger small mt-1">{{ form.supervisor_signature.errors }}</div>{% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===================== ACTION BAR ===================== -->
+            <div class="eval-actions">
+              <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2">
+                <button class="btn btn-outline-secondary" name="action" value="save" type="submit">
+                  <i class="bi bi-save me-1"></i> Save Draft
+                </button>
+                <button class="btn btn-success" name="action" value="submit" type="submit">
+                  <i class="bi bi-check2-circle me-1"></i> Submit Evaluation
+                </button>
+                <a class="btn btn-light border ms-md-auto" href="{% url 'company_pending_logs' %}">
+                  <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+              </div>
+              <div class="small text-muted mt-2">
+                <i class="bi bi-shield-check me-1"></i>
+                All rating criteria and supervisor sign-off are required.
+              </div>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================== RIGHT SIDEBAR ===================== -->
+    <div class="col-12 col-lg-3">
+      <div class="side-sticky d-grid gap-3">
+
+        <!-- ✅ LIVE SCORE SUMMARY -->
+        <div class="score-card">
+          <div class="score-head">
+            <div class="score-title">
+              <i class="bi bi-calculator" style="color: var(--vu-red-2);"></i>
+              Score Summary
+            </div>
+            <span class="badge bg-light text-dark border" style="border-radius:999px;">
+              <span id="ratedCount">0</span>/13
+            </span>
+          </div>
+          <div class="score-body">
+            <div class="score-metric">
+              <div class="k">Total</div>
+              <div class="v"><span id="totalMarks">{{ evaluation.total_marks }}</span>/<span id="maxMarks">{{ evaluation.max_marks }}</span></div>
+            </div>
+            <div class="score-metric">
+              <div class="k">Out of 10</div>
+              <div class="v"><span id="score10">{{ evaluation.score_out_of_10|floatformat:1 }}</span>/10</div>
+            </div>
+            <div class="score-metric">
+              <div class="k">Percent</div>
+              <div class="v"><span id="score100">{{ evaluation.score_out_of_100|floatformat:1 }}</span>%</div>
+            </div>
+
+            <div class="score-progress mt-2">
+              <div id="scoreBar"></div>
+            </div>
+            <div class="small text-muted mt-2">
+              Updates live as you rate criteria.
+            </div>
           </div>
         </div>
 
-        <span class="badge text-bg-light border">
-          {% if evaluation.status == "draft" %}Draft{% else %}Submitted{% endif %}
-        </span>
-      </div>
-
-      <div class="card-body">
-        <div class="alert alert-light border small mb-3">
-            <div class="fw-semibold mb-1">
-                <i class="bi bi-info-circle me-1"></i> About this evaluation
-            </div>
-
-                <div class="text-muted" style="white-space: pre-line;">
-                    The purpose of this evaluation is to help students on internship to further develop their job performance.
-                    You are encouraged to discuss your responses with the student in a positive and objective manner, just as you would review job performance with your colleagues.
-                    This evaluation will assist in determining the student’s grade.
-                    Your assessment of the student’s learning experience, the attainment of goals, and the professional development achieved over the service period is valued.
-                </div>
-
-                <hr class="my-2">
-
-                <div>
-                    Please grade the Intern with marks from <b>1</b> to <b>5</b> (5 = highest, 1 = lowest).
-                </div>
-            </div>
-
-
-        {% if form.errors %}
-          <div class="alert alert-danger">
-            Please fix the highlighted errors.
-          </div>
-        {% endif %}
-
-        <form method="post" novalidate>
-          {% csrf_token %}
-
-          {# ✅ Render rating rows from `criteria` passed by the view #}
-          {% for field, label, comment_field in criteria %}
-            <div class="border rounded-4 p-3 mb-3 bg-white">
-              <div class="fw-semibold mb-2">{{ label }}</div>
-
-              <div class="d-flex flex-wrap gap-3 align-items-center">
-                {% for r in field %}
-                  <label class="form-check form-check-inline mb-0">
-                    {{ r.tag }}
-                    <span class="ms-1">{{ r.choice_label }}</span>
-                  </label>
-                {% endfor %}
-              </div>
-              {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
-
-              <div class="mt-2">
-                <div class="small text-muted mb-1">Comment (optional)</div>
-                {{ comment_field }}
-                {% if comment_field.errors %}<div class="text-danger small mt-1">{{ comment_field.errors }}</div>{% endif %}
-              </div>
-            </div>
-          {% endfor %}
-
-          <div class="border rounded-4 p-3 bg-white mb-3">
-            <div class="fw-semibold mb-2">Would you recommend this student for employment?</div>
-            <div class="mb-2">{{ form.recommend_employment }}</div>
-            <div class="small text-muted mb-1">Comment</div>
-            {{ form.recommend_comment }}
-            {% if form.recommend_employment.errors %}<div class="text-danger small mt-1">{{ form.recommend_employment.errors }}</div>{% endif %}
-            {% if form.recommend_comment.errors %}<div class="text-danger small mt-1">{{ form.recommend_comment.errors }}</div>{% endif %}
-          </div>
-
-          <div class="border rounded-4 p-3 bg-white mb-3">
-            <div class="fw-semibold mb-2">Any other comments / suggestions</div>
-            {{ form.other_comments }}
-            {% if form.other_comments.errors %}<div class="text-danger small mt-1">{{ form.other_comments.errors }}</div>{% endif %}
-          </div>
-
-          <div class="row g-3">
-            <div class="col-12 col-md-6">
-              <label class="form-label fw-semibold">Supervisor’s Name</label>
-              {{ form.supervisor_name }}
-              {% if form.supervisor_name.errors %}<div class="text-danger small mt-1">{{ form.supervisor_name.errors }}</div>{% endif %}
-            </div>
-
-            <div class="col-12 col-md-6">
-              <label class="form-label fw-semibold">Supervisor’s Signature (type name)</label>
-              {{ form.supervisor_signature }}
-              {% if form.supervisor_signature.errors %}<div class="text-danger small mt-1">{{ form.supervisor_signature.errors }}</div>{% endif %}
+        <!-- ✅ KEY (STICKY) -->
+        <div class="card vu-section">
+          <div class="vu-section-head">
+            <div class="vu-section-title">
+              <i class="bi bi-info-circle me-1" style="color: var(--vu-red-2);"></i> Key
             </div>
           </div>
-
-          <div class="d-flex flex-column flex-md-row gap-2 mt-4">
-            <button class="btn btn-outline-secondary" name="action" value="save" type="submit">
-              Save Draft
-            </button>
-            <button class="btn btn-success" name="action" value="submit" type="submit">
-              Submit Evaluation
-            </button>
-
-            <a class="btn btn-light border ms-md-auto" href="{% url 'company_pending_logs' %}">
-              Back
-            </a>
+          <div class="vu-section-body small text-muted">
+            <ul class="mb-0 key-list">
+              <li><b>1</b> = Unsatisfactory</li>
+              <li><b>2</b> = Below average</li>
+              <li><b>3</b> = Average / Good</li>
+              <li><b>4</b> = Very good</li>
+              <li><b>5</b> = Excellent</li>
+            </ul>
+            <hr class="my-3">
+            <div class="small">
+              <i class="bi bi-lightning-charge me-1" style="color: var(--vu-red-2);"></i>
+              Tip: Add comments only where necessary (strengths/concerns).
+            </div>
           </div>
-        </form>
+        </div>
+
       </div>
     </div>
-  </div>
 
-  <div class="col-12 col-lg-3">
-    <div class="card">
-      <div class="card-header fw-bold"><i class="bi bi-info-circle me-1"></i> Key</div>
-      <div class="card-body small text-muted">
-        <ul class="mb-0">
-          <li>1 = Unsatisfactory</li>
-          <li>2 = Below average</li>
-          <li>3 = Average / Good</li>
-          <li>4 = Very good</li>
-          <li>5 = Excellent</li>
-        </ul>
-      </div>
-    </div>
   </div>
 </div>
+
+<script>
+(function(){
+  // Score fields (13)
+  const scoreFieldNames = [
+    "basic_work_expectations",
+    "knowledge_and_learning",
+    "ethical_awareness",
+    "interpersonal_relations",
+    "communication_skills",
+    "attendance",
+    "punctuality",
+    "flexibility",
+    "dependability",
+    "culture_fit",
+    "dress_code",
+    "behaviour",
+    "work_productivity"
+  ];
+
+  // Find radio inputs for those fields
+  const radios = scoreFieldNames.flatMap(name => Array.from(document.querySelectorAll(`input[type="radio"][name="${name}"]`)));
+
+  const totalMarksEl = document.getElementById("totalMarks");
+  const maxMarksEl   = document.getElementById("maxMarks");
+  const score10El    = document.getElementById("score10");
+  const score100El   = document.getElementById("score100");
+  const scoreBarEl   = document.getElementById("scoreBar");
+  const ratedCountEl = document.getElementById("ratedCount");
+
+  const MAX = 13 * 5;
+
+  function calc(){
+    let total = 0;
+    let rated = 0;
+
+    for (const name of scoreFieldNames){
+      const checked = document.querySelector(`input[type="radio"][name="${name}"]:checked`);
+      if (checked){
+        rated += 1;
+        total += parseInt(checked.value || "0", 10);
+      }
+    }
+
+    const outOf10 = (total / MAX) * 10;
+    const outOf100 = (total / MAX) * 100;
+
+    if (totalMarksEl) totalMarksEl.textContent = total;
+    if (maxMarksEl) maxMarksEl.textContent = MAX;
+    if (score10El) score10El.textContent = isFinite(outOf10) ? outOf10.toFixed(1) : "0.0";
+    if (score100El) score100El.textContent = isFinite(outOf100) ? outOf100.toFixed(1) : "0.0";
+    if (ratedCountEl) ratedCountEl.textContent = rated;
+
+    if (scoreBarEl){
+      scoreBarEl.style.width = Math.min(100, Math.max(0, outOf100)) + "%";
+    }
+  }
+
+  radios.forEach(r => r.addEventListener("change", calc));
+  calc(); // initial
+})();
+</script>
+
 {% endblock %}

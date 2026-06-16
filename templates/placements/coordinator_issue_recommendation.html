@@ -90,9 +90,6 @@
 
     <hr class="my-3"/>
 
-    {# =========================
-       ACTIONS
-       ========================= #}
 
     {% if req.recommendation_letter %}
 
@@ -137,6 +134,9 @@
         <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
           <i class="bi bi-arrow-left me-1"></i> Back to Queue
         </a>
+        <a class="btn btn-light border" href="{% url 'coordinator_recommendation_settings' %}">
+          <i class="bi bi-stamp me-1"></i> Letter Settings
+        </a>
       </div>
 
       {% if not req.recommendation_approved %}
@@ -164,6 +164,9 @@
         </button>
         <a class="btn btn-outline-secondary" href="{% url 'coordinator_queue' %}">
           <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+        <a class="btn btn-light border" href="{% url 'coordinator_recommendation_settings' %}">
+          <i class="bi bi-stamp me-1"></i> Letter Settings
         </a>
       </form>
 
