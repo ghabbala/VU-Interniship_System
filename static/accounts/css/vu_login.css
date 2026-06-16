@@ -165,13 +165,32 @@ body{
 .sub{margin:0 0 22px;color:var(--muted);font-size:14px}
 
 .alert{
-  background:#fff1f2;
-  border:1px solid #fecdd3;
-  color:#9f1239;
+  background:#eefdf5;
+  border:1px solid #bbf7d0;
+  color:#166534;
   padding:12px 14px;
   border-radius:12px;
   margin-bottom:14px;
   font-size:14px;
+}
+
+.alert-error,
+.alert-danger{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#9f1239;
+}
+
+.alert-warning{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#92400e;
+}
+
+.alert-info{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
 }
 
 .field{margin-bottom:14px}
