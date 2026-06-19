@@ -17,6 +17,8 @@ urlpatterns = [
     path("student/logs/<int:log_id>/delete/", stu.student_log_delete, name="student_log_delete"),
 
     path("student/evaluation/", stu.student_evaluation_form, name="student_evaluation_form"),
+    path("student/internship-report/", stu.student_internship_report, name="student_internship_report"),
+    path("student/internship-report/<int:report_id>/download/", stu.student_internship_report_download, name="student_internship_report_download"),
     path("student/dashboard/", stu.student_dashboard, name="student_dashboard"),
 
     path("student/site-visits/", stu.student_site_visits, name="student_site_visits"),
@@ -63,8 +65,9 @@ urlpatterns = [
 
     path("supervisor/results/report/", uni.supervisor_results_report, name="supervisor_results_report"),
     path("supervisor/results/report/pdf/", uni.supervisor_results_report_pdf, name="supervisor_results_report_pdf"),
+    path("supervisor/results/report/refresh/", uni.supervisor_refresh_results_report, name="supervisor_refresh_results_report"),
     path("supervisor/results/report/submit/", uni.supervisor_submit_results_report, name="supervisor_submit_results_report"),
-    path("supervisor/results-report/refresh/", uni.supervisor_refresh_results_report, name="supervisor_refresh_results_report"),
+    path("supervisor/results-report/refresh/", uni.supervisor_refresh_results_report),
 
     path("supervisor/student-evaluations/", uni.supervisor_student_evaluations, name="supervisor_student_evaluations"),
     path("supervisor/student-evaluations/<int:evaluation_id>/", uni.supervisor_student_evaluation_detail, name="supervisor_student_evaluation_detail"),

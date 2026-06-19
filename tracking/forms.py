@@ -3,7 +3,7 @@ from django.forms import inlineformset_factory
 from .models import IndustryEvaluation
 from .models import WeeklyLog, WeeklyLogEntry, SiteVisit
 from .models import AcademicEvaluation
-from .models import StudentEvaluation
+from .models import StudentEvaluation, StudentInternshipReport
 
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -12,6 +12,8 @@ from .models import SiteVisit, SiteVisitReport
 
 MAX_WEEKLY_LOG_ATTACHMENTS = 5
 MAX_TOTAL_ATTACHMENT_SIZE = 20 * 1024 * 1024  # 20MB
+MAX_INTERNSHIP_REPORT_SIZE = 20 * 1024 * 1024  # 20MB
+ALLOWED_INTERNSHIP_REPORT_EXTENSIONS = {".pdf", ".doc", ".docx"}
 
 
 class MultipleFileInput(forms.ClearableFileInput):
@@ -348,6 +350,37 @@ class StudentEvaluationForm(forms.ModelForm):
             "q9": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
             "q10": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
+
+
+class StudentInternshipReportForm(forms.ModelForm):
+    class Meta:
+        model = StudentInternshipReport
+        fields = ["report_file", "note"]
+        widgets = {
+            "report_file": forms.ClearableFileInput(attrs={
+                "class": "form-control",
+                "accept": ".pdf,.doc,.docx",
+            }),
+            "note": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 4,
+                "placeholder": "Optional note to your university supervisor...",
+            }),
+        }
+
+    def clean_report_file(self):
+        report_file = self.cleaned_data.get("report_file")
+        if not report_file:
+            return report_file
+
+        if report_file.size > MAX_INTERNSHIP_REPORT_SIZE:
+            raise ValidationError("The internship report must be 20MB or smaller.")
+
+        name = (report_file.name or "").lower()
+        if not any(name.endswith(ext) for ext in ALLOWED_INTERNSHIP_REPORT_EXTENSIONS):
+            raise ValidationError("Upload a PDF, DOC, or DOCX internship report.")
+
+        return report_file
 
 
 

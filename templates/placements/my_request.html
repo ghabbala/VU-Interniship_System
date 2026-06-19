@@ -27,6 +27,8 @@
             <span class="badge text-bg-secondary vu-status"><i class="bi bi-pencil-square me-1"></i>Draft</span>
           {% elif req.status == "submitted" %}
             <span class="badge text-bg-primary vu-status"><i class="bi bi-send me-1"></i>Submitted</span>
+          {% elif req.status == "rejected" %}
+            <span class="badge text-bg-danger vu-status"><i class="bi bi-x-circle me-1"></i>Needs correction</span>
           {% elif req.status == "recommended" %}
             <span class="badge text-bg-warning vu-status"><i class="bi bi-patch-check me-1"></i>Recommended</span>
           {% elif req.status == "returned_for_acceptance" %}
@@ -79,6 +81,34 @@
         </div>
       {% endif %}
 
+      {% if req.status == "rejected" %}
+        <div class="alert alert-danger vu-alert d-flex flex-column flex-md-row align-items-start justify-content-between gap-3">
+          <div>
+            <div class="fw-semibold">
+              <i class="bi bi-chat-left-text me-1"></i> Request returned for correction
+            </div>
+            <div class="small mb-0">
+              {% if req.review_notes %}
+                {{ req.review_notes }}
+              {% else %}
+                Please update your internship request details and resubmit.
+              {% endif %}
+            </div>
+
+            {% if req.reviewed_at %}
+              <div class="small text-muted mt-1">
+                <i class="bi bi-clock me-1"></i>
+                Sent: {{ req.reviewed_at|date:"Y-m-d H:i" }}
+              </div>
+            {% endif %}
+          </div>
+
+          <a class="btn btn-danger btn-sm" href="#request-form">
+            <i class="bi bi-pencil-square me-1"></i> Update Request
+          </a>
+        </div>
+      {% endif %}
+
       <!-- ===================== UPDATES ===================== -->
       <div class="card vu-section mb-4">
         <div class="vu-section-head">
@@ -109,6 +139,13 @@
             <div class="alert alert-primary vu-alert mb-0">
               <div class="fw-semibold"><i class="bi bi-hourglass-split me-1"></i> Request submitted</div>
               <div class="small mb-0">Waiting for coordinator review. You’ll be notified once it is recommended.</div>
+            </div>
+          {% endif %}
+
+          {% if req.status == "rejected" %}
+            <div class="alert alert-danger vu-alert mb-0">
+              <div class="fw-semibold"><i class="bi bi-arrow-repeat me-1"></i> Please revise and resubmit</div>
+              <div class="small mb-0">The form below is open for editing. Submit again when your corrections are complete.</div>
             </div>
           {% endif %}
 
@@ -156,7 +193,7 @@
       </div>
 
       <!-- ===================== FORM (ONE MODERN MAIN CARD) ===================== -->
-      <div class="card vu-request-card">
+      <div class="card vu-request-card" id="request-form">
         <div class="vu-request-head">
           <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
             <div>
@@ -166,8 +203,10 @@
               </div>
               <div class="vu-sub">
                 Complete the steps below. You can save as draft anytime.
-                {% if req.status != "draft" %}
+                {% if not can_edit_request %}
                   <span class="badge bg-light text-dark border ms-2"><i class="bi bi-lock me-1"></i>Read-only after submission</span>
+                {% elif req.status == "rejected" %}
+                  <span class="badge bg-light text-danger border ms-2"><i class="bi bi-pencil-square me-1"></i>Corrections enabled</span>
                 {% endif %}
               </div>
             </div>
@@ -370,13 +409,14 @@
             <div class="vu-formbar mt-3">
               <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2">
                 <button class="btn btn-outline-secondary" type="submit" name="action" value="save"
-                  {% if req.status != "draft" %}disabled{% endif %}>
+                  {% if not can_edit_request %}disabled{% endif %}>
                   <i class="bi bi-save me-1"></i> Save Draft
                 </button>
 
                 <button class="btn btn-danger" type="submit" name="action" value="submit"
-                  {% if req.status != "draft" %}disabled{% endif %}>
-                  <i class="bi bi-send me-1"></i> Submit Request
+                  {% if not can_edit_request %}disabled{% endif %}>
+                  <i class="bi bi-send me-1"></i>
+                  {% if req.status == "rejected" %}Resubmit Request{% else %}Submit Request{% endif %}
                 </button>
 
                 <div class="ms-md-auto d-flex align-items-center gap-2">

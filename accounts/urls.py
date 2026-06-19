@@ -10,6 +10,12 @@ from .views import (
     industry_supervisor_account_create,
     industry_supervisor_account_deactivate,
     industry_supervisor_accounts,
+    system_admin_dashboard,
+    system_admin_settings,
+    system_admin_user_create,
+    system_admin_user_password,
+    system_admin_user_toggle_active,
+    system_admin_users,
 )
 
 urlpatterns = [
@@ -47,5 +53,11 @@ urlpatterns = [
         industry_supervisor_account_deactivate,
         name="industry_supervisor_account_deactivate",
     ),
+    path("system-admin/dashboard/", system_admin_dashboard, name="system_admin_dashboard"),
+    path("system-admin/users/", system_admin_users, name="system_admin_users"),
+    path("system-admin/users/new/", system_admin_user_create, name="system_admin_user_create"),
+    path("system-admin/users/<int:user_id>/password/", system_admin_user_password, name="system_admin_user_password"),
+    path("system-admin/users/<int:user_id>/toggle-active/", system_admin_user_toggle_active, name="system_admin_user_toggle_active"),
+    path("system-admin/settings/", system_admin_settings, name="system_admin_settings"),
     path("dashboard/", dashboard_redirect, name="dashboard"),
 ]

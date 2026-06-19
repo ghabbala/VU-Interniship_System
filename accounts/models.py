@@ -39,6 +39,7 @@ class User(AbstractUser):
 
     class Meta:
         permissions = [
+            ("role_system_admin", "Role: System Admin"),
             ("role_university_supervisor", "Role: VU_UniversitySupervisor"),
             ("role_industry_supervisor", "Role: IndustrySupervisor"),
             ("role_coordinator", "Role: VU_Coordinator"),
@@ -129,3 +130,30 @@ class PasswordResetOTP(models.Model):
     def mark_used(self):
         self.used_at = timezone.now()
         self.save(update_fields=["used_at"])
+
+
+class AccountActionLog(models.Model):
+    actor = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="account_actions_performed",
+    )
+    target_user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="account_actions_received",
+    )
+    action = models.CharField(max_length=80)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        target = self.target_user.email if self.target_user else "unknown"
+        return f"{self.action} - {target}"

@@ -14,9 +14,11 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views import View
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 
 from .forms import (
     EmailAuthenticationForm,
@@ -24,8 +26,10 @@ from .forms import (
     OTPPasswordResetConfirmForm,
     PasswordResetRequestForm,
     StudentRegistrationForm,
+    SystemAdminAccountForm,
+    SystemAdminPasswordResetForm,
 )
-from .models import IndustrySupervisorProfile, PasswordResetOTP, StudentProfile
+from .models import AccountActionLog, IndustrySupervisorProfile, PasswordResetOTP, StaffProfile, StudentProfile
 from companies.models import CompanyContact
 
 
@@ -58,6 +62,12 @@ def is_coordinator(user):
     )
 
 
+def is_system_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.has_perm("accounts.role_system_admin")
+    )
+
+
 def coordinator_required(view_func):
     @login_required
     def _wrapped(request, *args, **kwargs):
@@ -65,6 +75,74 @@ def coordinator_required(view_func):
             return HttpResponseForbidden("VU_Coordinators only.")
         return view_func(request, *args, **kwargs)
     return _wrapped
+
+
+def system_admin_required(view_func):
+    @login_required
+    def _wrapped(request, *args, **kwargs):
+        if not is_system_admin(request.user):
+            return HttpResponseForbidden("System Admins only.")
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+
+ROLE_CONFIG = {
+    "system_admin": {
+        "permission": "role_system_admin",
+        "group": "SystemAdmin",
+        "label": "System Admin",
+    },
+    "coordinator": {
+        "permission": "role_coordinator",
+        "group": "Coordinator",
+        "label": "Coordinator",
+    },
+    "university_supervisor": {
+        "permission": "role_university_supervisor",
+        "group": "UniversitySupervisor",
+        "label": "University Supervisor",
+    },
+    "industry_supervisor": {
+        "permission": "role_industry_supervisor",
+        "group": "IndustrySupervisor",
+        "label": "Industry Supervisor",
+    },
+}
+
+
+def _role_for_user(user):
+    if user.has_perm("accounts.role_system_admin"):
+        return "System Admin"
+    if user.has_perm("accounts.role_coordinator"):
+        return "Coordinator"
+    if user.has_perm("accounts.role_university_supervisor"):
+        return "University Supervisor"
+    if user.has_perm("accounts.role_industry_supervisor"):
+        return "Industry Supervisor"
+    if hasattr(user, "student_profile"):
+        return "Student"
+    return "Unassigned"
+
+
+def _assign_role(user, role):
+    config = ROLE_CONFIG[role]
+    permission = Permission.objects.get(
+        content_type__app_label="accounts",
+        codename=config["permission"],
+    )
+    group, _ = Group.objects.get_or_create(name=config["group"])
+    group.permissions.add(permission)
+    user.user_permissions.add(permission)
+    user.groups.add(group)
+
+
+def _log_account_action(actor, target_user, action, note=""):
+    AccountActionLog.objects.create(
+        actor=actor,
+        target_user=target_user,
+        action=action,
+        note=note,
+    )
 
 
 class EmailLoginView(LoginView):
@@ -207,9 +285,16 @@ def industry_supervisor_accounts(request):
 @coordinator_required
 def industry_supervisor_account_create(request):
     generated_password = None
+    next_url = request.POST.get("next") or request.GET.get("next") or ""
+    if next_url and not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = ""
+    allow_without_current_placement = (request.POST.get("allow_pending_placement") or request.GET.get("allow_pending_placement")) == "1"
 
     if request.method == "POST":
-        form = IndustrySupervisorAccountForm(request.POST)
+        form = IndustrySupervisorAccountForm(
+            request.POST,
+            allow_without_current_placement=allow_without_current_placement,
+        )
         if form.is_valid():
             data = form.cleaned_data
             user = User.objects.filter(email__iexact=data["email"]).first()
@@ -235,6 +320,8 @@ def industry_supervisor_account_create(request):
                 codename="role_industry_supervisor",
             )
             user.user_permissions.add(permission)
+            group, _ = Group.objects.get_or_create(name="IndustrySupervisor")
+            user.groups.add(group)
 
             IndustrySupervisorProfile.objects.update_or_create(
                 user=user,
@@ -273,13 +360,24 @@ def industry_supervisor_account_create(request):
                     "Account created, but the email could not be sent. Check SMTP settings.",
                 )
 
+            if next_url:
+                return redirect(next_url)
             return redirect("industry_supervisor_accounts")
     else:
-        form = IndustrySupervisorAccountForm()
+        initial = {}
+        company_id = request.GET.get("company") or request.GET.get("company_id")
+        if company_id:
+            initial["company"] = company_id
+        form = IndustrySupervisorAccountForm(
+            initial=initial,
+            allow_without_current_placement=allow_without_current_placement,
+        )
 
     return render(request, "accounts/industry_supervisor_account_form.html", {
         "form": form,
         "generated_password": generated_password,
+        "next": next_url,
+        "allow_pending_placement": allow_without_current_placement,
     })
 
 
@@ -295,9 +393,190 @@ def industry_supervisor_account_deactivate(request, user_id):
     return redirect("industry_supervisor_accounts")
 
 
+@system_admin_required
+def system_admin_dashboard(request):
+    users = User.objects.filter(is_superuser=False)
+    recent_actions = AccountActionLog.objects.select_related("actor", "target_user")[:8]
+    context = {
+        "total_users": users.count(),
+        "active_users": users.filter(is_active=True).count(),
+        "inactive_users": users.filter(is_active=False).count(),
+        "coordinators": users.filter(user_permissions__codename="role_coordinator").distinct().count(),
+        "university_supervisors": users.filter(user_permissions__codename="role_university_supervisor").distinct().count(),
+        "industry_supervisors": users.filter(user_permissions__codename="role_industry_supervisor").distinct().count(),
+        "system_admins": users.filter(user_permissions__codename="role_system_admin").distinct().count(),
+        "recent_actions": recent_actions,
+    }
+    return render(request, "dashboards/system_admin_dashboard.html", context)
+
+
+@system_admin_required
+def system_admin_users(request):
+    query = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    users = (
+        User.objects
+        .filter(is_superuser=False)
+        .prefetch_related("groups", "user_permissions")
+        .select_related("staff_profile", "industry_profile", "student_profile")
+        .order_by("first_name", "last_name", "email")
+    )
+
+    if query:
+        users = users.filter(
+            Q(email__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(staff_profile__staff_no__icontains=query)
+            | Q(student_profile__reg_no__icontains=query)
+            | Q(industry_profile__company__name__icontains=query)
+        ).distinct()
+
+    if status == "active":
+        users = users.filter(is_active=True)
+    elif status == "inactive":
+        users = users.filter(is_active=False)
+
+    rows = [{"user": user, "role": _role_for_user(user)} for user in users]
+    return render(request, "accounts/system_admin_users.html", {
+        "rows": rows,
+        "query": query,
+        "status": status,
+    })
+
+
+@system_admin_required
+def system_admin_user_create(request):
+    generated_password = None
+    created_or_updated_user = None
+
+    if request.method == "POST":
+        form = SystemAdminAccountForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            role = data["role"]
+            user = User.objects.filter(email__iexact=data["email"]).first()
+            created = user is None
+
+            if created:
+                generated_password = secrets.token_urlsafe(10)
+                user = User.objects.create_user(
+                    email=data["email"],
+                    password=generated_password,
+                    first_name=data["first_name"],
+                    last_name=data["last_name"],
+                    is_active=True,
+                )
+            else:
+                user.first_name = data["first_name"]
+                user.last_name = data["last_name"]
+                user.is_active = True
+                user.save(update_fields=["first_name", "last_name", "is_active"])
+
+            _assign_role(user, role)
+
+            if role in ["coordinator", "university_supervisor"]:
+                StaffProfile.objects.update_or_create(
+                    user=user,
+                    defaults={
+                        "staff_no": data["staff_no"],
+                        "department": data.get("department", ""),
+                        "phone": data.get("phone", ""),
+                    },
+                )
+
+            if role == "industry_supervisor":
+                IndustrySupervisorProfile.objects.update_or_create(
+                    user=user,
+                    defaults={"company": data["company"]},
+                )
+                CompanyContact.objects.update_or_create(
+                    email=data["email"],
+                    defaults={
+                        "company": data["company"],
+                        "name": f"{data['first_name']} {data['last_name']}".strip(),
+                        "title": data.get("title", ""),
+                        "phone": data.get("phone", ""),
+                    },
+                )
+
+            created_or_updated_user = user
+            action = "created account" if created else "updated account"
+            _log_account_action(
+                request.user,
+                user,
+                action,
+                f"{ROLE_CONFIG[role]['label']} account via System Admin portal.",
+            )
+            messages.success(request, f"{ROLE_CONFIG[role]['label']} account saved for {user.email}.")
+            if not generated_password:
+                return redirect("system_admin_users")
+    else:
+        form = SystemAdminAccountForm()
+
+    return render(request, "accounts/system_admin_user_form.html", {
+        "form": form,
+        "generated_password": generated_password,
+        "created_or_updated_user": created_or_updated_user,
+    })
+
+
+@system_admin_required
+def system_admin_user_password(request, user_id):
+    user = get_object_or_404(User, id=user_id, is_superuser=False)
+    generated_password = None
+
+    if request.method == "POST":
+        form = SystemAdminPasswordResetForm(request.POST)
+        if form.is_valid():
+            generated_password = form.cleaned_data["temporary_password"] or secrets.token_urlsafe(10)
+            user.set_password(generated_password)
+            update_fields = ["password"]
+            if form.cleaned_data.get("force_active"):
+                user.is_active = True
+                update_fields.append("is_active")
+            user.save(update_fields=update_fields)
+            _log_account_action(request.user, user, "reset password", "Temporary password set by System Admin.")
+            messages.success(request, f"Temporary password set for {user.email}.")
+    else:
+        form = SystemAdminPasswordResetForm()
+
+    return render(request, "accounts/system_admin_password_form.html", {
+        "target_user": user,
+        "form": form,
+        "generated_password": generated_password,
+    })
+
+
+@system_admin_required
+def system_admin_user_toggle_active(request, user_id):
+    if request.method != "POST":
+        return redirect("system_admin_users")
+
+    user = get_object_or_404(User, id=user_id, is_superuser=False)
+    if user.id == request.user.id:
+        messages.error(request, "You cannot deactivate your own account.")
+        return redirect("system_admin_users")
+
+    user.is_active = not user.is_active
+    user.save(update_fields=["is_active"])
+    action = "activated account" if user.is_active else "deactivated account"
+    _log_account_action(request.user, user, action)
+    messages.success(request, f"{user.email} has been {'activated' if user.is_active else 'deactivated'}.")
+    return redirect("system_admin_users")
+
+
+@system_admin_required
+def system_admin_settings(request):
+    return render(request, "accounts/system_admin_settings.html")
+
+
 @login_required
 def dashboard_redirect(request):
     u = request.user
+
+    if is_system_admin(u):
+        return redirect("system_admin_dashboard")
 
     if is_coordinator(u):
         return redirect("coordinator_dashboard")

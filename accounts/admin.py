@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django import forms
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
 from .models import User, StudentProfile, StaffProfile, IndustrySupervisorProfile
@@ -57,8 +59,64 @@ class UserAdmin(DjangoUserAdmin):
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = ("reg_no", "user", "phone")
-    search_fields = ("reg_no", "user__email", "user__first_name", "user__last_name")
+    list_display = (
+        "reg_no",
+        "student_identity",
+        "program_name",
+        "faculty_name",
+        "phone_display",
+        "account_status",
+    )
+    list_filter = (
+        "user__is_active",
+        "program__department__faculty",
+        "program__department",
+        "program",
+    )
+    search_fields = (
+        "reg_no",
+        "phone",
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "program__name",
+        "program__department__name",
+        "program__department__faculty__name",
+    )
+    list_select_related = ("user", "program", "program__department", "program__department__faculty")
+    ordering = ("reg_no",)
+    list_per_page = 25
+    autocomplete_fields = ("user", "program")
+
+    @admin.display(description="Student", ordering="user__first_name")
+    def student_identity(self, obj):
+        name = obj.user.get_full_name() or obj.user.email
+        return format_html(
+            '<div class="vu-admin-person"><span class="name">{}</span><span class="email">{}</span></div>',
+            name,
+            obj.user.email,
+        )
+
+    @admin.display(description="Program", ordering="program__name")
+    def program_name(self, obj):
+        if not obj.program:
+            return mark_safe('<span class="vu-admin-muted">Not assigned</span>')
+        return format_html('<span class="vu-admin-badge">{}</span>', obj.program.name)
+
+    @admin.display(description="Faculty", ordering="program__department__faculty__name")
+    def faculty_name(self, obj):
+        if not obj.program or not obj.program.department:
+            return mark_safe('<span class="vu-admin-muted">-</span>')
+        faculty = getattr(obj.program.department, "faculty", None)
+        return faculty.name if faculty else "-"
+
+    @admin.display(description="Phone")
+    def phone_display(self, obj):
+        return obj.phone or "-"
+
+    @admin.display(description="Status", boolean=True, ordering="user__is_active")
+    def account_status(self, obj):
+        return obj.user.is_active
 
 
 @admin.register(StaffProfile)

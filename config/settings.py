@@ -272,4 +272,5 @@ JAZZMIN_SETTINGS = {
 
     # Show UI builder (lets you tweak layout in the admin UI)
     "show_ui_builder": True,
+    "custom_css": "admin/css/vu_admin.css",
 }

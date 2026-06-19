@@ -3,7 +3,7 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.db.models import Case, When, IntegerField, Value
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseForbidden
 from django.urls import reverse
@@ -186,7 +186,14 @@ def _extract_academic_rows_and_total(academic_eval):
 # -----------------------------
 def build_results_rows(supervisor_user, staff):
     from placements.models import Placement
-    from tracking.models import IndustryEvaluation, AcademicEvaluation
+    from tracking.models import (
+        AcademicEvaluation,
+        IndustryEvaluation,
+        SiteVisit,
+        StudentEvaluation,
+        StudentInternshipReport,
+        WeeklyLog,
+    )
 
     placements = (
         Placement.objects
@@ -208,21 +215,82 @@ def build_results_rows(supervisor_user, staff):
             supervisor_user=supervisor_user
         )
     }
+    log_counts = {
+        row["placement_id"]: row
+        for row in WeeklyLog.objects.filter(placement__in=placements)
+        .values("placement_id")
+        .annotate(
+            total_logs=Count("id"),
+            approved_logs=Count("id", filter=Q(status="approved_by_company")),
+            submitted_logs=Count("id", filter=Q(status="submitted")),
+            returned_logs=Count("id", filter=Q(status="returned_for_edit")),
+        )
+    }
+    visit_counts = {
+        row["placement_id"]: row
+        for row in SiteVisit.objects.filter(placement__in=placements)
+        .values("placement_id")
+        .annotate(
+            total_visits=Count("id"),
+            completed_visits=Count("id", filter=Q(status="completed")),
+        )
+    }
+    student_eval_map = {
+        e.placement_id: e
+        for e in StudentEvaluation.objects.filter(placement__in=placements, status="submitted")
+    }
+    student_report_map = {
+        r.placement_id: r
+        for r in StudentInternshipReport.objects.filter(placement__in=placements, status="submitted")
+    }
 
     rows = []
     for p in placements:
         ind = ind_map.get(p.id)
         ac = ac_map.get(p.id)
+        logs = log_counts.get(p.id, {})
+        visits = visit_counts.get(p.id, {})
 
         ind100 = float(ind.score_out_of_100) if ind else None
         ac100 = float(ac.score_out_of_100) if ac else None
         avg100 = (ind100 + ac100) / 2.0 if (ind100 is not None and ac100 is not None) else None
+        required_weeks = max(((p.end_date - p.start_date).days // 7) + 1, 1) if p.start_date and p.end_date else 0
+        approved_logs = int(logs.get("approved_logs") or 0)
+        log_progress = round(min((approved_logs / required_weeks) * 100, 100), 0) if required_weeks else 0
+        missing_items = []
+        if ind100 is None:
+            missing_items.append("industry marks")
+        if ac100 is None:
+            missing_items.append("academic marks")
+        if approved_logs < required_weeks:
+            missing_items.append("approved weekly logs")
+        if not int(visits.get("completed_visits") or 0):
+            missing_items.append("site visit")
+        if p.end_date and p.end_date <= timezone.localdate() and p.id not in student_eval_map:
+            missing_items.append("student feedback")
+        if p.id not in student_report_map:
+            missing_items.append("internship report")
 
         rows.append({
             "placement_id": p.id,
             "reg_no": p.request.student.reg_no,
             "name": p.request.student.user.display_name,
             "company": p.company.name,
+            "placement_status": p.get_status_display(),
+            "start_date": p.start_date.isoformat() if p.start_date else "",
+            "end_date": p.end_date.isoformat() if p.end_date else "",
+            "days_remaining": max((p.end_date - timezone.localdate()).days, 0) if p.end_date else None,
+            "required_weeks": required_weeks,
+            "total_logs": int(logs.get("total_logs") or 0),
+            "approved_logs": approved_logs,
+            "submitted_logs": int(logs.get("submitted_logs") or 0),
+            "returned_logs": int(logs.get("returned_logs") or 0),
+            "log_progress": log_progress,
+            "total_visits": int(visits.get("total_visits") or 0),
+            "completed_visits": int(visits.get("completed_visits") or 0),
+            "student_feedback_submitted": p.id in student_eval_map,
+            "student_report_submitted": p.id in student_report_map,
+            "missing_items": missing_items,
             "industry_100": ind100,
             "academic_100": ac100,
             "average_100": avg100,

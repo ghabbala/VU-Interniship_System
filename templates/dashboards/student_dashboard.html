@@ -569,6 +569,49 @@
             </div>
           </div>
 
+          <!-- Internship Report -->
+          <div class="col-12 col-sm-6 col-xl-4">
+            <div class="kpi">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="label">Internship Report</div>
+                  <div class="value fs-5">
+                    {% if internship_report %}
+                      <span class="text-success">Submitted</span>
+                    {% elif placement and placement.status == "active" %}
+                      <span class="text-primary">Required</span>
+                    {% else %}
+                      <span class="text-muted">Locked</span>
+                    {% endif %}
+                  </div>
+                  <div class="small text-muted">
+                    {% if internship_report %}
+                      Sent {{ internship_report.submitted_at|date:"Y-m-d H:i" }}
+                    {% else %}
+                      Submit to your university supervisor
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="icon"><i class="bi bi-file-earmark-arrow-up"></i></div>
+              </div>
+
+              {% if placement and placement.status == "active" %}
+                <a href="{% url 'student_internship_report' %}" class="btn btn-outline-primary btn-sm w-100 mt-3">
+                  {% if internship_report %}Replace Report{% else %}Upload Report{% endif %}
+                </a>
+                {% if internship_report %}
+                  <a href="{% url 'student_internship_report_download' internship_report.id %}" class="btn btn-light border btn-sm w-100 mt-2">
+                    Download Submitted Report
+                  </a>
+                {% endif %}
+              {% else %}
+                <button class="btn btn-outline-secondary btn-sm w-100 mt-3" disabled>
+                  <i class="bi bi-lock me-1"></i> Requires Active Placement
+                </button>
+              {% endif %}
+            </div>
+          </div>
+
           <!-- Today + Tip -->
           <div class="col-12 col-xl-4">
             <div class="kpi">
@@ -654,6 +697,17 @@
           </button>
         {% endif %}
 
+        {% if placement and placement.status == "active" %}
+          <a class="btn btn-outline-primary" href="{% url 'student_internship_report' %}">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i>
+            {% if internship_report %}Replace Internship Report{% else %}Upload Internship Report{% endif %}
+          </a>
+        {% else %}
+          <button class="btn btn-outline-secondary" disabled>
+            <i class="bi bi-lock me-1"></i> Internship Report (Locked)
+          </button>
+        {% endif %}
+
       </div>
     </div>
 
@@ -669,6 +723,7 @@
           <li><b>Upload acceptance letter only after recommendation letter is issued.</b></li>
           <li>Fill weekly logs Mon–Fri and submit for company approval.</li>
           <li>Confirm scheduled site visits quickly when notified.</li>
+          <li>Upload your final internship report for university supervisor review.</li>
           <li>Complete the student evaluation form at the end of internship.</li>
         </ul>
       </div>

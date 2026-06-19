@@ -598,6 +598,34 @@ class StudentEvaluation(models.Model):
         return f"StudentEvaluation({self.placement_id}, {self.student_user})"
 
 
+class StudentInternshipReport(models.Model):
+    STATUS_CHOICES = [
+        ("submitted", "Submitted"),
+    ]
+
+    placement = models.OneToOneField(
+        Placement,
+        on_delete=models.CASCADE,
+        related_name="student_internship_report",
+    )
+    student_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="internship_reports",
+    )
+    report_file = models.FileField(upload_to="tracking/student_reports/")
+    note = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="submitted")
+    submitted_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-submitted_at", "-updated_at"]
+
+    def __str__(self):
+        return f"Internship report: {self.placement_id} ({self.student_user})"
+
+
 
 class Notification(models.Model):
     LEVELS = [

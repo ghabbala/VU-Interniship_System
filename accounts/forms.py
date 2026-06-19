@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 from academics.models import Program
 from companies.models import Company
-from .models import IndustrySupervisorProfile, PasswordResetOTP
+from .models import IndustrySupervisorProfile, PasswordResetOTP, StaffProfile
 User = get_user_model()
 
 
@@ -141,6 +141,10 @@ class IndustrySupervisorAccountForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
 
+    def __init__(self, *args, allow_without_current_placement=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.allow_without_current_placement = allow_without_current_placement
+
     def clean_email(self):
         email = User.objects.normalize_email(self.cleaned_data["email"])
         existing = User.objects.filter(email__iexact=email).first()
@@ -150,6 +154,9 @@ class IndustrySupervisorAccountForm(forms.Form):
 
     def clean_company(self):
         company = self.cleaned_data["company"]
+        if self.allow_without_current_placement:
+            return company
+
         from placements.models import Placement
         from django.utils import timezone
 
@@ -163,3 +170,89 @@ class IndustrySupervisorAccountForm(forms.Form):
                 "This company has no current or upcoming active placement. Create the account after placement activation."
             )
         return company
+
+
+class SystemAdminAccountForm(forms.Form):
+    ROLE_CHOICES = [
+        ("system_admin", "System Admin"),
+        ("coordinator", "Coordinator"),
+        ("university_supervisor", "University Supervisor"),
+        ("industry_supervisor", "Industry Supervisor"),
+    ]
+
+    role = forms.ChoiceField(choices=ROLE_CHOICES, widget=forms.Select(attrs={"class": "form-select"}))
+    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"class": "form-control"}))
+    last_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"class": "form-control"}))
+    email = forms.EmailField(widget=forms.EmailInput(attrs={"class": "form-control", "autocomplete": "email"}))
+    phone = forms.CharField(max_length=40, required=False, widget=forms.TextInput(attrs={"class": "form-control"}))
+
+    staff_no = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Required for staff roles"}),
+    )
+    department = forms.CharField(
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    company = forms.ModelChoiceField(
+        queryset=Company.objects.filter(status="approved").order_by("name"),
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    title = forms.CharField(
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Industry supervisor title"}),
+    )
+
+    def clean_email(self):
+        return User.objects.normalize_email(self.cleaned_data["email"])
+
+    def clean(self):
+        cleaned = super().clean()
+        role = cleaned.get("role")
+        email = cleaned.get("email")
+        user = User.objects.filter(email__iexact=email).first() if email else None
+
+        if user and user.is_superuser:
+            raise forms.ValidationError("Superuser accounts cannot be managed from the System Admin portal.")
+        if user and hasattr(user, "student_profile"):
+            raise forms.ValidationError("Student accounts cannot be converted into staff or admin accounts here.")
+        if user and role in ["coordinator", "university_supervisor"] and hasattr(user, "industry_profile"):
+            raise forms.ValidationError("Industry supervisor accounts cannot be converted into staff accounts here.")
+        if user and role == "industry_supervisor" and hasattr(user, "staff_profile"):
+            raise forms.ValidationError("Staff accounts cannot be converted into industry supervisor accounts here.")
+
+        if role in ["coordinator", "university_supervisor"]:
+            staff_no = (cleaned.get("staff_no") or "").strip()
+            if not staff_no:
+                self.add_error("staff_no", "Staff number is required for this role.")
+            existing_staff = StaffProfile.objects.filter(staff_no__iexact=staff_no).first() if staff_no else None
+            if existing_staff and (not user or existing_staff.user_id != user.id):
+                self.add_error("staff_no", "This staff number is already assigned to another account.")
+
+        if role == "industry_supervisor" and not cleaned.get("company"):
+            self.add_error("company", "Company is required for industry supervisors.")
+
+        return cleaned
+
+
+class SystemAdminPasswordResetForm(forms.Form):
+    temporary_password = forms.CharField(
+        required=False,
+        min_length=8,
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Leave blank to generate automatically",
+        }),
+        help_text="Use a temporary password and ask the user to change it after login.",
+    )
+
+    force_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Activate account",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )

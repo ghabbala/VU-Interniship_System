@@ -241,6 +241,74 @@
             </div>
           {% endif %}
 
+          {% if not req.preferred_company and req.proposed_company_name %}
+            <div class="vu-alert warning">
+              <div class="fw-semibold">
+                <i class="bi bi-building-add me-1"></i> Add proposed company before verification
+              </div>
+              <div class="small muted mb-2">
+                This student used Option B. Add the proposed company to the system, then return here to verify the acceptance letter and assign a university supervisor.
+              </div>
+              <div class="kv mb-3">
+                <div class="k">Name</div>
+                <div class="v">{{ req.proposed_company_name }}</div>
+
+                <div class="k">District</div>
+                <div class="v">{{ req.proposed_company_district|default:"-" }}</div>
+
+                <div class="k">Address</div>
+                <div class="v">{{ req.proposed_company_address|default:"-" }}</div>
+
+                <div class="k">Contact</div>
+                <div class="v">{{ req.proposed_company_contact|default:"-" }}</div>
+              </div>
+              {% if add_company_url %}
+                <a class="btn btn-danger btn-pill" href="{{ add_company_url }}">
+                  <i class="bi bi-building-add me-1"></i> Add This Company
+                </a>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% if req.preferred_company %}
+            <div class="section">
+              <div class="label">
+                <i class="bi bi-person-workspace text-danger"></i> Industry Supervisor Account
+              </div>
+
+              {% if industry_supervisors %}
+                <div class="small muted mb-2">
+                  Active industry supervisor account(s) linked to {{ req.preferred_company.name }}.
+                </div>
+                <div class="d-grid gap-2">
+                  {% for profile in industry_supervisors %}
+                    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 border rounded-3 p-2">
+                      <div>
+                        <div class="fw-semibold">{{ profile.user.get_full_name|default:profile.user.display_name }}</div>
+                        <div class="small muted">{{ profile.user.email }}</div>
+                      </div>
+                      <span class="badge text-bg-success badge-pill">IndustrySupervisor</span>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="vu-alert warning mb-0">
+                  <div class="fw-semibold">
+                    <i class="bi bi-exclamation-triangle me-1"></i> No industry supervisor account found
+                  </div>
+                  <div class="small muted mb-2">
+                    Create an IndustrySupervisor account for this company. The system will email login credentials to the supervisor.
+                  </div>
+                  {% if industry_supervisor_create_url %}
+                    <a class="btn btn-danger btn-pill" href="{{ industry_supervisor_create_url }}">
+                      <i class="bi bi-person-plus me-1"></i> Create Industry Supervisor Account
+                    </a>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+
           <!-- Errors -->
           {% if form.errors %}
             <div class="vu-alert danger">
@@ -293,7 +361,7 @@
               <div class="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2">
                 <button class="btn btn-success btn-pill"
                         type="submit"
-                        {% if not req.acceptance_letter %}disabled{% endif %}>
+                        {% if not req.acceptance_letter or not req.preferred_company %}disabled{% endif %}>
                   <i class="bi bi-check2-circle me-1"></i> Verify & Activate Placement
                 </button>
 
@@ -309,6 +377,10 @@
               {% if not req.acceptance_letter %}
                 <div class="hint mt-2">
                   Verification is disabled until the student uploads an acceptance letter.
+                </div>
+              {% elif not req.preferred_company %}
+                <div class="hint mt-2">
+                  Add the proposed company into the system before activating this placement.
                 </div>
               {% else %}
                 <div class="hint mt-2">

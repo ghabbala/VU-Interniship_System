@@ -12,7 +12,7 @@ from django.db import transaction
 from .forms import RecommendationLetterForm, AcceptanceLetterUploadForm, VerifyAcceptanceAssignSupervisorForm
 from companies.models import Company
 from .models import Placement
-from accounts.models import StaffProfile
+from accounts.models import IndustrySupervisorProfile, StaffProfile
 
 from .models import InternshipRequest
 from django.http import FileResponse, Http404, HttpResponseForbidden
@@ -26,6 +26,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponseForbidden
 from django.urls import reverse
 from django.utils import timezone
+from urllib.parse import urlencode
 
 
 
@@ -37,8 +38,59 @@ def is_coordinator(user):
 
 def is_vu_coordinator(user):
     return user.is_authenticated and (
-        user.is_superuser or user.has_perm("accounts.role_coordinator")
+        user.is_superuser
+        or user.has_perm("accounts.role_coordinator")
+        or user.has_perm("accounts.role_system_admin")
     )
+
+
+def _is_coordinator_or_system_admin(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.has_perm("accounts.role_coordinator")
+        or user.has_perm("accounts.role_system_admin")
+    )
+
+
+def _ensure_company_for_request(req):
+    company = req.preferred_company
+    if company:
+        return company
+
+    proposed_name = (req.proposed_company_name or "").strip()
+    if not proposed_name:
+        return None
+
+    company, created = Company.objects.get_or_create(
+        name=proposed_name,
+        defaults={
+            "district": req.proposed_company_district,
+            "address": req.proposed_company_address,
+            "status": "approved",
+        },
+    )
+    if not created and company.status != "approved":
+        company.status = "approved"
+        company.save(update_fields=["status"])
+
+    req.preferred_company = company
+    req.save(update_fields=["preferred_company"])
+    return company
+
+
+def _request_is_editable(req):
+    return req.status in ["draft", "rejected"]
+
+
+def _company_primary_industry_contact(company):
+    if not company:
+        return None
+
+    supervisor_emails = IndustrySupervisorProfile.objects.filter(
+        company=company,
+        user__is_active=True,
+    ).values_list("user__email", flat=True)
+    return company.contacts.filter(email__in=supervisor_emails).order_by("id").first()
 
 
 
@@ -90,7 +142,12 @@ def my_request(request):
                     return render(
                         request,
                         "placements/my_request.html",
-                        {"form": form, "req": req, "period": period},
+                        {
+                            "form": form,
+                            "req": req,
+                            "period": period,
+                            "can_edit_request": _request_is_editable(req),
+                        },
                     )
 
                 # ✅ mark submitted
@@ -113,15 +170,25 @@ def my_request(request):
 
             else:
                 # Save draft
-                if req.status not in ["returned_for_edit"]:
+                if _request_is_editable(req):
                     req.status = "draft"
+
+            if action == "submit" and req.status == "recommendation_pending":
+                req.review_notes = ""
+                req.reviewed_by = None
+                req.reviewed_at = None
 
             req.save()
             return redirect("my_request")
     else:
         form = InternshipRequestForm(instance=req)
 
-    return render(request, "placements/my_request.html", {"form": form, "req": req, "period": period})
+    return render(request, "placements/my_request.html", {
+        "form": form,
+        "req": req,
+        "period": period,
+        "can_edit_request": _request_is_editable(req),
+    })
 
 @login_required
 def submit_request(request):
@@ -158,7 +225,7 @@ def submit_request(request):
 
 @login_required
 def coordinator_queue(request):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     qs = (
@@ -272,7 +339,7 @@ def coordinator_recommendation_settings(request):
 
 @login_required
 def coordinator_review(request, request_id):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     req = get_object_or_404(InternshipRequest, id=request_id)
@@ -294,21 +361,10 @@ def coordinator_review(request, request_id):
             req.save(update_fields=["status", "review_notes", "reviewed_by", "reviewed_at"])
 
         elif action == "approve_and_create_placement":
-            # 1) Ensure company exists (create if student proposed)
-            company = req.preferred_company
+            # 1) Ensure company exists and is linked to the request.
+            company = _ensure_company_for_request(req)
             if not company:
-                proposed_name = (req.proposed_company_name or "").strip()
-                if not proposed_name:
-                    return HttpResponseForbidden("No company provided for this request.")
-
-                company, _ = Company.objects.get_or_create(
-                    name=proposed_name,
-                    defaults={
-                        "district": req.proposed_company_district,
-                        "address": req.proposed_company_address,
-                        "status": "approved",  # change to "pending_verification" if needed
-                    },
-                )
+                return HttpResponseForbidden("No company provided for this request.")
 
             # 2) Generate the official PDF with the current stamp/settings
             filename, content = generate_recommendation_letter_pdf(req, request.user)
@@ -358,7 +414,7 @@ def coordinator_review(request, request_id):
 
 @login_required
 def coordinator_issue_recommendation(request, request_id):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     req = get_object_or_404(InternshipRequest, id=request_id)
@@ -398,6 +454,10 @@ def coordinator_issue_recommendation(request, request_id):
         # 2) Approve / Issue to student
         # -----------------------------
         if action == "approve":
+            company = _ensure_company_for_request(req)
+            if not company:
+                return HttpResponseForbidden("No company provided for this request.")
+
             # Generate the official PDF with the current stamp/settings before release.
             filename, content = generate_recommendation_letter_pdf(req, request.user)
             req.recommendation_letter.save(filename, content, save=False)
@@ -572,13 +632,46 @@ def student_upload_acceptance(request):
 @login_required
 @transaction.atomic
 def coordinator_verify_acceptance_and_assign(request, request_id):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     req = get_object_or_404(InternshipRequest, id=request_id)
 
     if req.status != "acceptance_uploaded":
         return render(request, "placements/verify_not_allowed.html", {"req": req})
+
+    add_company_url = ""
+    if not req.preferred_company and (req.proposed_company_name or "").strip():
+        add_company_url = "{}?{}".format(
+            reverse("coordinator_company_create"),
+            urlencode({
+                "request_id": req.id,
+                "name": req.proposed_company_name,
+                "district": req.proposed_company_district,
+                "address": req.proposed_company_address,
+                "contact_phone": req.proposed_company_contact,
+                "status": "approved",
+                "next": request.get_full_path(),
+            }),
+        )
+
+    industry_supervisors = IndustrySupervisorProfile.objects.none()
+    industry_supervisor_create_url = ""
+    if req.preferred_company:
+        industry_supervisors = (
+            IndustrySupervisorProfile.objects
+            .select_related("user", "company")
+            .filter(company=req.preferred_company, user__is_active=True)
+            .order_by("user__first_name", "user__last_name", "user__email")
+        )
+        industry_supervisor_create_url = "{}?{}".format(
+            reverse("industry_supervisor_account_create"),
+            urlencode({
+                "company": req.preferred_company_id,
+                "allow_pending_placement": "1",
+                "next": request.get_full_path(),
+            }),
+        )
 
     if request.method == "POST":
         form = VerifyAcceptanceAssignSupervisorForm(request.POST, request_period=req.period)
@@ -587,10 +680,17 @@ def coordinator_verify_acceptance_and_assign(request, request_id):
             start_date = form.cleaned_data["placement_start_date"]
             end_date = form.cleaned_data["placement_end_date"]
 
-            # ensure company exists
+            # ensure company exists and is linked to the request
             company = req.preferred_company
             if not company:
-                return HttpResponseForbidden("No company attached to this request.")
+                form.add_error(None, "Add the proposed company into the system before verifying this acceptance letter.")
+                return render(request, "placements/coordinator_verify_acceptance.html", {
+                    "req": req,
+                    "form": form,
+                    "add_company_url": add_company_url,
+                    "industry_supervisors": industry_supervisors,
+                    "industry_supervisor_create_url": industry_supervisor_create_url,
+                })
 
             # mark verified
             req.acceptance_verified = True
@@ -605,6 +705,7 @@ def coordinator_verify_acceptance_and_assign(request, request_id):
                 request=req,
                 defaults={
                     "company": company,
+                    "industry_supervisor": _company_primary_industry_contact(company),
                     "university_supervisor": supervisor,
                     "start_date": start_date,
                     "end_date": end_date,
@@ -614,6 +715,8 @@ def coordinator_verify_acceptance_and_assign(request, request_id):
 
             # if existed, update supervisor + activate
             placement.company = company
+            if not placement.industry_supervisor:
+                placement.industry_supervisor = _company_primary_industry_contact(company)
             placement.university_supervisor = supervisor
             placement.start_date = start_date
             placement.end_date = end_date
@@ -624,12 +727,18 @@ def coordinator_verify_acceptance_and_assign(request, request_id):
     else:
         form = VerifyAcceptanceAssignSupervisorForm(request_period=req.period)
 
-    return render(request, "placements/coordinator_verify_acceptance.html", {"req": req, "form": form})
+    return render(request, "placements/coordinator_verify_acceptance.html", {
+        "req": req,
+        "form": form,
+        "add_company_url": add_company_url,
+        "industry_supervisors": industry_supervisors,
+        "industry_supervisor_create_url": industry_supervisor_create_url,
+    })
 
 
 @login_required
 def coordinator_acceptance_queue(request):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     qs = InternshipRequest.objects.filter(status="acceptance_uploaded").order_by("-acceptance_uploaded_at")
@@ -698,7 +807,7 @@ from .forms import CoordinatorAcceptanceCommentForm
 
 @login_required
 def coordinator_return_for_acceptance(request, request_id):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     req = get_object_or_404(InternshipRequest, id=request_id)
@@ -727,7 +836,7 @@ def coordinator_return_for_acceptance(request, request_id):
 
 @login_required
 def coordinator_waiting_acceptance_queue(request):
-    if not (request.user.is_superuser or request.user.has_perm("accounts.role_coordinator")):
+    if not _is_coordinator_or_system_admin(request.user):
         return HttpResponseForbidden("VU_Coordinators only.")
 
     qs = InternshipRequest.objects.filter(

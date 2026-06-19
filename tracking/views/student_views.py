@@ -9,13 +9,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from tracking.forms import WeeklyLogForm, WeeklyLogEntryFormSet, StudentEvaluationForm
+from tracking.forms import (
+    StudentInternshipReportForm,
+    WeeklyLogForm,
+    WeeklyLogEntryFormSet,
+    StudentEvaluationForm,
+)
 from tracking.models import (
     AcademicEvaluation,
     IndustryEvaluation,
     SiteVisit,
     SiteVisitReport,
     StudentEvaluation,
+    StudentInternshipReport,
     WeeklyLog,
     WeeklyLogAttachment,
     WeeklyLogEntry,
@@ -24,7 +30,7 @@ from tracking.models import (
 from .common import (
     DAYS, DAY_ORDER,
     _get_student_active_placement, _get_student_latest_placement,
-    ensure_dashboard_notification, get_notification_context, resolve_dashboard_notification,
+    ensure_dashboard_notification, get_notification_context, notify, resolve_dashboard_notification,
 )
 from placements.models import InternshipRequest
 from django.http import FileResponse, Http404
@@ -415,6 +421,82 @@ def student_evaluation_form(request):
         "form": form,
         "student_program": student_program,
     })
+
+
+@login_required
+def student_internship_report(request):
+    if not hasattr(request.user, "student_profile"):
+        return HttpResponseForbidden("Students only.")
+
+    placement = _get_student_active_placement(request.user) or _get_student_latest_placement(request.user)
+    if not placement:
+        return render(request, "tracking/no_active_placement.html")
+
+    report = StudentInternshipReport.objects.filter(
+        placement=placement,
+        student_user=request.user,
+    ).first()
+
+    if request.method == "POST":
+        form = StudentInternshipReportForm(request.POST, request.FILES, instance=report)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.placement = placement
+            report.student_user = request.user
+            report.status = "submitted"
+            report.submitted_at = timezone.now()
+            report.save()
+
+            supervisor_user = getattr(getattr(placement, "university_supervisor", None), "user", None)
+            if supervisor_user:
+                student_name = getattr(request.user, "display_name", "") or request.user.get_username()
+                notify(
+                    supervisor_user,
+                    title="Internship report submitted",
+                    message=f"{student_name} submitted an internship report for review.",
+                    level="info",
+                    action_url=reverse("supervisor_students"),
+                    action_text="View Students",
+                )
+
+            messages.success(request, "Internship report submitted to your university supervisor.")
+            return redirect("student_dashboard")
+    else:
+        form = StudentInternshipReportForm(instance=report)
+
+    return render(request, "tracking/student_internship_report_form.html", {
+        "placement": placement,
+        "report": report,
+        "form": form,
+    })
+
+
+@login_required
+def student_internship_report_download(request, report_id):
+    report = get_object_or_404(
+        StudentInternshipReport.objects.select_related(
+            "placement",
+            "placement__university_supervisor__user",
+            "student_user",
+        ),
+        id=report_id,
+    )
+
+    is_owner = report.student_user_id == request.user.id
+    supervisor_user = getattr(getattr(report.placement, "university_supervisor", None), "user", None)
+    is_assigned_supervisor = supervisor_user and supervisor_user.id == request.user.id
+
+    if not (is_owner or is_assigned_supervisor):
+        return HttpResponseForbidden("You are not allowed to access this report.")
+
+    if not report.report_file:
+        raise Http404("Report file not found.")
+
+    return FileResponse(
+        report.report_file.open("rb"),
+        as_attachment=True,
+        filename=report.report_file.name.rsplit("/", 1)[-1],
+    )
 # -------------------------------------------------------------------
 # STUDENT DASHBOARD
 # -------------------------------------------------------------------
@@ -439,6 +521,7 @@ def student_dashboard(request):
         "student:site_visit_confirm",
         "student:site_visit_upcoming",
         "student:evaluation_due",
+        "student:internship_report_due",
     ]
     active_notification_keys = set()
 
@@ -472,6 +555,7 @@ def student_dashboard(request):
 
     placement = _get_student_active_placement(request.user)
     student_marks = _student_marks_context(placement)
+    internship_report = None
 
     # =========================================================
     # CASE 1: No active placement yet (still show request stages)
@@ -503,12 +587,17 @@ def student_dashboard(request):
 
             # 2) Rejected
             elif s in ["rejected", "declined"]:
+                rejection_note = (latest_req.review_notes or "").strip()
+                rejection_message = "Your internship request was rejected. Please update your details and resubmit."
+                if rejection_note:
+                    rejection_message = f"{rejection_message} Coordinator comment: {rejection_note}"
+
                 notify_hint("student:request_rejected",
                     level="danger",
                     title="Request rejected",
-                    message="Your internship request was rejected. Please update your details and resubmit.",
+                    message=rejection_message,
                     action_text="Update & Resubmit",
-                    action_url=reverse("submit_request"),
+                    action_url=reverse("my_request"),
                 )
 
             # ✅ 3) Letter generated but awaiting coordinator approval
@@ -583,6 +672,7 @@ def student_dashboard(request):
             "pending_company_logs": 0,
             "returned_logs": 0,
             "approved_logs": 0,
+            "internship_report": internship_report,
         })
 
     # =========================================================
@@ -593,6 +683,10 @@ def student_dashboard(request):
     pending_company = student_log_qs.filter(status="submitted").count()
     returned_for_edit = student_log_qs.filter(status="returned_for_edit").count()
     approved_by_company = student_log_qs.filter(status="approved_by_company").count()
+    internship_report = StudentInternshipReport.objects.filter(
+        placement=placement,
+        student_user=request.user,
+    ).first()
 
     if returned_for_edit:
         notify_hint("student:logs_returned",
@@ -651,6 +745,15 @@ def student_dashboard(request):
     )
 
     if placement.status == "active":
+        if not internship_report:
+            notify_hint("student:internship_report_due",
+                level="secondary",
+                title="Internship report",
+                message="Upload and submit your internship report to your university supervisor.",
+                action_text="Upload Report",
+                action_url=reverse("student_internship_report"),
+            )
+
         ev = StudentEvaluation.objects.filter(
             placement=placement,
             student_user=request.user
@@ -678,6 +781,7 @@ def student_dashboard(request):
         "pending_company_logs": pending_company,
         "returned_logs": returned_for_edit,
         "approved_logs": approved_by_company,
+        "internship_report": internship_report,
     })
 
 @login_required

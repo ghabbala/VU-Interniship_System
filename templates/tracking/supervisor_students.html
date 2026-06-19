@@ -188,6 +188,7 @@
                   <th>Reg No</th>
                   <th>Company</th>
                   <th>Status</th>
+                  <th>Report</th>
                   <th class="text-end pe-3">Actions</th>
                 </tr>
               </thead>
@@ -235,6 +236,25 @@
                         <span class="badge rounded-pill text-bg-primary px-3">Completed</span>
                       {% else %}
                         <span class="badge rounded-pill text-bg-secondary px-3">{{ p.status }}</span>
+                      {% endif %}
+                    </td>
+
+                    <td>
+                      {% if p.internship_report %}
+                        <div class="small fw-semibold text-success">
+                          <i class="bi bi-check-circle me-1"></i> Submitted
+                        </div>
+                        <div class="small text-muted">
+                          {{ p.internship_report.submitted_at|date:"Y-m-d H:i" }}
+                        </div>
+                        <a class="btn btn-outline-primary btn-sm mt-1"
+                           href="{% url 'student_internship_report_download' p.internship_report.id %}">
+                          <i class="bi bi-download me-1"></i> Download
+                        </a>
+                      {% else %}
+                        <span class="badge text-bg-light border text-muted">
+                          <i class="bi bi-hourglass-split me-1"></i> Pending
+                        </span>
                       {% endif %}
                     </td>
 

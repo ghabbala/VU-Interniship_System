@@ -19,7 +19,7 @@ from tracking.forms import AcademicEvaluationForm, SiteVisitScheduleForm, SiteVi
 from tracking.models import (
     WeeklyLog, WeeklyLogEntry, SiteVisit, SiteVisitReport,
     IndustryEvaluation, AcademicEvaluation, SupervisorResultsReport, IndustrySupervisorResultsReport,
-    StudentEvaluation, Notification
+    StudentEvaluation, StudentInternshipReport, Notification
 )
 
 from .common import (
@@ -67,10 +67,15 @@ def supervisor_students(request):
             e.placement_id: e
             for e in AcademicEvaluation.objects.filter(placement__in=placements, supervisor_user=u)
         }
+        report_map = {
+            r.placement_id: r
+            for r in StudentInternshipReport.objects.filter(placement__in=placements, status="submitted")
+        }
 
         for p in placements:
             ind = ind_map.get(p.id)
             ac = ac_map.get(p.id)
+            p.internship_report = report_map.get(p.id)
 
             # Industry score
             if ind:
@@ -387,12 +392,27 @@ def _results_report_summary(rows):
     academic_complete = sum(1 for r in rows if r.get("academic_100") is not None)
     complete = sum(1 for r in rows if r.get("average_100") is not None)
     incomplete = max(total - complete, 0)
+    logs_ready = sum(
+        1 for r in rows
+        if int(r.get("required_weeks") or 0) > 0
+        and int(r.get("approved_logs") or 0) >= int(r.get("required_weeks") or 0)
+    )
+    site_visits_done = sum(1 for r in rows if int(r.get("completed_visits") or 0) > 0)
+    student_feedback_done = sum(1 for r in rows if r.get("student_feedback_submitted"))
+    average_progress = round(
+        sum(float(r.get("log_progress") or 0) for r in rows) / total,
+        0,
+    ) if total else 0
     return {
         "total": total,
         "industry_complete": industry_complete,
         "academic_complete": academic_complete,
         "complete": complete,
         "incomplete": incomplete,
+        "logs_ready": logs_ready,
+        "site_visits_done": site_visits_done,
+        "student_feedback_done": student_feedback_done,
+        "average_log_progress": average_progress,
         "ready": total > 0 and incomplete == 0,
     }
 
@@ -435,19 +455,28 @@ def supervisor_results_report(request):
         return HttpResponseForbidden("Staff profile not set.")
 
     latest_report = _get_supervisor_working_report(request.user)
+    live_rows = build_results_rows(request.user, staff)
 
     if latest_report:
         rows = latest_report.rows or []
     else:
-        rows = build_results_rows(request.user, staff)
+        rows = live_rows
 
     report_summary = _results_report_summary(rows)
+    live_report_summary = _results_report_summary(live_rows)
+    report_has_live_updates = bool(
+        latest_report
+        and latest_report.status in ["draft", "needs_changes"]
+        and (latest_report.rows or []) != live_rows
+    )
 
     return render(request, "tracking/supervisor_results_report.html", {
         "rows": rows,
         "count": len(rows),
         "latest_report": latest_report,
         "report_summary": report_summary,
+        "live_report_summary": live_report_summary,
+        "report_has_live_updates": report_has_live_updates,
         "can_submit_report": report_summary["ready"] and (
             not latest_report or latest_report.status in ["draft", "needs_changes"]
         ),

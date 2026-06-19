@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Submit Internship Report{% endblock %}
+
+{% block content %}
+<style>
+  .vu-shell{max-width:920px;margin:0 auto;}
+  .vu-card{
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:1rem;
+    overflow:hidden;
+    background:#fff;
+    box-shadow:0 12px 28px rgba(0,0,0,.06);
+  }
+  .vu-head{
+    background:linear-gradient(135deg, rgba(179,0,0,.08), rgba(255,255,255,0));
+    border-bottom:1px solid rgba(0,0,0,.08);
+    padding:1rem;
+  }
+  .vu-upload{
+    border:1px dashed rgba(179,0,0,.35);
+    border-radius:1rem;
+    padding:1rem;
+    background:rgba(179,0,0,.035);
+  }
+</style>
+
+<div class="vu-shell">
+  <div class="vu-card">
+    <div class="vu-head d-flex flex-column flex-md-row justify-content-between gap-2">
+      <div>
+        <div class="fw-bold fs-5">
+          <i class="bi bi-file-earmark-arrow-up text-danger me-1"></i>
+          Internship Report
+        </div>
+        <div class="small text-muted">
+          Submit your final internship report to your university supervisor.
+        </div>
+      </div>
+      <a href="{% url 'student_dashboard' %}" class="btn btn-light border btn-sm align-self-start">
+        <i class="bi bi-arrow-left me-1"></i> Dashboard
+      </a>
+    </div>
+
+    <div class="card-body p-3 p-md-4">
+      {% if placement %}
+        <div class="alert alert-light border d-flex flex-column flex-md-row justify-content-between gap-2">
+          <div>
+            <div class="fw-semibold">{{ placement.company.name }}</div>
+            <div class="small text-muted">
+              {{ placement.start_date }} to {{ placement.end_date }}
+            </div>
+          </div>
+          <span class="badge text-bg-secondary align-self-start">{{ placement.get_status_display }}</span>
+        </div>
+      {% endif %}
+
+      {% if report %}
+        <div class="alert alert-success border-0">
+          <div class="fw-semibold">
+            <i class="bi bi-check-circle me-1"></i> Report submitted
+          </div>
+          <div class="small mt-1">
+            Submitted: {{ report.submitted_at|date:"Y-m-d H:i" }}
+            {% if report.report_file %}
+              <span class="text-muted"> | </span>
+              <a href="{% url 'student_internship_report_download' report.id %}">Download current report</a>
+            {% endif %}
+          </div>
+          <div class="small text-muted mt-1">
+            Uploading a new file will replace the current submission and notify your university supervisor again.
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="vu-upload mb-3">
+          <label class="form-label fw-semibold" for="{{ form.report_file.id_for_label }}">
+            Report file
+          </label>
+          {{ form.report_file }}
+          {% if form.report_file.errors %}
+            <div class="text-danger small mt-1">{{ form.report_file.errors }}</div>
+          {% endif %}
+          <div class="small text-muted mt-2">
+            Accepted formats: PDF, DOC, DOCX. Maximum size: 20MB.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="{{ form.note.id_for_label }}">
+            Note to supervisor
+          </label>
+          {{ form.note }}
+          {% if form.note.errors %}
+            <div class="text-danger small mt-1">{{ form.note.errors }}</div>
+          {% endif %}
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+          <a href="{% url 'student_dashboard' %}" class="btn btn-light border">Cancel</a>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-send-check me-1"></i> Submit Report
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

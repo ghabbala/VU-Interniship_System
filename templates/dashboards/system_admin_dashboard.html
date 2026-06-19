@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}System Admin Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  .sa-shell{max-width:1220px;margin:0 auto;}
+  .sa-head{border:1px solid rgba(0,0,0,.08);border-radius:8px;background:#fff;padding:1rem;box-shadow:0 8px 20px rgba(0,0,0,.045);}
+  .sa-title{font-weight:900;letter-spacing:.1px;margin:0;}
+  .sa-sub{color:rgba(0,0,0,.62);font-size:.9rem;}
+  .sa-card{border:1px solid rgba(0,0,0,.08);border-radius:8px;background:#fff;box-shadow:0 8px 20px rgba(0,0,0,.045);overflow:hidden;}
+  .sa-card-head{padding:.85rem 1rem;border-bottom:1px solid rgba(0,0,0,.08);font-weight:850;background:#fff;}
+  .sa-kpi{border:1px solid rgba(0,0,0,.08);border-radius:8px;background:#fff;padding:.9rem;height:100%;}
+  .sa-kpi .label{color:rgba(0,0,0,.62);font-size:.78rem;font-weight:800;text-transform:uppercase;}
+  .sa-kpi .value{font-weight:950;font-size:1.55rem;line-height:1.1;margin-top:.2rem;}
+  .sa-action{display:flex;align-items:center;justify-content:space-between;gap:1rem;border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:.85rem;text-decoration:none;color:inherit;background:#fff;}
+  .sa-action:hover{border-color:rgba(179,0,0,.28);background:rgba(179,0,0,.035);color:inherit;}
+  .sa-action .icon{width:38px;height:38px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(179,0,0,.08);color:#b30000;flex:0 0 auto;}
+  .sa-activity{display:flex;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid rgba(0,0,0,.06);}
+  .sa-activity:last-child{border-bottom:0;}
+  .sa-dot{width:9px;height:9px;border-radius:50%;background:#b30000;margin-top:.38rem;box-shadow:0 0 0 4px rgba(179,0,0,.09);flex:0 0 auto;}
+</style>
+
+<div class="sa-shell">
+  <div class="sa-head mb-3">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3">
+      <div>
+        <h4 class="sa-title"><i class="bi bi-shield-lock text-danger me-1"></i> System Admin Dashboard</h4>
+        <div class="sa-sub mt-1">Manage operational accounts, password recovery, and core settings without using the superuser account.</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'system_admin_user_create' %}" class="btn btn-danger btn-sm">
+          <i class="bi bi-person-plus me-1"></i> Create Account
+        </a>
+        <a href="{% url 'system_admin_users' %}" class="btn btn-light border btn-sm">
+          <i class="bi bi-people me-1"></i> Users
+        </a>
+        <a href="{% url 'system_admin_settings' %}" class="btn btn-light border btn-sm">
+          <i class="bi bi-gear me-1"></i> Settings
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="sa-kpi"><div class="label">Total Users</div><div class="value">{{ total_users }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="sa-kpi"><div class="label">Active</div><div class="value text-success">{{ active_users }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="sa-kpi"><div class="label">Inactive</div><div class="value text-danger">{{ inactive_users }}</div></div></div>
+    <div class="col-6 col-lg-3"><div class="sa-kpi"><div class="label">System Admins</div><div class="value">{{ system_admins }}</div></div></div>
+    <div class="col-12 col-md-4"><div class="sa-kpi"><div class="label">Coordinators</div><div class="value">{{ coordinators }}</div></div></div>
+    <div class="col-12 col-md-4"><div class="sa-kpi"><div class="label">University Supervisors</div><div class="value">{{ university_supervisors }}</div></div></div>
+    <div class="col-12 col-md-4"><div class="sa-kpi"><div class="label">Industry Supervisors</div><div class="value">{{ industry_supervisors }}</div></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="sa-card h-100">
+        <div class="sa-card-head"><i class="bi bi-lightning-charge text-danger me-1"></i> Primary Actions</div>
+        <div class="p-3 d-grid gap-2">
+          <a href="{% url 'system_admin_users' %}" class="sa-action">
+            <span class="d-flex align-items-center gap-3">
+              <span class="icon"><i class="bi bi-people"></i></span>
+              <span><span class="fw-bold d-block">Manage Users</span><span class="small text-muted">Activate, deactivate, and recover passwords.</span></span>
+            </span>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+          <a href="{% url 'system_admin_user_create' %}" class="sa-action">
+            <span class="d-flex align-items-center gap-3">
+              <span class="icon"><i class="bi bi-person-plus"></i></span>
+              <span><span class="fw-bold d-block">Create Operational Account</span><span class="small text-muted">System admin, coordinator, or supervisor.</span></span>
+            </span>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+          <a href="{% url 'system_admin_settings' %}" class="sa-action">
+            <span class="d-flex align-items-center gap-3">
+              <span class="icon"><i class="bi bi-sliders"></i></span>
+              <span><span class="fw-bold d-block">System Settings</span><span class="small text-muted">Periods, companies, recommendation letter settings.</span></span>
+            </span>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <div class="sa-card h-100">
+        <div class="sa-card-head"><i class="bi bi-clock-history text-danger me-1"></i> Recent Account Activity</div>
+        {% for item in recent_actions %}
+          <div class="sa-activity">
+            <span class="sa-dot"></span>
+            <div>
+              <div class="fw-semibold">{{ item.action|title }}</div>
+              <div class="small text-muted">
+                {{ item.target_user.email|default:"Unknown user" }} by {{ item.actor.email|default:"System" }}
+              </div>
+              <div class="small text-muted">{{ item.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="p-4 text-center text-muted small">No account activity has been recorded yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

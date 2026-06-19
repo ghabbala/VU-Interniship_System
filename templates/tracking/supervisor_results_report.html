@@ -198,6 +198,24 @@
     color:var(--vu-dark);
     line-height:1.1;
   }
+  .progress-slim{
+    height:.45rem;
+    border-radius:999px;
+    background:rgba(0,0,0,.08);
+    overflow:hidden;
+  }
+  .progress-slim > span{
+    display:block;
+    height:100%;
+    border-radius:999px;
+    background:linear-gradient(90deg, #b30000, #198754);
+  }
+  .missing-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:.25rem;
+    justify-content:flex-end;
+  }
   @media (max-width: 767.98px){
     .summary-grid{grid-template-columns: repeat(2, minmax(0, 1fr));}
   }
@@ -334,7 +352,43 @@
         </div>
         <div class="subtle">{{ report_summary.incomplete|default:0 }} missing</div>
       </div>
+      <div class="summary-card">
+        <div class="label">Log Progress</div>
+        <div class="value">{{ report_summary.average_log_progress|default:0|floatformat:0 }}%</div>
+        <div class="progress-slim mt-2" aria-label="Average approved weekly log progress">
+          <span style="width:{{ report_summary.average_log_progress|default:0|floatformat:0 }}%;"></span>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Site Visits</div>
+        <div class="value">{{ report_summary.site_visits_done|default:0 }}</div>
+        <div class="subtle">Students visited</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Student Feedback</div>
+        <div class="value">{{ report_summary.student_feedback_done|default:0 }}</div>
+        <div class="subtle">Submitted forms</div>
+      </div>
     </div>
+
+    {% if report_has_live_updates %}
+      <div class="alert alert-info border-0 mb-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+          <div>
+            <div class="fw-semibold"><i class="bi bi-arrow-repeat me-1"></i> New internship updates are available</div>
+            <div class="small text-muted mt-1">
+              The saved draft does not match the latest evaluations, logs, visits, or feedback. Refresh before submitting.
+            </div>
+          </div>
+          <form method="post" action="{% url 'supervisor_refresh_results_report' %}" class="m-0">
+            {% csrf_token %}
+            <button class="btn btn-primary btn-sm" type="submit">
+              <i class="bi bi-arrow-clockwise me-1"></i> Update Draft
+            </button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
 
     {% if rows and report_summary.incomplete|default:0 > 0 and report_is_editable %}
       <div class="alert alert-warning border-0 mb-0">
@@ -403,15 +457,19 @@
                 <th style="min-width:140px;">Reg No</th>
                 <th style="min-width:260px;">Student</th>
                 <th style="min-width:220px;">Company</th>
+                <th style="min-width:190px;">Internship</th>
+                <th style="min-width:170px;">Weekly Logs</th>
+                <th style="min-width:140px;">Visits</th>
                 <th class="text-end" style="min-width:140px;">Industry /100</th>
                 <th class="text-end" style="min-width:140px;">Academic /100</th>
                 <th class="text-end" style="min-width:140px;">Average /100</th>
+                <th class="text-end" style="min-width:220px;">Needs</th>
               </tr>
             </thead>
             <tbody>
               {% for r in rows %}
                 <tr class="result-row"
-                    data-search="{{ r.reg_no }} {{ r.name }} {{ r.company }}">
+                    data-search="{{ r.reg_no }} {{ r.name }} {{ r.company }} {{ r.placement_status }} {{ r.missing_items|join:' ' }}">
                   <td>
                     <span class="reg-pill"><i class="bi bi-hash"></i> {{ r.reg_no|default:"—" }}</span>
                   </td>
@@ -421,6 +479,44 @@
                   </td>
 
                   <td class="subtle">{{ r.company|default:"—" }}</td>
+
+                  <td>
+                    <div class="fw-semibold small">{{ r.placement_status|default:"Active" }}</div>
+                    <div class="subtle">
+                      {{ r.start_date|default:"—" }} to {{ r.end_date|default:"—" }}
+                    </div>
+                    {% if r.days_remaining is not None %}
+                      <div class="subtle">{{ r.days_remaining }} day(s) remaining</div>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <div class="d-flex justify-content-between small fw-semibold">
+                      <span>{{ r.approved_logs|default:0 }}/{{ r.required_weeks|default:0 }} approved</span>
+                      <span>{{ r.log_progress|default:0|floatformat:0 }}%</span>
+                    </div>
+                    <div class="progress-slim mt-1" aria-label="Weekly log progress">
+                      <span style="width:{{ r.log_progress|default:0|floatformat:0 }}%;"></span>
+                    </div>
+                    <div class="subtle mt-1">
+                      {{ r.submitted_logs|default:0 }} waiting, {{ r.returned_logs|default:0 }} returned
+                    </div>
+                  </td>
+
+                  <td>
+                    {% if r.completed_visits|default:0 > 0 %}
+                      <span class="badge badge-soft-success">{{ r.completed_visits }} completed</span>
+                    {% else %}
+                      <span class="badge badge-soft-warning">Pending</span>
+                    {% endif %}
+                    <div class="subtle mt-1">{{ r.total_visits|default:0 }} scheduled</div>
+                    {% if r.student_feedback_submitted %}
+                      <div class="subtle text-success"><i class="bi bi-check-circle me-1"></i>Feedback</div>
+                    {% endif %}
+                    {% if r.student_report_submitted %}
+                      <div class="subtle text-success"><i class="bi bi-file-earmark-check me-1"></i>Report</div>
+                    {% endif %}
+                  </td>
 
                   <td class="text-end">
                     {% if r.industry_100 is not None %}
@@ -438,6 +534,17 @@
                     {% if r.average_100 is not None %}
                       <span class="badge text-bg-dark">{{ r.average_100|floatformat:0 }}</span>
                     {% else %}—{% endif %}
+                  </td>
+                  <td class="text-end">
+                    {% if r.missing_items %}
+                      <div class="missing-list">
+                        {% for item in r.missing_items %}
+                          <span class="badge badge-soft-warning">{{ item }}</span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <span class="badge badge-soft-success">Ready</span>
+                    {% endif %}
                   </td>
                 </tr>
               {% endfor %}
