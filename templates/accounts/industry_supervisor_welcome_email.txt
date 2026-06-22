@@ -3,6 +3,7 @@ Hello {{ user.display_name }},
 Victoria University has created an Industry Supervisor account for you on the Internship Portal.
 
 Company: {{ company.name }}
+Portal link: {{ login_url }}
 Login email: {{ user.email }}
 {% if generated_password %}
 Temporary password: {{ generated_password }}

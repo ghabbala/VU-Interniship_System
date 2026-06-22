@@ -10,10 +10,11 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail import BadHeaderError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views import View
@@ -143,6 +144,47 @@ def _log_account_action(actor, target_user, action, note=""):
         action=action,
         note=note,
     )
+
+
+def _send_industry_supervisor_credentials_email(request, user, company, generated_password=None):
+    login_url = request.build_absolute_uri(reverse("login"))
+    context = {
+        "user": user,
+        "company": company,
+        "generated_password": generated_password,
+        "login_url": login_url,
+    }
+    body = render_to_string("accounts/industry_supervisor_welcome_email.txt", context)
+    email = EmailMultiAlternatives(
+        subject="Victoria University Internship Portal account",
+        body=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    email.send()
+
+
+def _send_temporary_password_email(request, user, temporary_password):
+    login_url = request.build_absolute_uri(reverse("login"))
+    context = {
+        "user": user,
+        "temporary_password": temporary_password,
+        "login_url": login_url,
+    }
+    body = render_to_string("accounts/temporary_password_email.txt", context)
+    email = EmailMultiAlternatives(
+        subject="Victoria University Internship Portal password reset",
+        body=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    email.send()
+
+
+def _mail_delivery_error_message(exc):
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        return "Gmail rejected the email username/password. Generate a new Gmail app password and update .env."
+    return "Check SMTP settings."
 
 
 class EmailLoginView(LoginView):
@@ -338,26 +380,17 @@ def industry_supervisor_account_create(request):
             )
 
             try:
-                self_service_note = "Use Forgot password on the login page to set a new password."
-                context = {
-                    "user": user,
-                    "company": data["company"],
-                    "generated_password": generated_password,
-                    "self_service_note": self_service_note,
-                }
-                body = render_to_string("accounts/industry_supervisor_welcome_email.txt", context)
-                email = EmailMultiAlternatives(
-                    subject="Victoria University Internship Portal account",
-                    body=body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[user.email],
+                _send_industry_supervisor_credentials_email(
+                    request,
+                    user,
+                    data["company"],
+                    generated_password,
                 )
-                email.send()
                 messages.success(request, "Industry supervisor account created and email sent.")
-            except smtplib.SMTPException:
+            except (BadHeaderError, OSError, smtplib.SMTPException) as exc:
                 messages.warning(
                     request,
-                    "Account created, but the email could not be sent. Check SMTP settings.",
+                    f"Account created, but the email could not be sent. {_mail_delivery_error_message(exc)}",
                 )
 
             if next_url:
@@ -499,6 +532,19 @@ def system_admin_user_create(request):
                         "phone": data.get("phone", ""),
                     },
                 )
+                if generated_password:
+                    try:
+                        _send_industry_supervisor_credentials_email(
+                            request,
+                            user,
+                            data["company"],
+                            generated_password,
+                        )
+                    except (BadHeaderError, OSError, smtplib.SMTPException) as exc:
+                        messages.warning(
+                            request,
+                            f"Account saved, but the credentials email could not be sent. {_mail_delivery_error_message(exc)}",
+                        )
 
             created_or_updated_user = user
             action = "created account" if created else "updated account"
@@ -537,7 +583,14 @@ def system_admin_user_password(request, user_id):
                 update_fields.append("is_active")
             user.save(update_fields=update_fields)
             _log_account_action(request.user, user, "reset password", "Temporary password set by System Admin.")
-            messages.success(request, f"Temporary password set for {user.email}.")
+            try:
+                _send_temporary_password_email(request, user, generated_password)
+                messages.success(request, f"Temporary password set and emailed to {user.email}.")
+            except (BadHeaderError, OSError, smtplib.SMTPException) as exc:
+                messages.warning(
+                    request,
+                    f"Temporary password set for {user.email}, but the email could not be sent. {_mail_delivery_error_message(exc)}",
+                )
     else:
         form = SystemAdminPasswordResetForm()
 
